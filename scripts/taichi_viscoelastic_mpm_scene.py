@@ -1,0 +1,972 @@
+import argparse
+import json
+import socket
+import time as wall_time
+from pathlib import Path
+
+import numpy as np
+import taichi as ti
+from PIL import Image
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+OUTPUT_DIR = PROJECT_ROOT / "data" / "taichi_mpm_camera_views"
+SCENE_CENTER = [0.5, 0.32, 0.5]
+TOOL_Y = 0.32
+TOOL_Z_OFFSET = 0.24
+TOOL_TRAVEL = 0.28
+DOUGH_RADIUS = [0.14, 0.055, 0.12]
+
+TOOL_INITIAL_POSES = np.array(
+    [
+        [SCENE_CENTER[0], TOOL_Y, SCENE_CENTER[2] + TOOL_Z_OFFSET, 0.0, 0.0, 0.0, 1.0],
+        [SCENE_CENTER[0], TOOL_Y, SCENE_CENTER[2] - TOOL_Z_OFFSET, 0.0, 0.0, 0.0, 1.0],
+    ],
+    dtype=np.float32,
+)
+
+
+CAMERA_VIEWS = {
+    "front_dough": {
+        "position": [0.5, 0.38, 1.25],
+        "lookAt": SCENE_CENTER,
+        "fieldOfView": 57.0,
+        "zNear": 0.01,
+        "zFar": 2.0,
+    },
+    "top_dough": {
+        "position": [0.5, 0.95, 0.5],
+        "lookAt": SCENE_CENTER,
+        "fieldOfView": 57.0,
+        "zNear": 0.01,
+        "zFar": 2.0,
+    },
+    "side_dough": {
+        "position": [1.25, 0.36, 0.5],
+        "lookAt": SCENE_CENTER,
+        "fieldOfView": 57.0,
+        "zNear": 0.01,
+        "zFar": 2.0,
+    },
+}
+
+
+def build_sim(args):
+    dim = 3
+    n_particles = args.particles
+    n_grid = args.grid
+    tool_vis_resolution = 14
+    tool_vis_count = 2 * tool_vis_resolution * tool_vis_resolution * tool_vis_resolution
+    dx = 1.0 / n_grid
+    inv_dx = float(n_grid)
+    dt = args.dt
+
+    p_vol = (dx * 0.5) ** dim
+    p_rho = args.density
+    p_mass = p_vol * p_rho
+    E = args.youngs_modulus
+    nu = args.poisson_ratio
+    mu_0 = E / (2 * (1 + nu))
+    lambda_0 = E * nu / ((1 + nu) * (1 - 2 * nu))
+    viscosity = args.viscosity
+    gravity = args.gravity
+    floor_y = args.floor_y
+    tool_close_time = args.tool_close_time
+    tool_motion_start = args.tool_motion_start
+    tool_contact_padding = args.tool_contact_padding
+    tool_contact_friction = args.tool_contact_friction
+    tool_contact_absorption = args.tool_contact_absorption
+    tool_stickiness = args.tool_stickiness
+    floor_friction = args.floor_friction
+    floor_stickiness = args.floor_stickiness
+    floor_absorption = args.floor_absorption
+    floor_plastic_damping_band = args.floor_plastic_damping_band
+    velocity_damping = args.velocity_damping
+    pure_viscoelastic = 1 if args.pure_viscoelastic else 0
+    plastic_min = args.plastic_min
+    plastic_max = args.plastic_max
+    plastic_velocity_damping = args.plastic_velocity_damping
+    plastic_affine_damping = args.plastic_affine_damping
+    use_jp = 0 if not args.use_jp else 1
+    jp_hardening = args.jp_hardening
+    jp_min = args.jp_min
+    jp_max = args.jp_max
+    scripted_tools = 0 if args.ros_control else 1
+    scene_center_x = SCENE_CENTER[0]
+    scene_center_y = SCENE_CENTER[1]
+    scene_center_z = SCENE_CENTER[2]
+    dough_radius_x = DOUGH_RADIUS[0]
+    dough_radius_y = DOUGH_RADIUS[1]
+    dough_radius_z = DOUGH_RADIUS[2]
+    tool_y = TOOL_Y
+    tool_z_offset = TOOL_Z_OFFSET
+    tool_travel = TOOL_TRAVEL
+
+    x = ti.Vector.field(dim, dtype=ti.f32, shape=n_particles)
+    v = ti.Vector.field(dim, dtype=ti.f32, shape=n_particles)
+    C = ti.Matrix.field(dim, dim, dtype=ti.f32, shape=n_particles)
+    F = ti.Matrix.field(dim, dim, dtype=ti.f32, shape=n_particles)
+    Jp = ti.field(dtype=ti.f32, shape=n_particles)
+    yielded = ti.field(dtype=ti.i32, shape=n_particles)
+    grid_v = ti.Vector.field(dim, dtype=ti.f32, shape=(n_grid, n_grid, n_grid))
+    grid_m = ti.field(dtype=ti.f32, shape=(n_grid, n_grid, n_grid))
+    tool_x = ti.Vector.field(dim, dtype=ti.f32, shape=tool_vis_count)
+    tool_center = ti.Vector.field(dim, dtype=ti.f32, shape=2)
+    tool_quat = ti.Vector.field(4, dtype=ti.f32, shape=2)
+    tool_velocity = ti.Vector.field(dim, dtype=ti.f32, shape=2)
+
+    @ti.func
+    def quat_to_matrix(q):
+        xq, yq, zq, wq = q[0], q[1], q[2], q[3]
+        return ti.Matrix([
+            [1.0 - 2.0 * (yq * yq + zq * zq), 2.0 * (xq * yq - zq * wq), 2.0 * (xq * zq + yq * wq)],
+            [2.0 * (xq * yq + zq * wq), 1.0 - 2.0 * (xq * xq + zq * zq), 2.0 * (yq * zq - xq * wq)],
+            [2.0 * (xq * zq - yq * wq), 2.0 * (yq * zq + xq * wq), 1.0 - 2.0 * (xq * xq + yq * yq)],
+        ])
+
+    @ti.kernel
+    def set_tool_state(poses: ti.types.ndarray(), velocities: ti.types.ndarray()):
+        for i in range(2):
+            tool_center[i] = ti.Vector([poses[i, 0], poses[i, 1], poses[i, 2]])
+            tool_quat[i] = ti.Vector([poses[i, 3], poses[i, 4], poses[i, 5], poses[i, 6]])
+            tool_velocity[i] = ti.Vector([velocities[i, 0], velocities[i, 1], velocities[i, 2]])
+
+    @ti.func
+    def tool_pose_and_velocity(tool_id, t):
+        motion_time = ti.max(t - tool_motion_start, 0.0)
+        progress = 0.0
+        if t >= tool_motion_start:
+            progress = ti.min(motion_time / tool_close_time, 1.0)
+
+        center = tool_center[tool_id]
+        cvel = tool_velocity[tool_id]
+        if scripted_tools == 1:
+            if tool_id == 0:
+                center = ti.Vector([scene_center_x, tool_y, scene_center_z + tool_z_offset - tool_travel * progress])
+                if t >= tool_motion_start and progress < 1.0:
+                    cvel = ti.Vector([0.0, 0.0, -tool_travel / tool_close_time])
+                else:
+                    cvel = ti.Vector([0.0, 0.0, 0.0])
+            else:
+                center = ti.Vector([scene_center_x, tool_y, scene_center_z - tool_z_offset + tool_travel * progress])
+                if t >= tool_motion_start and progress < 1.0:
+                    cvel = ti.Vector([0.0, 0.0, tool_travel / tool_close_time])
+                else:
+                    cvel = ti.Vector([0.0, 0.0, 0.0])
+
+        return center, cvel
+
+    @ti.func
+    def box_collision_velocity_and_normal(pos, t):
+        inflated_half = ti.Vector([0.05, 0.05, 0.05]) + tool_contact_padding
+
+        hit = 0
+        normal = ti.Vector([0.0, 0.0, 0.0])
+        collider_v = ti.Vector([0.0, 0.0, 0.0])
+
+        for k in ti.static(range(2)):
+            center, cvel = tool_pose_and_velocity(k, t)
+            rot = quat_to_matrix(tool_quat[k])
+            q = rot.transpose() @ (pos - center)
+            aq = ti.abs(q)
+            inside = aq.x < inflated_half.x and aq.y < inflated_half.y and aq.z < inflated_half.z
+            if inside:
+                penetration = inflated_half - aq
+                min_pen = penetration.x
+                local_normal = ti.Vector([1.0, 0.0, 0.0])
+                if q.x < 0.0:
+                    local_normal = ti.Vector([-1.0, 0.0, 0.0])
+
+                if penetration.y < min_pen:
+                    min_pen = penetration.y
+                    local_normal = ti.Vector([0.0, 1.0, 0.0])
+                    if q.y < 0.0:
+                        local_normal = ti.Vector([0.0, -1.0, 0.0])
+
+                if penetration.z < min_pen:
+                    local_normal = ti.Vector([0.0, 0.0, 1.0])
+                    if q.z < 0.0:
+                        local_normal = ti.Vector([0.0, 0.0, -1.0])
+
+                hit = 1
+                normal = rot @ local_normal
+                collider_v = cvel
+
+        return hit, normal, collider_v
+
+    @ti.func
+    def project_particle_out_of_tools(pos, vel, t):
+        new_pos = pos
+        new_vel = vel
+        inflated_half = ti.Vector([0.05, 0.05, 0.05]) + tool_contact_padding
+
+        for k in ti.static(range(2)):
+            center, cvel = tool_pose_and_velocity(k, t)
+            rot = quat_to_matrix(tool_quat[k])
+            q = rot.transpose() @ (new_pos - center)
+            aq = ti.abs(q)
+            inside = aq.x < inflated_half.x and aq.y < inflated_half.y and aq.z < inflated_half.z
+            if inside:
+                penetration = inflated_half - aq
+                min_pen = penetration.x
+                if penetration.y < min_pen:
+                    min_pen = penetration.y
+                if penetration.z < min_pen:
+                    min_pen = penetration.z
+
+                local_normal = ti.Vector([0.0, 0.0, 0.0])
+                if min_pen == penetration.x:
+                    if q.x < 0.0:
+                        q.x = -(inflated_half.x + 1e-4)
+                        local_normal = ti.Vector([-1.0, 0.0, 0.0])
+                    else:
+                        q.x = inflated_half.x + 1e-4
+                        local_normal = ti.Vector([1.0, 0.0, 0.0])
+                elif min_pen == penetration.y:
+                    if q.y < 0.0:
+                        q.y = -(inflated_half.y + 1e-4)
+                        local_normal = ti.Vector([0.0, -1.0, 0.0])
+                    else:
+                        q.y = inflated_half.y + 1e-4
+                        local_normal = ti.Vector([0.0, 1.0, 0.0])
+                else:
+                    if q.z < 0.0:
+                        q.z = -(inflated_half.z + 1e-4)
+                        local_normal = ti.Vector([0.0, 0.0, -1.0])
+                    else:
+                        q.z = inflated_half.z + 1e-4
+                        local_normal = ti.Vector([0.0, 0.0, 1.0])
+
+                normal = rot @ local_normal
+                new_pos = center + rot @ q
+
+                rel_v = new_vel - cvel
+                vn = rel_v.dot(normal)
+                if vn < 0.0:
+                    rel_v -= normal * vn
+                rel_v *= tool_contact_friction * (1.0 - tool_contact_absorption)
+                rel_v *= 1.0 - tool_stickiness
+                new_vel = cvel + rel_v
+
+        return new_pos, new_vel
+
+    @ti.kernel
+    def initialize():
+        for i in range(n_particles):
+            # Random points in a dough-like ellipsoid centered in the unit scene.
+            p = ti.Vector([0.0, 0.0, 0.0])
+            accepted = False
+            for _ in range(32):
+                candidate = ti.Vector([
+                    ti.random(ti.f32) * 2.0 - 1.0,
+                    ti.random(ti.f32) * 2.0 - 1.0,
+                    ti.random(ti.f32) * 2.0 - 1.0,
+                ])
+                if candidate.dot(candidate) <= 1.0 and not accepted:
+                    p = candidate
+                    accepted = True
+            if not accepted:
+                p = ti.Vector([0.0, 0.0, 0.0])
+
+            x[i] = ti.Vector([scene_center_x, scene_center_y, scene_center_z]) + p * ti.Vector([
+                dough_radius_x,
+                dough_radius_y,
+                dough_radius_z,
+            ])
+            v[i] = ti.Vector([0.0, 0.0, 0.0])
+            C[i] = ti.Matrix.zero(ti.f32, dim, dim)
+            F[i] = ti.Matrix.identity(ti.f32, dim)
+            Jp[i] = 1.0
+            yielded[i] = 0
+
+        tool_center[0] = ti.Vector([scene_center_x, tool_y, scene_center_z + tool_z_offset])
+        tool_center[1] = ti.Vector([scene_center_x, tool_y, scene_center_z - tool_z_offset])
+        tool_quat[0] = ti.Vector([0.0, 0.0, 0.0, 1.0])
+        tool_quat[1] = ti.Vector([0.0, 0.0, 0.0, 1.0])
+        tool_velocity[0] = ti.Vector([0.0, 0.0, 0.0])
+        tool_velocity[1] = ti.Vector([0.0, 0.0, 0.0])
+
+    @ti.kernel
+    def update_tool_visuals(time: ti.f32):
+        half = ti.Vector([0.05, 0.05, 0.05])
+        motion_time = ti.max(time - tool_motion_start, 0.0)
+        progress = 0.0
+        if time >= tool_motion_start:
+            progress = ti.min(motion_time / tool_close_time, 1.0)
+
+        for p in range(tool_vis_count):
+            local_id = p % (tool_vis_resolution * tool_vis_resolution * tool_vis_resolution)
+            ix = local_id % tool_vis_resolution
+            iy = (local_id // tool_vis_resolution) % tool_vis_resolution
+            iz = local_id // (tool_vis_resolution * tool_vis_resolution)
+            uvw = ti.Vector([
+                ix / (tool_vis_resolution - 1),
+                iy / (tool_vis_resolution - 1),
+                iz / (tool_vis_resolution - 1),
+            ])
+            local = (uvw * 2.0 - 1.0) * half
+            tool_id = 0
+            if p >= tool_vis_count // 2:
+                tool_id = 1
+
+            center = tool_center[tool_id]
+            if scripted_tools == 1:
+                if tool_id == 0:
+                    center = ti.Vector([scene_center_x, tool_y, scene_center_z + tool_z_offset - tool_travel * progress])
+                else:
+                    center = ti.Vector([scene_center_x, tool_y, scene_center_z - tool_z_offset + tool_travel * progress])
+
+            tool_x[p] = center + quat_to_matrix(tool_quat[tool_id]) @ local
+
+    @ti.kernel
+    def substep(time: ti.f32):
+        for I in ti.grouped(grid_m):
+            grid_v[I] = ti.Vector.zero(ti.f32, dim)
+            grid_m[I] = 0.0
+
+        for p in x:
+            base = (x[p] * inv_dx - 0.5).cast(int)
+            fx = x[p] * inv_dx - base.cast(float)
+            w = [
+                0.5 * (1.5 - fx) ** 2,
+                0.75 - (fx - 1.0) ** 2,
+                0.5 * (fx - 0.5) ** 2,
+            ]
+
+            F[p] = (ti.Matrix.identity(ti.f32, dim) + dt * C[p]) @ F[p]
+            old_J = F[p].determinant()
+            yielded[p] = 0
+            if pure_viscoelastic == 0:
+                U, sig, V = ti.svd(F[p])
+                for d in ti.static(range(dim)):
+                    unclamped = sig[d, d]
+                    clamped = ti.min(ti.max(unclamped, plastic_min), plastic_max)
+                    if ti.abs(unclamped - clamped) > 1e-6:
+                        yielded[p] = 1
+                    sig[d, d] = clamped
+                F[p] = U @ sig @ V.transpose()
+                if use_jp == 1:
+                    new_J = F[p].determinant()
+                    Jp[p] = ti.min(ti.max(Jp[p] * old_J / new_J, jp_min), jp_max)
+
+            J = F[p].determinant()
+            hardening = ti.exp(jp_hardening * (1.0 - Jp[p]))
+            mu = mu_0 * hardening
+            la = lambda_0 * hardening
+            r, _ = ti.polar_decompose(F[p])
+            elastic_stress = 2 * mu * (F[p] - r) @ F[p].transpose()
+            elastic_stress += ti.Matrix.identity(ti.f32, dim) * la * J * (J - 1)
+            viscous_stress = viscosity * (C[p] + C[p].transpose())
+            stress = -dt * p_vol * 4 * inv_dx * inv_dx * (elastic_stress + viscous_stress)
+            affine = stress + p_mass * C[p]
+
+            for i, j, k in ti.static(ti.ndrange(3, 3, 3)):
+                offset = ti.Vector([i, j, k])
+                dpos = (offset.cast(float) - fx) * dx
+                weight = w[i].x * w[j].y * w[k].z
+                grid_v[base + offset] += weight * (p_mass * v[p] + affine @ dpos)
+                grid_m[base + offset] += weight * p_mass
+
+        for I in ti.grouped(grid_m):
+            if grid_m[I] > 0:
+                grid_v[I] = grid_v[I] / grid_m[I]
+                grid_v[I].y += dt * gravity
+
+                pos = I.cast(float) * dx
+
+                if pos.y < floor_y and grid_v[I].y < 0.0:
+                    grid_v[I].y *= -floor_absorption
+                    grid_v[I].x *= floor_friction * (1.0 - floor_stickiness)
+                    grid_v[I].z *= floor_friction * (1.0 - floor_stickiness)
+
+                hit, normal, collider_v = box_collision_velocity_and_normal(pos, time)
+                if hit == 1:
+                    rel_v = grid_v[I] - collider_v
+                    vn = rel_v.dot(normal)
+                    if vn < 0.0:
+                        rel_v -= normal * vn
+                    rel_v *= tool_contact_friction * (1.0 - tool_contact_absorption)
+                    rel_v *= 1.0 - tool_stickiness
+                    grid_v[I] = collider_v + rel_v
+
+                bound = 3
+                if I.x < bound and grid_v[I].x < 0:
+                    grid_v[I].x = 0
+                if I.x > n_grid - bound and grid_v[I].x > 0:
+                    grid_v[I].x = 0
+                if I.y > n_grid - bound and grid_v[I].y > 0:
+                    grid_v[I].y = 0
+                if I.z < bound and grid_v[I].z < 0:
+                    grid_v[I].z = 0
+                if I.z > n_grid - bound and grid_v[I].z > 0:
+                    grid_v[I].z = 0
+
+        for p in x:
+            base = (x[p] * inv_dx - 0.5).cast(int)
+            fx = x[p] * inv_dx - base.cast(float)
+            w = [
+                0.5 * (1.5 - fx) ** 2,
+                0.75 - (fx - 1.0) ** 2,
+                0.5 * (fx - 0.5) ** 2,
+            ]
+            new_v = ti.Vector.zero(ti.f32, dim)
+            new_C = ti.Matrix.zero(ti.f32, dim, dim)
+            for i, j, k in ti.static(ti.ndrange(3, 3, 3)):
+                offset = ti.Vector([i, j, k])
+                dpos = (offset.cast(float) - fx) * dx
+                g_v = grid_v[base + offset]
+                weight = w[i].x * w[j].y * w[k].z
+                new_v += weight * g_v
+                new_C += 4 * inv_dx * weight * g_v.outer_product(dpos)
+            v[p] = new_v * velocity_damping
+            x[p] += dt * v[p]
+            projected_x, projected_v = project_particle_out_of_tools(x[p], v[p], time)
+            x[p] = projected_x
+            v[p] = projected_v
+            if x[p].y < floor_y + floor_plastic_damping_band:
+                if v[p].y < 0.0:
+                    v[p].y *= -floor_absorption
+                v[p].x *= floor_friction * (1.0 - floor_stickiness)
+                v[p].z *= floor_friction * (1.0 - floor_stickiness)
+                new_C *= plastic_affine_damping
+            if yielded[p] == 1:
+                v[p] *= plastic_velocity_damping
+                new_C *= plastic_affine_damping
+            C[p] = new_C
+
+    return x, tool_x, initialize, substep, update_tool_visuals, set_tool_state
+
+
+def compute_camera_basis(position, look_at):
+    position = np.asarray(position, dtype=np.float32)
+    look_at = np.asarray(look_at, dtype=np.float32)
+    forward = look_at - position
+    forward /= np.linalg.norm(forward)
+    up = np.array([0.0, 1.0, 0.0], dtype=np.float32)
+    right = np.cross(forward, up)
+    if np.linalg.norm(right) < 1e-6:
+        up = np.array([0.0, 0.0, 1.0], dtype=np.float32)
+        right = np.cross(forward, up)
+    right /= np.linalg.norm(right)
+    corrected_up = np.cross(right, forward)
+    return right, corrected_up, forward
+
+
+def render_particle_depth(points, width, height, view_name, config, output_dir, frame_idx):
+    right, up, forward = compute_camera_basis(config["position"], config["lookAt"])
+    camera_pos = np.asarray(config["position"], dtype=np.float32)
+    rel = points - camera_pos[None, :]
+    cam_x = rel @ right
+    cam_y = rel @ up
+    cam_z = rel @ forward
+
+    f = height / (2.0 * np.tan(np.radians(config["fieldOfView"]) / 2.0))
+    u = (f * cam_x / cam_z + width * 0.5).astype(np.int32)
+    v = (height * 0.5 - f * cam_y / cam_z).astype(np.int32)
+
+    valid = (
+        (cam_z > config["zNear"])
+        & (cam_z < config["zFar"])
+        & (u >= 0)
+        & (u < width)
+        & (v >= 0)
+        & (v < height)
+    )
+
+    depth = np.full((height, width), config["zFar"], dtype=np.float32)
+    for px, py, z in zip(u[valid], v[valid], cam_z[valid]):
+        depth[py, px] = min(depth[py, px], z)
+
+    finite = depth < config["zFar"]
+    normalized = np.zeros_like(depth, dtype=np.uint8)
+    if finite.any():
+        d = depth[finite]
+        normalized[finite] = ((1.0 - (d - d.min()) / max(d.max() - d.min(), 1e-6)) * 255).astype(np.uint8)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    stem = f"{view_name}_depth_{frame_idx:06d}"
+    np.save(output_dir / f"{stem}.npy", depth)
+    Image.fromarray(normalized, "L").save(output_dir / f"{stem}.png")
+
+    return {
+        "name": view_name,
+        "depth_array": str(output_dir / f"{stem}.npy"),
+        "depth_image": str(output_dir / f"{stem}.png"),
+        "position": config["position"],
+        "lookAt": config["lookAt"],
+        "fieldOfView": config["fieldOfView"],
+        "zNear": config["zNear"],
+        "zFar": config["zFar"],
+        "width": width,
+        "height": height,
+    }
+
+
+def normalize_quaternion(quaternion):
+    quaternion = np.asarray(quaternion, dtype=np.float32)
+    norm = np.linalg.norm(quaternion)
+    if norm < 1e-12:
+        return np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32)
+    return quaternion / norm
+
+
+def quaternion_multiply(left, right):
+    lx, ly, lz, lw = left
+    rx, ry, rz, rw = right
+    return np.array(
+        [
+            lw * rx + lx * rw + ly * rz - lz * ry,
+            lw * ry - lx * rz + ly * rw + lz * rx,
+            lw * rz + lx * ry - ly * rx + lz * rw,
+            lw * rw - lx * rx - ly * ry - lz * rz,
+        ],
+        dtype=np.float32,
+    )
+
+
+def quaternion_conjugate(quaternion):
+    return np.array([-quaternion[0], -quaternion[1], -quaternion[2], quaternion[3]], dtype=np.float32)
+
+
+def integrate_orientation(quaternion, angular_velocity, dt):
+    angular_velocity = np.asarray(angular_velocity, dtype=np.float32)
+    angle = np.linalg.norm(angular_velocity) * dt
+    if angle < 1e-12:
+        return normalize_quaternion(quaternion)
+
+    axis = angular_velocity / np.linalg.norm(angular_velocity)
+    half_angle = 0.5 * angle
+    delta = np.array(
+        [
+            axis[0] * np.sin(half_angle),
+            axis[1] * np.sin(half_angle),
+            axis[2] * np.sin(half_angle),
+            np.cos(half_angle),
+        ],
+        dtype=np.float32,
+    )
+    return normalize_quaternion(quaternion_multiply(delta, quaternion))
+
+
+def angular_velocity_from_quaternions(old_quaternion, new_quaternion, dt):
+    dt = max(float(dt), 1e-8)
+    delta = quaternion_multiply(new_quaternion, quaternion_conjugate(old_quaternion))
+    delta = normalize_quaternion(delta)
+    if delta[3] < 0.0:
+        delta = -delta
+    vector_norm = np.linalg.norm(delta[:3])
+    if vector_norm < 1e-8:
+        return np.zeros(3, dtype=np.float32)
+    angle = 2.0 * np.arctan2(vector_norm, delta[3])
+    axis = delta[:3] / vector_norm
+    return (axis * angle / dt).astype(np.float32)
+
+
+class UdpRigidBoxControl:
+    def __init__(self, receive_ports=(5005, 5007), transmit_ports=(5006, 5008), host="127.0.0.1", max_vel=1.0):
+        self.host = host
+        self.receive_sockets = []
+        self.transmit_sockets = []
+        self.transmit_addrs = [(host, port) for port in transmit_ports]
+        self.poses = TOOL_INITIAL_POSES.copy()
+        self.velocities = np.zeros((2, 6), dtype=np.float32)
+        self.pose_control_active = np.zeros(2, dtype=bool)
+        self.max_vel = max_vel
+
+        for port in receive_ports:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind((host, port))
+            sock.setblocking(False)
+            self.receive_sockets.append(sock)
+
+        for _ in transmit_ports:
+            self.transmit_sockets.append(socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
+
+        print(f"ROS-style UDP box control listening on {receive_ports}, transmitting poses on {transmit_ports}")
+
+    def close(self):
+        for sock in self.receive_sockets + self.transmit_sockets:
+            sock.close()
+
+    def poll_and_integrate(self, dt):
+        pose_driven = np.zeros(2, dtype=bool)
+        for i, sock in enumerate(self.receive_sockets):
+            try:
+                while True:
+                    data, _ = sock.recvfrom(1024)
+                    msg = json.loads(data.decode())
+                    if "vel" in msg:
+                        vel = np.asarray(msg["vel"], dtype=np.float32)
+                        if vel.size < 6:
+                            vel = np.pad(vel, (0, 6 - vel.size))
+                        self.velocities[i] = vel[:6]
+                        self.pose_control_active[i] = False
+                    elif "pose" in msg:
+                        pose = np.asarray(msg["pose"], dtype=np.float32)
+                        if pose.size >= 7:
+                            old_pose = self.poses[i].copy()
+                            pose_dt = float(msg.get("dt", dt))
+                            self.poses[i] = pose[:7]
+                            self.poses[i, 3:7] = normalize_quaternion(self.poses[i, 3:7])
+                            self.velocities[i, :3] = (self.poses[i, :3] - old_pose[:3]) / max(pose_dt, 1e-8)
+                            self.velocities[i, 3:6] = angular_velocity_from_quaternions(
+                                old_pose[3:7], self.poses[i, 3:7], pose_dt
+                            )
+                            self.pose_control_active[i] = True
+                            pose_driven[i] = True
+            except BlockingIOError:
+                pass
+
+        linear = np.clip(self.velocities[:, :3], -self.max_vel, self.max_vel)
+        angular = self.velocities[:, 3:6]
+        for i in range(2):
+            if not self.pose_control_active[i]:
+                self.poses[i, :3] += linear[i] * dt
+                self.poses[i, 3:7] = integrate_orientation(self.poses[i, 3:7], angular[i], dt)
+            elif not pose_driven[i]:
+                linear[i] = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        return self.poses.astype(np.float32), linear.astype(np.float32)
+
+    def transmit_poses(self):
+        for i, sock in enumerate(self.transmit_sockets):
+            msg = {"pose": self.poses[i].tolist()}
+            sock.sendto(json.dumps(msg).encode(), self.transmit_addrs[i])
+
+
+class DoughCenterTransmitter:
+    def __init__(self, port=5010, host="127.0.0.1"):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.addr = (host, port)
+        print(f"Publishing dough center over UDP to {host}:{port}")
+
+    def send(self, center):
+        msg = {"center": np.asarray(center, dtype=float).tolist()}
+        self.sock.sendto(json.dumps(msg).encode(), self.addr)
+
+    def close(self):
+        self.sock.close()
+
+
+def save_frame_outputs(points, args, views, run_dir, frame_idx, step):
+    np.save(run_dir / f"particles_{frame_idx:06d}.npy", points)
+    frame = {"frame": frame_idx, "step": step, "views": []}
+    for view_name in views:
+        frame["views"].append(
+            render_particle_depth(points, args.width, args.height, view_name, CAMERA_VIEWS[view_name], run_dir, frame_idx)
+        )
+    return frame
+
+
+def draw_gui_frame(window, canvas, scene, camera, particles, tools, time, free_camera=True, movement_speed=0.03, frame_path=None):
+    if free_camera:
+        camera.track_user_inputs(window, movement_speed=movement_speed, hold_key=ti.ui.RMB)
+    else:
+        camera.position(0., 1.35, -1.35)
+        camera.lookat(*SCENE_CENTER)
+        camera.up(0.0, 1.0, 0.0)
+    scene.set_camera(camera)
+    scene.ambient_light((0.35, 0.35, 0.35))
+    scene.point_light(pos=(0.4, 0.9, 1.1), color=(1.0, 1.0, 1.0))
+    scene.particles(particles, radius=0.006, color=(0.78, 0.55, 0.36))
+    scene.particles(tools, radius=0.004, color=(0.35, 0.42, 0.50))
+    canvas.scene(scene)
+    if frame_path is not None:
+        window.save_image(str(frame_path))
+    window.show()
+
+
+def create_video_writer(output_path, fps, frame_size):
+    import cv2
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    writer = cv2.VideoWriter(
+        str(output_path),
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        fps,
+        frame_size,
+    )
+    if not writer.isOpened():
+        raise ValueError(f"Could not open video writer for {output_path}")
+    return writer
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Taichi MLS-MPM viscoelastic dough scene prototype.")
+    parser.add_argument("--particles", type=int, default=24000)
+    parser.add_argument("--grid", type=int, default=48)
+    parser.add_argument("--steps", type=int, default=240)
+    parser.add_argument("--dt", type=float, default=2e-4)
+    parser.add_argument("--substeps-per-frame", type=int, default=8)
+    parser.add_argument("--save-every", type=int, default=10)
+    parser.add_argument("--width", type=int, default=800)
+    parser.add_argument("--height", type=int, default=600)
+    parser.add_argument("--view", choices=list(CAMERA_VIEWS), action="append")
+    parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
+    parser.add_argument("--youngs-modulus", type=float, default=2000)
+    parser.add_argument("--poisson-ratio", type=float, default=0.35)
+    parser.add_argument("--viscosity", type=float, default=2.5)
+    parser.add_argument("--density", type=float, default=1100.0)
+    parser.add_argument("--gravity", type=float, default=-9.81)
+    parser.add_argument("--floor-y", type=float, default=0.20)
+    parser.add_argument("--floor-friction", type=float, default=0.7)
+    parser.add_argument(
+        "--floor-absorption",
+        type=float,
+        default=0.0,
+        help="Normal bounce kept at floor impact. 0 removes downward velocity, 1 is fully elastic bounce.",
+    )
+    parser.add_argument("--tool-close-time", type=float, default=0.04)
+    parser.add_argument("--tool-motion-start", type=float, default=1.0)
+    parser.add_argument("--tool-contact-padding", type=float, default=0.035)
+    parser.add_argument("--tool-contact-friction", type=float, default=0.75)
+    parser.add_argument(
+        "--tool-contact-absorption",
+        type=float,
+        default=0.0,
+        help="Extra damping at tool contacts. 0 keeps old response, 1 sticks to the tool velocity.",
+    )
+    parser.add_argument(
+        "--tool-stickiness",
+        type=float,
+        default=0.0,
+        help="Blend contact velocity toward tool velocity. 0 disables sticky tool contact.",
+    )
+    parser.add_argument(
+        "--floor-stickiness",
+        type=float,
+        default=0.0,
+        help="Extra damping of horizontal velocity at floor contact. 0 disables sticky floor contact.",
+    )
+    parser.add_argument(
+        "--floor-plastic-damping-band",
+        type=float,
+        default=0.02,
+        help="Height above the floor where particle velocity-gradient damping is applied.",
+    )
+    parser.add_argument("--velocity-damping", type=float, default=0.998)
+    parser.add_argument(
+        "--pure-viscoelastic",
+        action="store_true",
+        help="Disable SVD clamp plasticity and use the older viscoelastic-only model.",
+    )
+    parser.add_argument("--plastic-min", type=float, default=0.88, help="Minimum singular value kept in F.")
+    parser.add_argument("--plastic-max", type=float, default=1.08, help="Maximum singular value kept in F.")
+    parser.add_argument(
+        "--plastic-velocity-damping",
+        type=float,
+        default=0.92,
+        help="Extra velocity damping applied only to particles that yielded this step.",
+    )
+    parser.add_argument(
+        "--plastic-affine-damping",
+        type=float,
+        default=0.80,
+        help="Extra C/velocity-gradient damping applied only to particles that yielded this step.",
+    )
+    parser.add_argument("--use-jp", action="store_true", help="Track accumulated plastic volume change Jp.")
+    parser.add_argument(
+        "--jp-hardening",
+        type=float,
+        default=0.0,
+        help="Hardening coefficient applied as exp(jp_hardening * (1 - Jp)).",
+    )
+    parser.add_argument("--jp-min", type=float, default=0.6)
+    parser.add_argument("--jp-max", type=float, default=2.0)
+    parser.add_argument("--cpu", action="store_true", help="Use CPU backend instead of GPU.")
+    parser.add_argument("--gui", action="store_true", help="Open a live Taichi 3D viewer.")
+    parser.add_argument("--no-save", action="store_true", help="Run without writing camera/particle frames.")
+    parser.add_argument("--gui-fps-substeps", type=int, default=4, help="MPM substeps between GUI redraws.")
+    parser.add_argument("--free-camera", action="store_true", help="Allow mouse/keyboard control of the GUI camera.", default=True)
+    parser.add_argument("--camera-speed", type=float, default=0.01, help="Movement speed for --free-camera.")
+    parser.add_argument("--record-video", action="store_true", help="Record live GUI frames to an MP4.")
+    parser.add_argument("--video-path", type=Path, default=OUTPUT_DIR / "viscoelastic_mpm_gui.mp4")
+    parser.add_argument("--video-fps", type=float, default=30.0)
+    parser.add_argument(
+        "--video-simulation-time",
+        action="store_true",
+        help="Set video FPS so playback duration matches simulated time exactly.",
+    )
+    parser.add_argument(
+        "--keep-video-frames",
+        action="store_true",
+        help="Keep temporary PNG frames used for video encoding.",
+    )
+    parser.add_argument(
+        "--ros-control",
+        action="store_true",
+        help="Control the two box tools with the same UDP vel/pose ports used by the SOFA ROS bridge.",
+    )
+    parser.add_argument("--ros-tool-max-vel", type=float, default=1.0)
+    parser.add_argument("--publish-dough-center", action="store_true", help="Publish particle mean center over UDP.", default=True)
+    parser.add_argument("--dough-center-port", type=int, default=5010)
+    parser.add_argument(
+        "--timing-report-interval",
+        type=float,
+        default=2.0,
+        help="Wall-clock seconds between sim/real speed reports. 0 disables reports.",
+    )
+    args = parser.parse_args()
+
+    ti.init(arch=ti.cpu if args.cpu else ti.gpu)
+
+    run_dir = args.output_dir
+    run_dir.mkdir(parents=True, exist_ok=True)
+    views = args.view or list(CAMERA_VIEWS)
+
+    x, tool_x, initialize, substep, update_tool_visuals, set_tool_state = build_sim(args)
+    initialize()
+    set_tool_state(TOOL_INITIAL_POSES, np.zeros((2, 3), dtype=np.float32))
+    update_tool_visuals(0.0)
+    ros_control = UdpRigidBoxControl(max_vel=args.ros_tool_max_vel) if args.ros_control else None
+    dough_center_tx = DoughCenterTransmitter(port=args.dough_center_port) if args.publish_dough_center else None
+
+    metadata = {
+        "scene": "Taichi 3D MLS-MPM approximation of scene_with_camera.py",
+        "model": "compressible corotated/Neo-Hookean stress plus viscosity, with optional SVD clamp plasticity",
+        "frames": [],
+        "video": {},
+        "parameters": {key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()},
+    }
+
+    frame_idx = 0
+    step = 0
+    timing_start_wall = wall_time.perf_counter()
+    timing_start_sim = 0.0
+    timing_last_wall = timing_start_wall
+    timing_last_sim = timing_start_sim
+
+    def report_timing(sim_time):
+        nonlocal timing_last_wall, timing_last_sim
+        if args.timing_report_interval <= 0.0:
+            return
+        now_wall = wall_time.perf_counter()
+        wall_dt = now_wall - timing_last_wall
+        if wall_dt < args.timing_report_interval:
+            return
+        sim_dt = sim_time - timing_last_sim
+        total_wall = max(now_wall - timing_start_wall, 1e-12)
+        total_sim = sim_time - timing_start_sim
+        instant_ratio = sim_dt / max(wall_dt, 1e-12)
+        average_ratio = total_sim / total_wall
+        suggested_deformpath_hz = 30.0 * instant_ratio
+        print(
+            "Timing: "
+            f"sim={sim_time:.3f}s wall={total_wall:.3f}s "
+            f"sim/real={instant_ratio:.3f} avg={average_ratio:.3f} "
+            f"suggested_deformpath_rate={suggested_deformpath_hz:.2f} Hz",
+            flush=True,
+        )
+        timing_last_wall = now_wall
+        timing_last_sim = sim_time
+
+    if args.gui:
+        window = ti.ui.Window("Taichi Viscoelastic MPM Dough", (args.width, args.height), vsync=True)
+        canvas = window.get_canvas()
+        scene = window.get_scene()
+        camera = ti.ui.Camera()
+        camera.position(0., 1.35, 1.35)
+        camera.lookat(*SCENE_CENTER)
+        camera.up(0.0, 1.0, 0.0)
+        video_writer = None
+        video_frame_dir = run_dir / "video_frames"
+        gui_frame_idx = 0
+
+        if args.record_video:
+            seconds_per_gui_frame = args.dt * args.substeps_per_frame * args.gui_fps_substeps
+            if args.video_simulation_time:
+                args.video_fps = 1.0 / seconds_per_gui_frame
+            metadata["video"] = {
+                "path": str(args.video_path),
+                "fps": args.video_fps,
+                "seconds_per_gui_frame": seconds_per_gui_frame,
+                "simulation_time_playback": args.video_simulation_time,
+            }
+            print(
+                "Recording video at "
+                f"{args.video_fps:.6g} fps; each frame is {seconds_per_gui_frame:.6g} simulated seconds."
+            )
+            video_frame_dir.mkdir(parents=True, exist_ok=True)
+            video_writer = create_video_writer(args.video_path, args.video_fps, (args.width, args.height))
+
+        while window.running and step < args.steps:
+            for _ in range(args.gui_fps_substeps):
+                if ros_control is not None:
+                    poses, linear_velocities = ros_control.poll_and_integrate(args.dt * args.substeps_per_frame)
+                    set_tool_state(poses, linear_velocities)
+                    ros_control.transmit_poses()
+                time = step * args.dt * args.substeps_per_frame
+                for _ in range(args.substeps_per_frame):
+                    substep(time)
+                    time += args.dt
+                step += 1
+
+            update_tool_visuals(step * args.dt * args.substeps_per_frame)
+            if dough_center_tx is not None:
+                dough_center_tx.send(x.to_numpy().mean(axis=0))
+            frame_path = None
+            if args.record_video:
+                frame_path = video_frame_dir / f"gui_{gui_frame_idx:06d}.png"
+            draw_gui_frame(
+                window,
+                canvas,
+                scene,
+                camera,
+                x,
+                tool_x,
+                step * args.dt * args.substeps_per_frame,
+                free_camera=args.free_camera,
+                movement_speed=args.camera_speed,
+                frame_path=frame_path,
+            )
+
+            if args.record_video:
+                import cv2
+
+                frame = cv2.imread(str(frame_path), cv2.IMREAD_COLOR)
+                if frame is None:
+                    raise RuntimeError(f"Could not read recorded GUI frame {frame_path}")
+                video_writer.write(frame)
+                if not args.keep_video_frames:
+                    frame_path.unlink()
+                gui_frame_idx += 1
+
+            if not args.no_save and (step % args.save_every == 0 or step == args.steps - 1):
+                metadata["frames"].append(save_frame_outputs(x.to_numpy(), args, views, run_dir, frame_idx, step))
+                frame_idx += 1
+            report_timing(step * args.dt * args.substeps_per_frame)
+
+        if video_writer is not None:
+            video_writer.release()
+            print(f"Wrote GUI video to {args.video_path}")
+    else:
+        for step in range(args.steps):
+            if ros_control is not None:
+                poses, linear_velocities = ros_control.poll_and_integrate(args.dt * args.substeps_per_frame)
+                set_tool_state(poses, linear_velocities)
+                ros_control.transmit_poses()
+            time = step * args.dt * args.substeps_per_frame
+            for _ in range(args.substeps_per_frame):
+                substep(time)
+                time += args.dt
+            update_tool_visuals(time)
+            if dough_center_tx is not None:
+                dough_center_tx.send(x.to_numpy().mean(axis=0))
+
+            if not args.no_save and (step % args.save_every == 0 or step == args.steps - 1):
+                metadata["frames"].append(save_frame_outputs(x.to_numpy(), args, views, run_dir, frame_idx, step))
+                frame_idx += 1
+            report_timing((step + 1) * args.dt * args.substeps_per_frame)
+
+    metadata_path = run_dir / "camera_parameters.json"
+    metadata_path.write_text(json.dumps(metadata, indent=2))
+    print(f"Wrote {frame_idx} Taichi MPM frames to {run_dir}")
+    print(f"Wrote metadata to {metadata_path}")
+    if ros_control is not None:
+        ros_control.close()
+    if dough_center_tx is not None:
+        dough_center_tx.close()
+
+
+if __name__ == "__main__":
+    main()

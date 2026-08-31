@@ -1,0 +1,7 @@
+taichi==1.7.4
+numpy
+pillow
+opencv-python
+gymnasium
+torch
+stable-baselines3

@@ -1,0 +1,314 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\title{Taichi MLS-MPM Dough Model}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{State Variables}
+
+The simulation represents dough with material particles coupled to a background grid.
+For each particle $p$ the state is
+\[
+  \bm{x}_p,\quad \bm{v}_p,\quad \bm{F}_p,\quad \bm{C}_p,\quad J_{p,p}.
+\]
+Here $\bm{x}_p$ is position, $\bm{v}_p$ is velocity, $\bm{F}_p$ is the deformation
+gradient, $\bm{C}_p$ is the APIC affine velocity matrix, and $J_{p,p}$ is the
+accumulated plastic volume ratio. Grid nodes are indexed by $i$ and store
+\[
+  \bm{v}_i,\quad m_i .
+\]
+
+\section{Particle Initialization}
+
+Particles are sampled inside an ellipsoid centered at
+\[
+  \bm{x}_0 = (0.5,\;0.32,\;0.5)^T
+\]
+with radii
+\[
+  \bm{r} = (0.14,\;0.055,\;0.12)^T .
+\]
+For a random point $\bm{q}$ inside the unit sphere,
+\[
+  \bm{x}_p = \bm{x}_0 + \bm{r}\odot \bm{q},
+  \qquad
+  \bm{v}_p = \bm{0},
+  \qquad
+  \bm{F}_p = \bm{I},
+  \qquad
+  \bm{C}_p = \bm{0},
+  \qquad
+  J_{p,p}=1 .
+\]
+
+\section{Material Parameters}
+
+The Lam\'e parameters are computed from Young's modulus $E$ and Poisson ratio $\nu$:
+\[
+  \mu_0 = \frac{E}{2(1+\nu)},
+  \qquad
+  \lambda_0 = \frac{E\nu}{(1+\nu)(1-2\nu)} .
+\]
+If plastic volume hardening is enabled, stiffness is modified by
+\[
+  h_p = \exp\left(h_J(1 - J_{p,p})\right),
+  \qquad
+  \mu = h_p\mu_0,
+  \qquad
+  \lambda = h_p\lambda_0 ,
+\]
+where $h_J$ is the \texttt{jp-hardening} coefficient. With $h_J=0$, $J_{p,p}$
+is tracked but does not change the stiffness.
+
+\section{MLS-MPM Transfer}
+
+Let the grid spacing be $\Delta x$ and $\Delta x^{-1} = n_\mathrm{grid}$.
+For particle $p$,
+\[
+  \bm{g}_p = \bm{x}_p / \Delta x,
+  \qquad
+  \bm{b}_p = \lfloor \bm{g}_p - 0.5 \rfloor,
+  \qquad
+  \bm{f}_p = \bm{g}_p - \bm{b}_p .
+\]
+The one-dimensional quadratic B-spline weights are
+\[
+  w_0(f)=\frac{1}{2}(1.5-f)^2,
+  \qquad
+  w_1(f)=0.75-(f-1)^2,
+  \qquad
+  w_2(f)=\frac{1}{2}(f-0.5)^2 .
+\]
+For a neighboring node offset $\bm{o}=(a,b,c)$, $a,b,c\in\{0,1,2\}$,
+\[
+  W_{p\bm{o}} = w_a(f_x)w_b(f_y)w_c(f_z),
+  \qquad
+  \bm{d}_{p\bm{o}} = (\bm{o}-\bm{f}_p)\Delta x .
+\]
+
+\section{Deformation Gradient Update}
+
+Before particle-to-grid transfer, the deformation gradient is updated by the
+local velocity gradient:
+\[
+  \bm{F}_p^{*} =
+  \left(\bm{I}+\Delta t\,\bm{C}_p\right)\bm{F}_p^n .
+\]
+
+\section{SVD Clamp Plasticity}
+
+If plasticity is enabled, the model performs singular value clamping:
+\[
+  \bm{F}_p^{*} = \bm{U}\bm{\Sigma}\bm{V}^T,
+  \qquad
+  \tilde{\sigma}_k =
+  \operatorname{clamp}(\sigma_k,\sigma_{\min},\sigma_{\max}) .
+\]
+The projected deformation gradient is
+\[
+  \bm{F}_p^{n+1} =
+  \bm{U}\tilde{\bm{\Sigma}}\bm{V}^T .
+\]
+In the implementation,
+\[
+  \sigma_{\min}=\texttt{plastic-min},
+  \qquad
+  \sigma_{\max}=\texttt{plastic-max}.
+\]
+Values outside this interval are treated as plastic deformation, so only the
+clamped part remains elastic.
+
+\section{Plastic Volume Ratio}
+
+If $J_p$ tracking is enabled, the accumulated plastic volume ratio is updated as
+\[
+  J_{p,p}^{n+1} =
+  \operatorname{clamp}
+  \left(
+    J_{p,p}^{n}
+    \frac{\det(\bm{F}_p^{*})}{\det(\bm{F}_p^{n+1})},
+    J_{p,\min},
+    J_{p,\max}
+  \right).
+\]
+Here $J_{p,\min}$ and $J_{p,\max}$ correspond to \texttt{jp-min} and
+\texttt{jp-max}.
+
+\section{Constitutive Model}
+
+The model uses corotated elastic stress plus a simple viscous term. Let
+\[
+  J = \det(\bm{F}_p),
+  \qquad
+  \bm{F}_p = \bm{R}\bm{S}
+\]
+be the polar decomposition. The elastic stress term used in the code is
+\[
+  \bm{P}_e =
+  2\mu(\bm{F}_p-\bm{R})\bm{F}_p^T
+  +
+  \lambda J(J-1)\bm{I}.
+\]
+The viscous term is
+\[
+  \bm{P}_v =
+  \eta(\bm{C}_p+\bm{C}_p^T),
+\]
+where $\eta$ is \texttt{viscosity}. The total stress-like quantity used for
+MLS-MPM transfer is
+\[
+  \bm{P} = \bm{P}_e + \bm{P}_v .
+\]
+
+\section{Particle-to-Grid Transfer}
+
+The affine momentum contribution is
+\[
+  \bm{A}_p =
+  -\Delta t\,V_p\,4\,\Delta x^{-2}\bm{P}
+  +
+  m_p\bm{C}_p .
+\]
+Grid mass and momentum are accumulated as
+\[
+  m_i \mathrel{+}= W_{pi}m_p,
+\]
+\[
+  m_i\bm{v}_i \mathrel{+}=
+  W_{pi}
+  \left(
+    m_p\bm{v}_p + \bm{A}_p\bm{d}_{pi}
+  \right).
+\]
+After accumulation,
+\[
+  \bm{v}_i \leftarrow \frac{\bm{v}_i}{m_i}.
+\]
+
+\section{Grid Update}
+
+Gravity is applied on grid nodes:
+\[
+  \bm{v}_i \leftarrow \bm{v}_i + \Delta t(0,g,0)^T .
+\]
+The floor is a plane at $y=y_f$. If a grid node is below the floor and moving
+downward,
+\[
+  v_{i,y}\leftarrow 0,
+  \qquad
+  v_{i,x}\leftarrow 0.7v_{i,x},
+  \qquad
+  v_{i,z}\leftarrow 0.7v_{i,z}.
+\]
+
+\section{Tool Box Contact}
+
+Each tool is an oriented box with center $\bm{c}$, rotation $\bm{Q}$, visible
+half-size
+\[
+  \bm{h} = (0.05,\;0.05,\;0.05)^T,
+\]
+and collision half-size
+\[
+  \bm{h}_c = \bm{h} + \epsilon_c,
+\]
+where $\epsilon_c$ is \texttt{tool-contact-padding}. A point $\bm{x}$ is
+converted to tool-local coordinates by
+\[
+  \bm{q} = \bm{Q}^T(\bm{x}-\bm{c}).
+\]
+Collision is active when
+\[
+  |q_x| < h_{c,x},\qquad
+  |q_y| < h_{c,y},\qquad
+  |q_z| < h_{c,z}.
+\]
+The contact normal is chosen from the smallest penetration axis. For relative
+velocity
+\[
+  \bm{u} = \bm{v}-\bm{v}_{tool},
+\]
+the inward normal component is removed:
+\[
+  \bm{u} \leftarrow
+  \begin{cases}
+    \bm{u} - (\bm{u}\cdot\bm{n})\bm{n},
+      & \bm{u}\cdot\bm{n}<0,\\
+    \bm{u},
+      & \text{otherwise}.
+  \end{cases}
+\]
+The remaining relative velocity is damped by friction and absorption:
+\[
+  \bm{v}\leftarrow
+  \bm{v}_{tool}
+  +
+  \alpha_f(1-\alpha_a)\bm{u},
+\]
+where $\alpha_f$ is \texttt{tool-contact-friction} and $\alpha_a$ is
+\texttt{tool-contact-absorption}. The same idea is applied on grid nodes and
+again as a particle-level projection to reduce tunneling.
+
+\section{Grid-to-Particle Transfer}
+
+Particle velocity and affine velocity matrix are interpolated back from the
+grid:
+\[
+  \bm{v}_p^{n+1} =
+  \sum_i W_{pi}\bm{v}_i,
+\]
+\[
+  \bm{C}_p^{n+1} =
+  4\Delta x^{-1}
+  \sum_i W_{pi}\bm{v}_i\bm{d}_{pi}^T .
+\]
+Global numerical damping is then applied:
+\[
+  \bm{v}_p^{n+1} \leftarrow
+  \gamma_v \bm{v}_p^{n+1},
+\]
+where $\gamma_v$ is \texttt{velocity-damping}. Finally,
+\[
+  \bm{x}_p^{n+1} =
+  \bm{x}_p^n + \Delta t\bm{v}_p^{n+1}.
+\]
+
+\section{Additional Plastic Damping}
+
+If a particle yielded during SVD clamping, additional damping is applied:
+\[
+  \bm{v}_p \leftarrow \gamma_p\bm{v}_p,
+  \qquad
+  \bm{C}_p \leftarrow \gamma_C\bm{C}_p,
+\]
+where $\gamma_p$ is \texttt{plastic-velocity-damping} and $\gamma_C$ is
+\texttt{plastic-affine-damping}. This is a pragmatic numerical term that reduces
+rubber-like rebound after plastic deformation.
+
+\section{Interpretation}
+
+The current material should be described as a simplified MLS-MPM dough-like
+model:
+\[
+  \text{corotated elasticity}
+  +
+  \text{viscous stress}
+  +
+  \text{SVD clamp plasticity}
+  +
+  \text{optional }J_p\text{ hardening}.
+\]
+It is inspired by common snow/plastic MPM formulations, but it is not yet a
+calibrated food-dough rheology model.
+
+\end{document}
