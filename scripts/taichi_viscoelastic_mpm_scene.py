@@ -35,7 +35,7 @@ CAMERA_VIEWS = {
         "zFar": 2.0,
     },
     "top_dough": {
-        "position": [0.5, 0.95, 0.5],
+        "position": [0.5, 0.8, 0.5],
         "lookAt": SCENE_CENTER,
         "fieldOfView": 57.0,
         "zNear": 0.01,
