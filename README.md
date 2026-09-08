@@ -35,6 +35,8 @@ python3 scripts/taichi_viscoelastic_mpm_scene.py \
   --tool-contact-friction 0.5
 ```
 
+To keep the two demo tools stationary, add `--no-scripted-tools`.
+
 CPU version:
 
 ```bash

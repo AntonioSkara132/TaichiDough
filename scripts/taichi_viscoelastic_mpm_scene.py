@@ -173,7 +173,11 @@ def build_sim(args):
     jp_hardening = args.jp_hardening
     jp_min = args.jp_min
     jp_max = args.jp_max
-    scripted_tools = 0 if (args.ros_control or getattr(args, "ros_tool_poses", False)) else 1
+    scripted_tools = 1 if (
+        getattr(args, "scripted_tools", True) and not (
+            args.ros_control or getattr(args, "ros_tool_poses", False)
+        )
+    ) else 0
     scene_center_x = SCENE_CENTER[0]
     scene_center_y = SCENE_CENTER[1]
     scene_center_z = SCENE_CENTER[2]
@@ -1135,6 +1139,12 @@ def main():
         "--ros-control",
         action="store_true",
         help="Control the two mesh tools with the same UDP vel/pose ports used by the SOFA ROS bridge.",
+    )
+    parser.add_argument(
+        "--scripted-tools",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Run the closing-motion demonstration when no external tool control is selected.",
     )
     parser.add_argument(
         "--ros-tool-poses",
