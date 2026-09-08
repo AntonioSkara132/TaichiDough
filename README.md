@@ -9,7 +9,9 @@ It includes:
 - a Gymnasium / LeRobot-style wrapper,
 - a Stable-Baselines3 training smoke script.
 
-The ROS2 bridge/control code is intentionally not included in this repository folder.
+The main scene includes optional ROS 2 point-cloud publishing and tool-pose input,
+synchronized with `taichi_dough_ros` on 2026-09-08. Standalone GUI, UDP control,
+and training usage do not require ROS.
 
 ## Install
 
@@ -45,6 +47,66 @@ python3 scripts/taichi_viscoelastic_mpm_scene.py \
   --tool-contact-padding 0.05 \
   --tool-contact-friction 0.5
 ```
+
+## Tool meshes and scene settings
+
+The GUI uses `ur_spathla.stl` and `gen3_spathla.stl` with the RF lab URDF visual
+origins and millimetre-to-metre scale. Meshes are loaded from the sourced
+`ur_dual_bringup` package when available, otherwise from this repository's
+`meshes/` directory. Override them with `--ur-tool-mesh PATH` and
+`--kinova-tool-mesh PATH`.
+
+The STL files provide visual geometry. Dough contact still uses the existing box
+proxies. The fixed robot-to-tool joints are already included in `/tool_poses`;
+only the link's visual origin is applied to each mesh.
+
+Scene defaults match the ROS simulation:
+
+| Setting | Value (metres) |
+| --- | --- |
+| Initial dough centre | `[0.5, 0.30, 0.5]` |
+| Dough ellipsoid radii | `[0.07, 0.026, 0.06]` |
+| Floor Y | `0.33` |
+| Top-view camera position | `[0.5, 0.75, 0.5]` |
+
+The Gymnasium wrapper shares these geometry settings, including the updated
+floor, while retaining its training-specific resolution and material defaults.
+
+## ROS tool poses and dough cloud
+
+From this repository, with the ROS workspace next to it:
+
+```bash
+export ROS_DOMAIN_ID=5
+source ../ros2_ws/install/setup.bash
+source ../ros2_ws/.venv-pytorch/bin/activate
+python scripts/taichi_viscoelastic_mpm_scene.py \
+  --cpu --gui --no-save --no-publish-dough-center --steps 10000 \
+  --ros-tool-poses --ros-tool-poses-topic /tool_poses \
+  --ros-pointcloud --ros-pointcloud-view top_dough \
+  --ros-pointcloud-topic /taichi_dough/top_dough/points \
+  --ros-pointcloud-frame camera_depth_optical_frame \
+  --max-pointcloud-points 4096
+```
+
+ROS support requires the sourced workspace's `rclpy`, message packages, and
+`dual_description/PoseStampedArray`. The two input poses must be ordered UR5e,
+Kinova and expressed in the point cloud's frame.
+
+Tool positions use the inverse of the camera projection used for the dough
+cloud. For `top_dough`: `x = 0.5 - camera_x`, `y = 0.75 - camera_z`, and
+`z = 0.5 - camera_y`. Mesh orientations use the same optical-to-scene rotation.
+The interactive viewer camera does not affect this mapping. Matrix and offset
+arguments default to `auto`; explicit overrides provide manual calibration.
+
+## Verification
+
+```bash
+python -m unittest discover -s test -v
+```
+
+The tests check optical projection, both STL/URDF transform chains, standalone
+imports, and mesh lookup. The subscriber test runs when ROS messages are available.
 
 ## Record Video
 

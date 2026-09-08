@@ -1,0 +1,18 @@
+<robot name="rf_lab_tool_visuals">
+  <link name="ur5e_spathla_frame">
+    <visual>
+      <origin xyz="-0.002395874 -0.017992075 -0.019913439" rpy="4.5910 1.379415965 -1.740698498" />
+      <geometry>
+        <mesh filename="package://ur_dual_bringup/meshes/ur_spathla.stl" scale="0.001 0.001 0.001 " />
+      </geometry>
+    </visual>
+  </link>
+  <link name="kinova_spathla_frame">
+    <visual>
+      <origin xyz="-0.02345833 -0.02261066 -0.01297941" rpy="3.12897712 0.06996522 -3.11041673" />
+      <geometry>
+        <mesh filename="package://ur_dual_bringup/meshes/gen3_spathla.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </visual>
+  </link>
+</robot>

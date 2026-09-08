@@ -1,7 +1,6 @@
 import argparse
 import json
 import socket
-import struct
 import time as wall_time
 from pathlib import Path
 
@@ -12,20 +11,11 @@ from PIL import Image
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = PROJECT_ROOT / "data" / "taichi_mpm_camera_views"
-SCENE_CENTER = [0.5, 0.3, 0.5]
+SCENE_CENTER = [0.5, 0.32, 0.5]
 TOOL_Y = 0.32
 TOOL_Z_OFFSET = 0.24
 TOOL_TRAVEL = 0.28
-DOUGH_RADIUS = [0.07, 0.026, 0.06]
-PARTICLE_RENDER_RADIUS = 0.006
-
-# Visual mesh origins from rf_lab_setup/urdf/rf_lab.urdf.xacro.  /tool_poses
-# already reports the corresponding *_spathla_frame transforms, so the fixed
-# robot-to-tool joints must not be applied a second time.
-UR_TOOL_VISUAL_ORIGIN = np.array([-0.002395874, -0.017992075, -0.019913439], dtype=np.float32)
-UR_TOOL_VISUAL_RPY = np.array([4.5910, 1.379415965, -1.740698498], dtype=np.float32)
-KINOVA_TOOL_VISUAL_ORIGIN = np.array([-0.02345833, -0.02261066, -0.01297941], dtype=np.float32)
-KINOVA_TOOL_VISUAL_RPY = np.array([3.12897712, 0.06996522, -3.11041673], dtype=np.float32)
+DOUGH_RADIUS = [0.14, 0.055, 0.12]
 
 TOOL_INITIAL_POSES = np.array(
     [
@@ -34,78 +24,6 @@ TOOL_INITIAL_POSES = np.array(
     ],
     dtype=np.float32,
 )
-
-
-def find_tool_mesh(filename: str, override: Path | None = None) -> Path:
-    """Use explicit meshes, the sourced ROS package, or bundled standalone assets."""
-    if override is not None:
-        path = Path(override).expanduser()
-        if not path.is_file():
-            raise FileNotFoundError(f"Tool mesh does not exist: {path}")
-        return path
-    try:
-        from ament_index_python.packages import get_package_share_directory, PackageNotFoundError
-    except ImportError:
-        pass
-    else:
-        try:
-            installed = Path(get_package_share_directory("ur_dual_bringup")) / "meshes" / filename
-        except PackageNotFoundError:
-            pass
-        else:
-            if installed.is_file():
-                return installed
-    bundled = PROJECT_ROOT / "meshes" / filename
-    if not bundled.is_file():
-        raise FileNotFoundError(f"Tool mesh missing: {bundled}; provide --ur-tool-mesh/--kinova-tool-mesh")
-    return bundled
-
-
-def load_binary_stl(path: Path, scale: float) -> tuple[np.ndarray, np.ndarray]:
-    """Load an STL as an unindexed triangle mesh for Taichi's scene renderer."""
-    raw = path.read_bytes()
-    if len(raw) < 84:
-        raise ValueError(f"{path} is too short to be a binary STL file")
-    triangle_count = struct.unpack_from("<I", raw, 80)[0]
-    expected_size = 84 + triangle_count * 50
-    if len(raw) != expected_size:
-        raise ValueError(
-            f"{path} is not a supported binary STL file "
-            f"(expected {expected_size} bytes, found {len(raw)})"
-        )
-    triangle_dtype = np.dtype(
-        [("normal", "<f4", (3,)), ("vertices", "<f4", (3, 3)), ("attribute", "<u2")]
-    )
-    triangles = np.frombuffer(raw, dtype=triangle_dtype, count=triangle_count, offset=84)
-    vertices = np.array(triangles["vertices"].reshape(-1, 3) * scale, dtype=np.float32)
-    indices = np.arange(vertices.shape[0], dtype=np.int32)
-    return vertices, indices
-
-
-def rpy_to_matrix(rpy: np.ndarray) -> np.ndarray:
-    roll, pitch, yaw = rpy
-    cr, sr = np.cos(roll), np.sin(roll)
-    cp, sp = np.cos(pitch), np.sin(pitch)
-    cy, sy = np.cos(yaw), np.sin(yaw)
-    return np.array(
-        [
-            [cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
-            [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
-            [-sp, cp * sr, cp * cr],
-        ],
-        dtype=np.float32,
-    )
-
-
-def transformed_tool_mesh(
-    vertices: np.ndarray,
-    pose: np.ndarray,
-    visual_origin: np.ndarray,
-    visual_rotation: np.ndarray,
-) -> np.ndarray:
-    """Apply mesh-to-link URDF origin, then link-to-scene tool pose."""
-    local_vertices = vertices @ visual_rotation.T + visual_origin
-    return local_vertices @ quaternion_to_matrix(pose[3:]).T + pose[:3]
 
 
 CAMERA_VIEWS = {
@@ -117,7 +35,7 @@ CAMERA_VIEWS = {
         "zFar": 2.0,
     },
     "top_dough": {
-        "position": [0.5, 0.75, 0.5],
+        "position": [0.5, 0.7, 0.5],
         "lookAt": SCENE_CENTER,
         "fieldOfView": 57.0,
         "zNear": 0.01,
@@ -173,7 +91,7 @@ def build_sim(args):
     jp_hardening = args.jp_hardening
     jp_min = args.jp_min
     jp_max = args.jp_max
-    scripted_tools = 0 if (args.ros_control or getattr(args, "ros_tool_poses", False)) else 1
+    scripted_tools = 0 if args.ros_control else 1
     scene_center_x = SCENE_CENTER[0]
     scene_center_y = SCENE_CENTER[1]
     scene_center_z = SCENE_CENTER[2]
@@ -534,46 +452,7 @@ def compute_camera_basis(position, look_at):
     return right, corrected_up, forward
 
 
-def optical_to_scene_transform(config):
-    """Inverse of the camera coordinates used by depth_to_xyz (+y down)."""
-    right, up, forward = compute_camera_basis(config["position"], config["lookAt"])
-    return np.column_stack((right, -up, forward)), np.asarray(config["position"], dtype=np.float32)
-
-
-def resolve_tool_mapping(config, matrix, offset, scale):
-    """Use the cloud camera by default; retain explicit calibration overrides."""
-    rotation, translation = optical_to_scene_transform(config)
-    rotation = np.asarray([
-        default if str(value).lower() == "auto" else float(value)
-        for value, default in zip(matrix, rotation.ravel())
-    ], dtype=np.float32).reshape(3, 3)
-    translation = np.asarray([
-        default if str(value).lower() == "auto" else float(value)
-        for value, default in zip(offset, translation)
-    ], dtype=np.float32)
-    scale = np.asarray(scale, dtype=np.float32)
-    if not (np.isfinite(rotation).all() and np.isfinite(translation).all() and np.isfinite(scale).all()):
-        raise ValueError("ROS tool mapping must contain finite values")
-    # A reflection cannot be encoded by a tool quaternion. Do not silently
-    # use different transforms for the mesh orientation and its translation.
-    if not np.allclose(rotation.T @ rotation, np.eye(3), atol=1e-5) or not np.isclose(np.linalg.det(rotation), 1.0, atol=1e-5):
-        raise ValueError("--ros-tool-pose-matrix must be a proper rotation (determinant +1); use auto for the cloud camera")
-    if np.any(scale <= 0.0) or not np.allclose(scale, scale[0]):
-        raise ValueError("ROS tool scale must be positive and uniform to preserve rigid tool geometry")
-    return rotation, translation
-
-
-def map_tool_poses(poses, rotation, offset, scale):
-    """Compose scene<-optical with optical<-tool; tool axes stay local."""
-    mapped = np.array(poses, dtype=np.float32, copy=True)
-    mapped[:, :3] = (poses[:, :3] * scale) @ rotation.T + offset
-    for index, pose in enumerate(poses):
-        mapped[index, 3:] = matrix_to_quaternion(rotation @ quaternion_to_matrix(pose[3:]))
-    return mapped
-
-
-def compute_particle_depth(points, width, height, config, particle_radius=PARTICLE_RENDER_RADIUS):
-    """Render metric depth by splatting particles as z-buffered camera-space spheres."""
+def render_particle_depth(points, width, height, view_name, config, output_dir, frame_idx):
     right, up, forward = compute_camera_basis(config["position"], config["lookAt"])
     camera_pos = np.asarray(config["position"], dtype=np.float32)
     rel = points - camera_pos[None, :]
@@ -582,63 +461,21 @@ def compute_particle_depth(points, width, height, config, particle_radius=PARTIC
     cam_z = rel @ forward
 
     f = height / (2.0 * np.tan(np.radians(config["fieldOfView"]) / 2.0))
-    u = f * cam_x / cam_z + width * 0.5
-    v = height * 0.5 - f * cam_y / cam_z
+    u = (f * cam_x / cam_z + width * 0.5).astype(np.int32)
+    v = (height * 0.5 - f * cam_y / cam_z).astype(np.int32)
 
     valid = (
-        (cam_z - particle_radius > config["zNear"])
+        (cam_z > config["zNear"])
         & (cam_z < config["zFar"])
-        & (u >= -f * particle_radius / cam_z)
-        & (u < width + f * particle_radius / cam_z)
-        & (v >= -f * particle_radius / cam_z)
-        & (v < height + f * particle_radius / cam_z)
+        & (u >= 0)
+        & (u < width)
+        & (v >= 0)
+        & (v < height)
     )
 
     depth = np.full((height, width), config["zFar"], dtype=np.float32)
-    for center_u, center_v, center_z in zip(u[valid], v[valid], cam_z[valid]):
-        pixel_radius = max(1, int(np.ceil(f * particle_radius / (center_z - particle_radius))))
-        u_min = max(0, int(np.floor(center_u)) - pixel_radius)
-        u_max = min(width, int(np.floor(center_u)) + pixel_radius + 1)
-        v_min = max(0, int(np.floor(center_v)) - pixel_radius)
-        v_max = min(height, int(np.floor(center_v)) + pixel_radius + 1)
-        if u_min >= u_max or v_min >= v_max:
-            continue
-
-        pixel_u, pixel_v = np.meshgrid(
-            np.arange(u_min, u_max, dtype=np.float32) + 0.5,
-            np.arange(v_min, v_max, dtype=np.float32) + 0.5,
-        )
-        local_x = (pixel_u - center_u) * center_z / f
-        local_y = (pixel_v - center_v) * center_z / f
-        radial_squared = local_x * local_x + local_y * local_y
-        covered = radial_squared <= particle_radius * particle_radius
-        if not covered.any():
-            continue
-
-        sphere_depth = center_z - np.sqrt(np.maximum(particle_radius * particle_radius - radial_squared, 0.0))
-        patch = depth[v_min:v_max, u_min:u_max]
-        np.minimum(patch, np.where(covered, sphere_depth, config["zFar"]), out=patch)
-
-    return depth
-
-
-def depth_to_xyz(depth, field_of_view_degrees, z_far):
-    """Back-project depth into a ROS optical frame: +x right, +y down, +z forward."""
-    height, width = depth.shape
-    valid = np.isfinite(depth) & (depth < z_far)
-    pixel_v, pixel_u = np.nonzero(valid)
-    if pixel_u.size == 0:
-        return np.empty((0, 3), dtype=np.float32)
-
-    z = depth[pixel_v, pixel_u]
-    focal_length = height / (2.0 * np.tan(np.radians(field_of_view_degrees) / 2.0))
-    x = (pixel_u.astype(np.float32) + 0.5 - width * 0.5) * z / focal_length
-    y = (pixel_v.astype(np.float32) + 0.5 - height * 0.5) * z / focal_length
-    return np.column_stack((x, y, z)).astype(np.float32, copy=False)
-
-
-def render_particle_depth(points, width, height, view_name, config, output_dir, frame_idx):
-    depth = compute_particle_depth(points, width, height, config)
+    for px, py, z in zip(u[valid], v[valid], cam_z[valid]):
+        depth[py, px] = min(depth[py, px], z)
 
     finite = depth < config["zFar"]
     normalized = np.zeros_like(depth, dtype=np.uint8)
@@ -663,149 +500,6 @@ def render_particle_depth(points, width, height, view_name, config, output_dir, 
         "width": width,
         "height": height,
     }
-
-
-class RosPointCloudPublisher:
-    """Minimal rclpy publisher kept optional so non-ROS simulation still works."""
-
-    def __init__(self, topic, frame_id, node_name="taichi_dough_camera"):
-        import rclpy
-        from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
-        from sensor_msgs.msg import PointCloud2
-
-        self.rclpy = rclpy
-        self.PointCloud2 = PointCloud2
-        self.owns_context = not rclpy.ok()
-        if self.owns_context:
-            rclpy.init(args=None)
-        self.node = rclpy.create_node(node_name)
-        qos = QoSProfile(
-            history=HistoryPolicy.KEEP_LAST,
-            depth=1,
-            reliability=ReliabilityPolicy.RELIABLE,
-        )
-        self.publisher = self.node.create_publisher(PointCloud2, topic, qos)
-        self.node.get_logger().info(f"Publishing Taichi depth point clouds on {topic} in frame '{frame_id}'")
-        self.frame_id = frame_id
-
-    def publish(self, xyz):
-        from sensor_msgs.msg import PointField
-
-        cloud = self.PointCloud2()
-        cloud.header.stamp = self.node.get_clock().now().to_msg()
-        cloud.header.frame_id = self.frame_id
-        cloud.height = 1
-        cloud.width = int(xyz.shape[0])
-        cloud.fields = [
-            PointField(name="x", offset=0, datatype=PointField.FLOAT32, count=1),
-            PointField(name="y", offset=4, datatype=PointField.FLOAT32, count=1),
-            PointField(name="z", offset=8, datatype=PointField.FLOAT32, count=1),
-        ]
-        cloud.is_bigendian = False
-        cloud.point_step = 12
-        cloud.row_step = cloud.point_step * cloud.width
-        cloud.data = np.ascontiguousarray(xyz, dtype="<f4").tobytes()
-        cloud.is_dense = True
-        self.publisher.publish(cloud)
-        self.rclpy.spin_once(self.node, timeout_sec=0.0)
-
-    def close(self):
-        self.node.destroy_node()
-        if self.owns_context and self.rclpy.ok():
-            self.rclpy.shutdown()
-
-
-def quaternion_to_matrix(quaternion):
-    x, y, z, w = normalize_quaternion(quaternion)
-    return np.asarray([
-        [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
-        [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
-        [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
-    ], dtype=np.float32)
-
-
-def matrix_to_quaternion(matrix):
-    matrix = np.asarray(matrix, dtype=np.float64)
-    trace = np.trace(matrix)
-    if trace > 0:
-        s = 2.0 * np.sqrt(trace + 1.0)
-        q = np.array([(matrix[2, 1] - matrix[1, 2]) / s,
-                      (matrix[0, 2] - matrix[2, 0]) / s,
-                      (matrix[1, 0] - matrix[0, 1]) / s, 0.25 * s])
-    else:
-        axis = int(np.argmax(np.diag(matrix)))
-        nxt = (axis + 1) % 3
-        last = (axis + 2) % 3
-        s = 2.0 * np.sqrt(max(1.0 + matrix[axis, axis] - matrix[nxt, nxt] - matrix[last, last], 1e-12))
-        q = np.zeros(4)
-        q[axis] = 0.25 * s
-        q[3] = (matrix[last, nxt] - matrix[nxt, last]) / s
-        q[nxt] = (matrix[nxt, axis] + matrix[axis, nxt]) / s
-        q[last] = (matrix[last, axis] + matrix[axis, last]) / s
-    return normalize_quaternion(q)
-
-
-class RosToolPoseSubscriber:
-    """Read two robot tool poses and map them into Taichi scene coordinates."""
-
-    def __init__(self, topic, scale, matrix, offset, expected_frame, node_name="taichi_dough_tools"):
-        import rclpy
-        from dual_description.msg import PoseStampedArray
-
-        self.rclpy = rclpy
-        self.owns_context = not rclpy.ok()
-        if self.owns_context:
-            rclpy.init(args=None)
-        self.node = rclpy.create_node(node_name)
-        self.scale = np.asarray(scale, dtype=np.float32)
-        self.rotation = np.asarray(matrix, dtype=np.float32).reshape(3, 3)
-        self.offset = np.asarray(offset, dtype=np.float32)
-        self.expected_frame = expected_frame
-        self.poses = TOOL_INITIAL_POSES.copy()
-        self.velocities = np.zeros((2, 3), dtype=np.float32)
-        self._last_positions = None
-        self._last_time = None
-        self.received = False
-        self.subscription = self.node.create_subscription(PoseStampedArray, topic, self._callback, 10)
-        self.node.get_logger().info(
-            f"Following two tool poses from {topic} in '{expected_frame}'; rotation={self.rotation.tolist()} "
-            f"scale={self.scale.tolist()} offset={self.offset.tolist()}"
-        )
-
-    def _callback(self, msg):
-        if len(msg.poses) != 2:
-            self.node.get_logger().warn("Expected exactly two poses on tool pose topic", throttle_duration_sec=2.0)
-            return
-        if msg.header.frame_id != self.expected_frame or any(
-            stamped.header.frame_id and stamped.header.frame_id != self.expected_frame for stamped in msg.poses
-        ):
-            self.node.get_logger().warn(
-                f"Tool poses must use the point-cloud frame '{self.expected_frame}'; received '{msg.header.frame_id}'",
-                throttle_duration_sec=2.0,
-            )
-            return
-        poses = np.asarray(
-            [[p.pose.position.x, p.pose.position.y, p.pose.position.z,
-              p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w] for p in msg.poses],
-            dtype=np.float32,
-        )
-        mapped = map_tool_poses(poses, self.rotation, self.offset, self.scale)
-        stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
-        if self._last_positions is not None and self._last_time is not None and stamp > self._last_time:
-            self.velocities = (mapped[:, :3] - self._last_positions) / float(stamp - self._last_time)
-        self.poses = mapped
-        self._last_positions = mapped[:, :3].copy()
-        self._last_time = stamp
-        self.received = True
-
-    def poll(self):
-        self.rclpy.spin_once(self.node, timeout_sec=0.0)
-        return self.poses.copy(), self.velocities.copy()
-
-    def close(self):
-        self.node.destroy_node()
-        if self.owns_context and self.rclpy.ok():
-            self.rclpy.shutdown()
 
 
 def normalize_quaternion(quaternion):
@@ -964,20 +658,7 @@ def save_frame_outputs(points, args, views, run_dir, frame_idx, step):
     return frame
 
 
-def draw_gui_frame(
-    window,
-    canvas,
-    scene,
-    camera,
-    particles,
-    ur_tool_vertices,
-    ur_tool_indices,
-    kinova_tool_vertices,
-    kinova_tool_indices,
-    free_camera=True,
-    movement_speed=0.03,
-    frame_path=None,
-):
+def draw_gui_frame(window, canvas, scene, camera, particles, tools, time, free_camera=True, movement_speed=0.03, frame_path=None):
     if free_camera:
         camera.track_user_inputs(window, movement_speed=movement_speed, hold_key=ti.ui.RMB)
     else:
@@ -988,10 +669,7 @@ def draw_gui_frame(
     scene.ambient_light((0.35, 0.35, 0.35))
     scene.point_light(pos=(0.4, 0.9, 1.1), color=(1.0, 1.0, 1.0))
     scene.particles(particles, radius=0.006, color=(0.78, 0.55, 0.36))
-    # Taichi 1.7's normal-generation cache requires Taichi fields here;
-    # NumPy arrays are unhashable and crash scene.mesh().
-    scene.mesh(ur_tool_vertices, indices=ur_tool_indices, color=(0.22, 0.42, 0.75))
-    scene.mesh(kinova_tool_vertices, indices=kinova_tool_indices, color=(0.75, 0.33, 0.22))
+    scene.particles(tools, radius=0.004, color=(0.35, 0.42, 0.50))
     canvas.scene(scene)
     if frame_path is not None:
         window.save_image(str(frame_path))
@@ -1023,18 +701,6 @@ def main():
     parser.add_argument("--save-every", type=int, default=10)
     parser.add_argument("--width", type=int, default=800)
     parser.add_argument("--height", type=int, default=600)
-    parser.add_argument(
-        "--particle-render-radius",
-        type=float,
-        default=PARTICLE_RENDER_RADIUS,
-        help="Sphere-splat radius in simulation metres used for depth rendering.",
-    )
-    parser.add_argument(
-        "--max-pointcloud-points",
-        type=int,
-        default=4096,
-        help="Randomly subsample each visible cloud to at most this many points.",
-    )
     parser.add_argument("--view", choices=list(CAMERA_VIEWS), action="append")
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
     parser.add_argument("--youngs-modulus", type=float, default=2000)
@@ -1042,7 +708,7 @@ def main():
     parser.add_argument("--viscosity", type=float, default=2.5)
     parser.add_argument("--density", type=float, default=1100.0)
     parser.add_argument("--gravity", type=float, default=-9.81)
-    parser.add_argument("--floor-y", type=float, default=0.33)
+    parser.add_argument("--floor-y", type=float, default=0.30)
     parser.add_argument("--floor-friction", type=float, default=0.7)
     parser.add_argument(
         "--floor-absorption",
@@ -1108,7 +774,7 @@ def main():
     parser.add_argument("--jp-min", type=float, default=0.6)
     parser.add_argument("--jp-max", type=float, default=2.0)
     parser.add_argument("--cpu", action="store_true", help="Use CPU backend instead of GPU.")
-    parser.add_argument("--gui", action=argparse.BooleanOptionalAction, default=False, help="Open a live Taichi 3D viewer.")
+    parser.add_argument("--gui", action="store_true", help="Open a live Taichi 3D viewer.")
     parser.add_argument("--no-save", action="store_true", help="Run without writing camera/particle frames.")
     parser.add_argument("--gui-fps-substeps", type=int, default=4, help="MPM substeps between GUI redraws.")
     parser.add_argument("--free-camera", action="store_true", help="Allow mouse/keyboard control of the GUI camera.", default=True)
@@ -1129,54 +795,11 @@ def main():
     parser.add_argument(
         "--ros-control",
         action="store_true",
-        help="Control the two mesh tools with the same UDP vel/pose ports used by the SOFA ROS bridge.",
+        help="Control the two box tools with the same UDP vel/pose ports used by the SOFA ROS bridge.",
     )
-    parser.add_argument(
-        "--ros-tool-poses",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Follow two PoseStampedArray poses from ROS instead of scripted tool motion.",
-    )
-    parser.add_argument("--ros-tool-poses-topic", default="/tool_poses")
-    parser.add_argument("--ros-tool-pose-scale", type=float, nargs=3, default=[1.0, 1.0, 1.0], metavar=("SX", "SY", "SZ"))
-    parser.add_argument("--ros-tool-pose-matrix", nargs=9, default=["auto"] * 9, metavar="R", help="Optical-to-scene rotation; auto uses the point-cloud camera axes.")
-    parser.add_argument("--ros-tool-pose-offset", nargs=3, default=["auto"] * 3, metavar=("OX", "OY", "OZ"), help="Optical origin in the scene; auto uses the point-cloud camera position.")
     parser.add_argument("--ros-tool-max-vel", type=float, default=1.0)
-    parser.add_argument(
-        "--ur-tool-mesh",
-        type=Path,
-        default=None,
-        help="Override the UR tool mesh; defaults to the ROS package or bundled meshes/ur_spathla.stl.",
-    )
-    parser.add_argument(
-        "--kinova-tool-mesh",
-        type=Path,
-        default=None,
-        help="Override the Kinova tool mesh; defaults to the ROS package or bundled meshes/gen3_spathla.stl.",
-    )
-    parser.add_argument(
-        "--tool-mesh-scale",
-        type=float,
-        default=0.001,
-        help="Scale applied to STL coordinates in millimetres.",
-    )
-    parser.add_argument(
-        "--publish-dough-center",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Publish particle mean center over UDP.",
-    )
+    parser.add_argument("--publish-dough-center", action="store_true", help="Publish particle mean center over UDP.", default=True)
     parser.add_argument("--dough-center-port", type=int, default=5010)
-    parser.add_argument("--ros-pointcloud", action="store_true", help="Publish a live ROS 2 PointCloud2 from metric depth.")
-    parser.add_argument("--ros-pointcloud-view", choices=list(CAMERA_VIEWS), default="front_dough")
-    parser.add_argument("--ros-pointcloud-topic", default="/taichi_dough/front_dough/points")
-    parser.add_argument("--ros-pointcloud-frame", default="front_dough_optical_frame")
-    parser.add_argument(
-        "--ros-pointcloud-every",
-        type=int,
-        default=10,
-        help="Publish every N outer simulation steps.",
-    )
     parser.add_argument(
         "--timing-report-interval",
         type=float,
@@ -1184,45 +807,8 @@ def main():
         help="Wall-clock seconds between sim/real speed reports. 0 disables reports.",
     )
     args = parser.parse_args()
-    if args.ros_control and args.ros_tool_poses:
-        parser.error("--ros-control and --ros-tool-poses are mutually exclusive")
-    if args.tool_mesh_scale <= 0.0:
-        parser.error("--tool-mesh-scale must be positive")
-    try:
-        scene_rotation, scene_offset = resolve_tool_mapping(
-            CAMERA_VIEWS[args.ros_pointcloud_view], args.ros_tool_pose_matrix,
-            args.ros_tool_pose_offset, args.ros_tool_pose_scale,
-        )
-    except ValueError as error:
-        parser.error(str(error))
-
-    ur_tool_mesh_path = find_tool_mesh("ur_spathla.stl", args.ur_tool_mesh)
-    kinova_tool_mesh_path = find_tool_mesh("gen3_spathla.stl", args.kinova_tool_mesh)
-    ur_tool_mesh, ur_tool_indices = load_binary_stl(ur_tool_mesh_path, args.tool_mesh_scale)
-    kinova_tool_mesh, kinova_tool_indices = load_binary_stl(kinova_tool_mesh_path, args.tool_mesh_scale)
-    print(f"UR tool mesh: {ur_tool_mesh_path}")
-    print(f"Kinova tool mesh: {kinova_tool_mesh_path}")
 
     ti.init(arch=ti.cpu if args.cpu else ti.gpu)
-
-    # Keep geometry and visual origins in their URDF link axes. Only the tool
-    # pose is mapped from the optical frame; no second coordinate conversion.
-    scene_scale = float(args.ros_tool_pose_scale[0]) if args.ros_tool_poses else 1.0
-    ur_tool_mesh *= scene_scale
-    kinova_tool_mesh *= scene_scale
-    ur_visual_origin = UR_TOOL_VISUAL_ORIGIN * scene_scale
-    kinova_visual_origin = KINOVA_TOOL_VISUAL_ORIGIN * scene_scale
-    ur_visual_rotation = rpy_to_matrix(UR_TOOL_VISUAL_RPY)
-    kinova_visual_rotation = rpy_to_matrix(KINOVA_TOOL_VISUAL_RPY)
-
-    # Keep mesh buffers as Taichi fields.  Their contents are updated each GUI
-    # frame after applying the current ROS tool poses.
-    ur_tool_vertex_field = ti.Vector.field(3, dtype=ti.f32, shape=ur_tool_mesh.shape[0])
-    ur_tool_index_field = ti.field(dtype=ti.i32, shape=ur_tool_indices.shape[0])
-    ur_tool_index_field.from_numpy(ur_tool_indices)
-    kinova_tool_vertex_field = ti.Vector.field(3, dtype=ti.f32, shape=kinova_tool_mesh.shape[0])
-    kinova_tool_index_field = ti.field(dtype=ti.i32, shape=kinova_tool_indices.shape[0])
-    kinova_tool_index_field.from_numpy(kinova_tool_indices)
 
     run_dir = args.output_dir
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -1231,43 +817,9 @@ def main():
     x, tool_x, initialize, substep, update_tool_visuals, set_tool_state = build_sim(args)
     initialize()
     set_tool_state(TOOL_INITIAL_POSES, np.zeros((2, 3), dtype=np.float32))
-    tool_poses = TOOL_INITIAL_POSES.copy()
     update_tool_visuals(0.0)
     ros_control = UdpRigidBoxControl(max_vel=args.ros_tool_max_vel) if args.ros_control else None
-    ros_tool_poses = RosToolPoseSubscriber(
-        args.ros_tool_poses_topic, args.ros_tool_pose_scale, scene_rotation, scene_offset,
-        expected_frame=args.ros_pointcloud_frame,
-    ) if args.ros_tool_poses else None
     dough_center_tx = DoughCenterTransmitter(port=args.dough_center_port) if args.publish_dough_center else None
-    pointcloud_publisher = None
-    pointcloud_rng = np.random.default_rng()
-    if args.ros_pointcloud:
-        if args.ros_pointcloud_every < 1:
-            parser.error("--ros-pointcloud-every must be at least 1")
-        if args.max_pointcloud_points < 1:
-            parser.error("--max-pointcloud-points must be at least 1")
-        pointcloud_publisher = RosPointCloudPublisher(args.ros_pointcloud_topic, args.ros_pointcloud_frame)
-
-    def publish_pointcloud(points):
-        if pointcloud_publisher is None:
-            return
-        camera_config = CAMERA_VIEWS[args.ros_pointcloud_view]
-        depth = compute_particle_depth(
-            points,
-            args.width,
-            args.height,
-            camera_config,
-            args.particle_render_radius,
-        )
-        xyz = depth_to_xyz(depth, camera_config["fieldOfView"], camera_config["zFar"])
-        if xyz.shape[0] > args.max_pointcloud_points:
-            selected = pointcloud_rng.choice(
-                xyz.shape[0],
-                size=args.max_pointcloud_points,
-                replace=False,
-            )
-            xyz = xyz[selected]
-        pointcloud_publisher.publish(xyz)
 
     metadata = {
         "scene": "Taichi 3D MLS-MPM approximation of scene_with_camera.py",
@@ -1342,12 +894,7 @@ def main():
                 if ros_control is not None:
                     poses, linear_velocities = ros_control.poll_and_integrate(args.dt * args.substeps_per_frame)
                     set_tool_state(poses, linear_velocities)
-                    tool_poses = poses
                     ros_control.transmit_poses()
-                elif ros_tool_poses is not None:
-                    poses, linear_velocities = ros_tool_poses.poll()
-                    set_tool_state(poses, linear_velocities)
-                    tool_poses = poses
                 time = step * args.dt * args.substeps_per_frame
                 for _ in range(args.substeps_per_frame):
                     substep(time)
@@ -1357,42 +904,17 @@ def main():
             update_tool_visuals(step * args.dt * args.substeps_per_frame)
             if dough_center_tx is not None:
                 dough_center_tx.send(x.to_numpy().mean(axis=0))
-            if pointcloud_publisher is not None and step % args.ros_pointcloud_every == 0:
-                publish_pointcloud(x.to_numpy())
             frame_path = None
             if args.record_video:
                 frame_path = video_frame_dir / f"gui_{gui_frame_idx:06d}.png"
-            if ros_control is None and ros_tool_poses is None:
-                progress = min(max((step * args.dt * args.substeps_per_frame - args.tool_motion_start) / args.tool_close_time, 0.0), 1.0)
-                tool_poses = TOOL_INITIAL_POSES.copy()
-                tool_poses[0, 2] -= TOOL_TRAVEL * progress
-                tool_poses[1, 2] += TOOL_TRAVEL * progress
-            ur_tool_vertex_field.from_numpy(
-                transformed_tool_mesh(
-                    ur_tool_mesh,
-                    tool_poses[0],
-                    ur_visual_origin,
-                    ur_visual_rotation,
-                )
-            )
-            kinova_tool_vertex_field.from_numpy(
-                transformed_tool_mesh(
-                    kinova_tool_mesh,
-                    tool_poses[1],
-                    kinova_visual_origin,
-                    kinova_visual_rotation,
-                )
-            )
             draw_gui_frame(
                 window,
                 canvas,
                 scene,
                 camera,
                 x,
-                ur_tool_vertex_field,
-                ur_tool_index_field,
-                kinova_tool_vertex_field,
-                kinova_tool_index_field,
+                tool_x,
+                step * args.dt * args.substeps_per_frame,
                 free_camera=args.free_camera,
                 movement_speed=args.camera_speed,
                 frame_path=frame_path,
@@ -1423,9 +945,6 @@ def main():
                 poses, linear_velocities = ros_control.poll_and_integrate(args.dt * args.substeps_per_frame)
                 set_tool_state(poses, linear_velocities)
                 ros_control.transmit_poses()
-            elif ros_tool_poses is not None:
-                poses, linear_velocities = ros_tool_poses.poll()
-                set_tool_state(poses, linear_velocities)
             time = step * args.dt * args.substeps_per_frame
             for _ in range(args.substeps_per_frame):
                 substep(time)
@@ -1433,8 +952,6 @@ def main():
             update_tool_visuals(time)
             if dough_center_tx is not None:
                 dough_center_tx.send(x.to_numpy().mean(axis=0))
-            if pointcloud_publisher is not None and (step + 1) % args.ros_pointcloud_every == 0:
-                publish_pointcloud(x.to_numpy())
 
             if not args.no_save and (step % args.save_every == 0 or step == args.steps - 1):
                 metadata["frames"].append(save_frame_outputs(x.to_numpy(), args, views, run_dir, frame_idx, step))
@@ -1447,16 +964,9 @@ def main():
     print(f"Wrote metadata to {metadata_path}")
     if ros_control is not None:
         ros_control.close()
-    if ros_tool_poses is not None:
-        ros_tool_poses.close()
     if dough_center_tx is not None:
         dough_center_tx.close()
-    if pointcloud_publisher is not None:
-        pointcloud_publisher.close()
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        pass
+    main()
