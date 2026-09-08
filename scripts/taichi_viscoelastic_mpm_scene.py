@@ -1050,7 +1050,12 @@ def main():
         default=0.0,
         help="Normal bounce kept at floor impact. 0 removes downward velocity, 1 is fully elastic bounce.",
     )
-    parser.add_argument("--tool-close-time", type=float, default=0.04)
+    parser.add_argument(
+        "--tool-close-time",
+        type=float,
+        default=4.0,
+        help="Seconds for each scripted tool to travel 0.28 m (default 0.07 m/s).",
+    )
     parser.add_argument("--tool-motion-start", type=float, default=1.0)
     parser.add_argument("--tool-contact-padding", type=float, default=0.035)
     parser.add_argument("--tool-contact-friction", type=float, default=0.75)
@@ -1188,6 +1193,8 @@ def main():
         parser.error("--ros-control and --ros-tool-poses are mutually exclusive")
     if args.tool_mesh_scale <= 0.0:
         parser.error("--tool-mesh-scale must be positive")
+    if args.tool_close_time <= 0.0:
+        parser.error("--tool-close-time must be positive")
     try:
         scene_rotation, scene_offset = resolve_tool_mapping(
             CAMERA_VIEWS[args.ros_pointcloud_view], args.ros_tool_pose_matrix,
