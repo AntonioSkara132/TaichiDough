@@ -377,16 +377,26 @@ def tool_geometry_metadata(geometry: ToolGeometry) -> dict[str, Any]:
     }
 
 
+def load_torch_archive(torch_module: Any, path: Path) -> Any:
+    """Load tensor-only archives on current and older PyTorch releases."""
+    try:
+        return torch_module.load(path, map_location="cpu", weights_only=True)
+    except TypeError as exc:
+        if "weights_only" not in str(exc):
+            raise
+        return torch_module.load(path, map_location="cpu")
+
+
 def load_observation_sequence(episode_dir: Path, pointclouds_name: str = "pointclouds_interpolated.pt") -> ObservationSequence:
     import torch
 
     episode_dir = Path(episode_dir).resolve()
     points_path = episode_dir / pointclouds_name
     paths_path = episode_dir / "paths_interpolated.pt"
-    clouds = torch.load(points_path, map_location="cpu", weights_only=True)
+    clouds = load_torch_archive(torch, points_path)
     if isinstance(clouds, list) and len(clouds) == 1 and isinstance(clouds[0], list):
         clouds = clouds[0]
-    paths = torch.load(paths_path, map_location="cpu", weights_only=True)
+    paths = load_torch_archive(torch, paths_path)
     if isinstance(paths, list) and len(paths) == 1:
         paths = paths[0]
     if not isinstance(clouds, (list, tuple)) or not isinstance(paths, dict):

@@ -15,12 +15,12 @@ import importlib.util
 import numpy as np
 
 try:
-    from deformpath_dynamics import ObservationSequence, ToolReplay, depth_comparison, filter_scene_points, load_scene_point_filter, load_tool_geometry, paired_frame_indices, resolve_episode_calibration, tool_geometry_from_metadata, tool_geometry_metadata, quaternion_matrix, matrix_quaternion, slerp, surface_summary
+    from deformpath_dynamics import ObservationSequence, ToolReplay, depth_comparison, filter_scene_points, load_scene_point_filter, load_tool_geometry, load_torch_archive, paired_frame_indices, resolve_episode_calibration, tool_geometry_from_metadata, tool_geometry_metadata, quaternion_matrix, matrix_quaternion, slerp, surface_summary
     from deformpath_topview import apply_calibration, load_calibration
     from evaluate_dynamic_topview_match import boundary_distance, replay_marker_transforms, replay_target_frame, validate_frames
     from visualize_dynamic_topview_benchmark import depth_colors, residual_colors, create_report, normalize_report_context
 except ImportError:
-    from .deformpath_dynamics import ObservationSequence, ToolReplay, depth_comparison, filter_scene_points, load_scene_point_filter, load_tool_geometry, paired_frame_indices, resolve_episode_calibration, tool_geometry_from_metadata, tool_geometry_metadata, quaternion_matrix, matrix_quaternion, slerp, surface_summary
+    from .deformpath_dynamics import ObservationSequence, ToolReplay, depth_comparison, filter_scene_points, load_scene_point_filter, load_tool_geometry, load_torch_archive, paired_frame_indices, resolve_episode_calibration, tool_geometry_from_metadata, tool_geometry_metadata, quaternion_matrix, matrix_quaternion, slerp, surface_summary
     from .deformpath_topview import load_calibration
     from .evaluate_dynamic_topview_match import validate_frames, boundary_distance
     from .visualize_dynamic_topview_benchmark import depth_colors, residual_colors, create_report, normalize_report_context
@@ -41,6 +41,36 @@ class DynamicsTests(unittest.TestCase):
         poses[:, :, 0] = (times - times[0])[:, None]
         return ObservationSequence([np.ones((4, 3))] * 3, poses, np.ones((3, 2), bool), times,
                                    ["one", "two"], [2, 3, 5], Path("."), "fixture")
+
+    def test_torch_archive_loader_supports_old_and_new_torch_signatures(self):
+        class CurrentTorch:
+            def __init__(self):
+                self.calls = []
+
+            def load(self, path, **kwargs):
+                self.calls.append((path, kwargs))
+                return "current"
+
+        class OldTorch:
+            def __init__(self):
+                self.calls = []
+
+            def load(self, path, **kwargs):
+                self.calls.append((path, kwargs))
+                if "weights_only" in kwargs:
+                    raise TypeError("'weights_only' is an invalid keyword argument for Unpickler()")
+                return "old"
+
+        path = Path("fixture.pt")
+        current = CurrentTorch()
+        self.assertEqual(load_torch_archive(current, path), "current")
+        self.assertEqual(current.calls, [(path, {"map_location": "cpu", "weights_only": True})])
+        old = OldTorch()
+        self.assertEqual(load_torch_archive(old, path), "old")
+        self.assertEqual(old.calls, [
+            (path, {"map_location": "cpu", "weights_only": True}),
+            (path, {"map_location": "cpu"}),
+        ])
 
     def test_resolve_episode_calibration_verifies_attached_mocap_artifact(self):
         document = {
