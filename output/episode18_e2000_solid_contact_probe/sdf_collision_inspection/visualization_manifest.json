@@ -1,0 +1,447 @@
+{
+  "schema": "taichidough/sdf-collision-inspection/v1",
+  "provenance": {
+    "replay_dir": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/output/episode18_e2000_solid_contact_probe",
+    "collision_manifest": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/meshes/tool_collision_meshes_v1.json",
+    "tool_names": [
+      "UR5e_spathla",
+      "gen3_spathla"
+    ],
+    "replay_frames": 9,
+    "contact_debug": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/output/episode18_e2000_solid_contact_probe/replay_sdf_contact_debug.json",
+    "sdf_reconstruction": {
+      "resolution": 64,
+      "padding_m": 0.0104166667,
+      "mesh_scale": 0.001,
+      "slice_fraction": 0.5,
+      "slice_limit_m": 0.12182331830263138,
+      "runtime_sdf_persisted": false
+    },
+    "tools": [
+      {
+        "name": "UR5e_spathla",
+        "visual_stl": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/meshes/ur_spathla.stl",
+        "collision_solid_stl": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/meshes/ur_spathla_collision_solid.stl",
+        "visual_sha256": "3b34d89277511b3d0b2404c2807be0cbc80d60655ca6ae52c1b1c64bce61eeb4",
+        "collision_sha256": "f5e509d84816d1496f6250c2afae88838a58996a25480b282a4daa896eee61cb",
+        "manifest_build": {
+          "closed_surface_voxels": 138210,
+          "closing_radius_voxels": 1,
+          "marching_cubes_level": 0.5,
+          "padding_voxels": 3,
+          "solid_volume_mm3": 149612.0,
+          "solid_voxels": 149612,
+          "surface_voxels": 136127,
+          "voxel_dimensions": [
+            98,
+            141,
+            166
+          ],
+          "voxel_origin_mm": [
+            -40.306800842285156,
+            -2.9079410657286644,
+            -41.141605377197266
+          ],
+          "voxel_pitch_mm": 1.0
+        },
+        "manifest_topology": {
+          "boundary_edges": 0,
+          "faces": 98724,
+          "nonmanifold_edges": 0,
+          "vertices": 49362
+        },
+        "sdf_statistics": {
+          "resolution": [
+            64,
+            64,
+            64
+          ],
+          "finite_voxels": 262144,
+          "nonfinite_voxels": 0,
+          "negative_voxels": 441,
+          "zero_voxels": 23757,
+          "positive_voxels": 237946,
+          "negative_fraction": 0.001682281494140625,
+          "zero_fraction": 0.09062576293945312,
+          "positive_fraction": 0.9076919555664062,
+          "minimum_signed_distance_m": -0.0032594904769212008,
+          "maximum_signed_distance_m": 0.12182331830263138,
+          "minimum_scene_m": [
+            -0.05168291553854942,
+            -0.04024922102689743,
+            -0.1102820411324501
+          ],
+          "maximum_scene_m": [
+            0.13053665030747652,
+            0.11072132945992053,
+            0.028914416441693902
+          ],
+          "voxel_spacing_scene_m": [
+            0.002892374061048031,
+            0.0023963579442352057,
+            0.0022094675805419683
+          ],
+          "voxel_volume_m3": 1.531418192257661e-08,
+          "estimated_negative_volume_m3": 6.753554227856284e-06
+        }
+      },
+      {
+        "name": "gen3_spathla",
+        "visual_stl": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/meshes/gen3_spathla.stl",
+        "collision_solid_stl": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/meshes/gen3_spathla_collision_solid.stl",
+        "visual_sha256": "ac4d1cda9212e59411e1f34ba711a80f66ab5eb0abecc18cd9fe0199a0b38f42",
+        "collision_sha256": "c4d7a910e928d265f387003f33638a3ac123f7c8472af5d691882a099fb4867a",
+        "manifest_build": {
+          "closed_surface_voxels": 168682,
+          "closing_radius_voxels": 1,
+          "marching_cubes_level": 0.5,
+          "padding_voxels": 3,
+          "solid_volume_mm3": 182797.0,
+          "solid_voxels": 182797,
+          "surface_voxels": 154628,
+          "voxel_dimensions": [
+            105,
+            146,
+            165
+          ],
+          "voxel_origin_mm": [
+            -39.985260009765625,
+            -3.7410653233528137,
+            -39.820960998535156
+          ],
+          "voxel_pitch_mm": 1.0
+        },
+        "manifest_topology": {
+          "boundary_edges": 0,
+          "faces": 110712,
+          "nonmanifold_edges": 0,
+          "vertices": 55356
+        },
+        "sdf_statistics": {
+          "resolution": [
+            64,
+            64,
+            64
+          ],
+          "finite_voxels": 262144,
+          "nonfinite_voxels": 0,
+          "negative_voxels": 1010,
+          "zero_voxels": 25694,
+          "positive_voxels": 235440,
+          "negative_fraction": 0.00385284423828125,
+          "zero_fraction": 0.09801483154296875,
+          "positive_fraction": 0.89813232421875,
+          "minimum_signed_distance_m": -0.004047277383506298,
+          "maximum_signed_distance_m": 0.1159520074725151,
+          "minimum_scene_m": [
+            -0.10160388052463531,
+            -0.03737891837954521,
+            -0.14910735189914703
+          ],
+          "maximum_scene_m": [
+            0.025885357055813074,
+            0.12626825273036957,
+            0.0353708581533283
+          ],
+          "voxel_spacing_scene_m": [
+            0.002023638691753149,
+            0.002597574144601822,
+            0.0029282255563884974
+          ],
+          "voxel_volume_m3": 1.539236826886281e-08,
+          "estimated_negative_volume_m3": 1.554629195155144e-05
+        }
+      }
+    ]
+  },
+  "contact_rows": [
+    {
+      "frame": 0,
+      "source_frame": 0,
+      "sim_time_s": 0.0,
+      "snapshot_without_substep_evaluations": true,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 1,
+      "source_frame": 20,
+      "sim_time_s": 0.6672,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 82,
+            "applied_responses": 82,
+            "inward_normal_velocity_removed": 82
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 2,
+      "source_frame": 40,
+      "sim_time_s": 1.3342,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 94994,
+            "applied_responses": 94994,
+            "inward_normal_velocity_removed": 42946
+          },
+          "particles": {
+            "contact_candidates": 282720,
+            "applied_responses": 282720,
+            "inward_normal_velocity_removed": 282308
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 49374,
+            "applied_responses": 49374,
+            "inward_normal_velocity_removed": 23944
+          },
+          "particles": {
+            "contact_candidates": 32575,
+            "applied_responses": 32575,
+            "inward_normal_velocity_removed": 32472
+          }
+        }
+      ]
+    },
+    {
+      "frame": 3,
+      "source_frame": 60,
+      "sim_time_s": 2.0012000000000003,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 129906,
+            "applied_responses": 129906,
+            "inward_normal_velocity_removed": 54729
+          },
+          "particles": {
+            "contact_candidates": 399248,
+            "applied_responses": 399248,
+            "inward_normal_velocity_removed": 398102
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 35114,
+            "applied_responses": 35114,
+            "inward_normal_velocity_removed": 19620
+          },
+          "particles": {
+            "contact_candidates": 8324,
+            "applied_responses": 8324,
+            "inward_normal_velocity_removed": 8265
+          }
+        }
+      ]
+    },
+    {
+      "frame": 4,
+      "source_frame": 80,
+      "sim_time_s": 2.6682,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 149228,
+            "applied_responses": 149228,
+            "inward_normal_velocity_removed": 62416
+          },
+          "particles": {
+            "contact_candidates": 608881,
+            "applied_responses": 608881,
+            "inward_normal_velocity_removed": 607990
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 18544,
+            "applied_responses": 18544,
+            "inward_normal_velocity_removed": 9116
+          },
+          "particles": {
+            "contact_candidates": 21,
+            "applied_responses": 21,
+            "inward_normal_velocity_removed": 21
+          }
+        }
+      ]
+    },
+    {
+      "frame": 5,
+      "source_frame": 100,
+      "sim_time_s": 3.3352,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 174912,
+            "applied_responses": 174912,
+            "inward_normal_velocity_removed": 67260
+          },
+          "particles": {
+            "contact_candidates": 441958,
+            "applied_responses": 441958,
+            "inward_normal_velocity_removed": 440463
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 8857,
+            "applied_responses": 8857,
+            "inward_normal_velocity_removed": 4406
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 6,
+      "source_frame": 120,
+      "sim_time_s": 4.0022,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 176534,
+            "applied_responses": 176534,
+            "inward_normal_velocity_removed": 65691
+          },
+          "particles": {
+            "contact_candidates": 202736,
+            "applied_responses": 202736,
+            "inward_normal_velocity_removed": 201924
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 7408,
+            "applied_responses": 7408,
+            "inward_normal_velocity_removed": 3585
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 7,
+      "source_frame": 140,
+      "sim_time_s": 4.6692,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 179155,
+            "applied_responses": 179155,
+            "inward_normal_velocity_removed": 67234
+          },
+          "particles": {
+            "contact_candidates": 195462,
+            "applied_responses": 195462,
+            "inward_normal_velocity_removed": 194074
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 16460,
+            "applied_responses": 16460,
+            "inward_normal_velocity_removed": 8337
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 8,
+      "source_frame": 160,
+      "sim_time_s": 5.3362,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 176545,
+            "applied_responses": 176545,
+            "inward_normal_velocity_removed": 65494
+          },
+          "particles": {
+            "contact_candidates": 245743,
+            "applied_responses": 245743,
+            "inward_normal_velocity_removed": 244741
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 17630,
+            "applied_responses": 17630,
+            "inward_normal_velocity_removed": 10139
+          },
+          "particles": {
+            "contact_candidates": 6,
+            "applied_responses": 6,
+            "inward_normal_velocity_removed": 6
+          }
+        }
+      ]
+    }
+  ]
+}

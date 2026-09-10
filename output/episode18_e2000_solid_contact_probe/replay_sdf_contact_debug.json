@@ -1,0 +1,390 @@
+{
+  "schema": "taichidough/replay-sdf-contact-debug/v1",
+  "units": "scene metres and collision-branch executions",
+  "tool_collision": "sdf",
+  "tool_names": [
+    "UR5e_spathla",
+    "gen3_spathla"
+  ],
+  "sequence_fingerprint": "b5b2225335813b6c61f1777194c92cfa5de93b082dcf1a4974cd9cf992b825cb",
+  "tool_contact_padding_scene_m": 0.0104166667,
+  "tool_sdf_resolution": 64,
+  "predicate": {
+    "valid_sdf_sample": "point is inside the finite local SDF volume",
+    "inside_mesh": "valid && signed_distance_m < 0",
+    "contact_candidate": "valid && signed_distance_m < tool_contact_padding_scene_m",
+    "grid_applied_response": "selected candidate executes the grid velocity response",
+    "particle_applied_response": "candidate executes post-G2P particle projection; counts can include both tools for one particle"
+  },
+  "sdf_local_bounds": [
+    {
+      "minimum_scene_m": [
+        -0.05168291553854942,
+        -0.04024922102689743,
+        -0.1102820411324501
+      ],
+      "maximum_scene_m": [
+        0.13053664565086365,
+        0.11072132736444473,
+        0.02891441434621811
+      ],
+      "voxel_spacing_scene_m": [
+        0.002892374061048031,
+        0.0023963579442352057,
+        0.0022094675805419683
+      ]
+    },
+    {
+      "minimum_scene_m": [
+        -0.10160388052463531,
+        -0.03737891837954521,
+        -0.14910735189914703
+      ],
+      "maximum_scene_m": [
+        0.025885358452796936,
+        0.12626825273036957,
+        0.035370856523513794
+      ],
+      "voxel_spacing_scene_m": [
+        0.002023638691753149,
+        0.002597574144601822,
+        0.0029282255563884974
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "frame": 0,
+      "simulation_step": 0,
+      "completed_substeps": 0,
+      "sim_time_s": 0.0,
+      "source_frame": 0,
+      "original_source_frame": 2,
+      "collection_window_start_substep": 0,
+      "collection_window_end_substep": 0,
+      "snapshot_without_substep_evaluations": true,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 1,
+      "simulation_step": 3336,
+      "completed_substeps": 3336,
+      "sim_time_s": 0.6672,
+      "source_frame": 20,
+      "original_source_frame": 22,
+      "collection_window_start_substep": 0,
+      "collection_window_end_substep": 3336,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 82,
+            "applied_responses": 82,
+            "inward_normal_velocity_removed": 82
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 2,
+      "simulation_step": 6671,
+      "completed_substeps": 6671,
+      "sim_time_s": 1.3342,
+      "source_frame": 40,
+      "original_source_frame": 42,
+      "collection_window_start_substep": 3336,
+      "collection_window_end_substep": 6671,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 94994,
+            "applied_responses": 94994,
+            "inward_normal_velocity_removed": 42946
+          },
+          "particles": {
+            "contact_candidates": 282720,
+            "applied_responses": 282720,
+            "inward_normal_velocity_removed": 282308
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 49374,
+            "applied_responses": 49374,
+            "inward_normal_velocity_removed": 23944
+          },
+          "particles": {
+            "contact_candidates": 32575,
+            "applied_responses": 32575,
+            "inward_normal_velocity_removed": 32472
+          }
+        }
+      ]
+    },
+    {
+      "frame": 3,
+      "simulation_step": 10006,
+      "completed_substeps": 10006,
+      "sim_time_s": 2.0012000000000003,
+      "source_frame": 60,
+      "original_source_frame": 62,
+      "collection_window_start_substep": 6671,
+      "collection_window_end_substep": 10006,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 129906,
+            "applied_responses": 129906,
+            "inward_normal_velocity_removed": 54729
+          },
+          "particles": {
+            "contact_candidates": 399248,
+            "applied_responses": 399248,
+            "inward_normal_velocity_removed": 398102
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 35114,
+            "applied_responses": 35114,
+            "inward_normal_velocity_removed": 19620
+          },
+          "particles": {
+            "contact_candidates": 8324,
+            "applied_responses": 8324,
+            "inward_normal_velocity_removed": 8265
+          }
+        }
+      ]
+    },
+    {
+      "frame": 4,
+      "simulation_step": 13341,
+      "completed_substeps": 13341,
+      "sim_time_s": 2.6682,
+      "source_frame": 80,
+      "original_source_frame": 82,
+      "collection_window_start_substep": 10006,
+      "collection_window_end_substep": 13341,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 149228,
+            "applied_responses": 149228,
+            "inward_normal_velocity_removed": 62416
+          },
+          "particles": {
+            "contact_candidates": 608881,
+            "applied_responses": 608881,
+            "inward_normal_velocity_removed": 607990
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 18544,
+            "applied_responses": 18544,
+            "inward_normal_velocity_removed": 9116
+          },
+          "particles": {
+            "contact_candidates": 21,
+            "applied_responses": 21,
+            "inward_normal_velocity_removed": 21
+          }
+        }
+      ]
+    },
+    {
+      "frame": 5,
+      "simulation_step": 16676,
+      "completed_substeps": 16676,
+      "sim_time_s": 3.3352,
+      "source_frame": 100,
+      "original_source_frame": 102,
+      "collection_window_start_substep": 13341,
+      "collection_window_end_substep": 16676,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 174912,
+            "applied_responses": 174912,
+            "inward_normal_velocity_removed": 67260
+          },
+          "particles": {
+            "contact_candidates": 441958,
+            "applied_responses": 441958,
+            "inward_normal_velocity_removed": 440463
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 8857,
+            "applied_responses": 8857,
+            "inward_normal_velocity_removed": 4406
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 6,
+      "simulation_step": 20011,
+      "completed_substeps": 20011,
+      "sim_time_s": 4.0022,
+      "source_frame": 120,
+      "original_source_frame": 122,
+      "collection_window_start_substep": 16676,
+      "collection_window_end_substep": 20011,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 176534,
+            "applied_responses": 176534,
+            "inward_normal_velocity_removed": 65691
+          },
+          "particles": {
+            "contact_candidates": 202736,
+            "applied_responses": 202736,
+            "inward_normal_velocity_removed": 201924
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 7408,
+            "applied_responses": 7408,
+            "inward_normal_velocity_removed": 3585
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 7,
+      "simulation_step": 23346,
+      "completed_substeps": 23346,
+      "sim_time_s": 4.6692,
+      "source_frame": 140,
+      "original_source_frame": 142,
+      "collection_window_start_substep": 20011,
+      "collection_window_end_substep": 23346,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 179155,
+            "applied_responses": 179155,
+            "inward_normal_velocity_removed": 67234
+          },
+          "particles": {
+            "contact_candidates": 195462,
+            "applied_responses": 195462,
+            "inward_normal_velocity_removed": 194074
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 16460,
+            "applied_responses": 16460,
+            "inward_normal_velocity_removed": 8337
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 8,
+      "simulation_step": 26681,
+      "completed_substeps": 26681,
+      "sim_time_s": 5.3362,
+      "source_frame": 160,
+      "original_source_frame": 162,
+      "collection_window_start_substep": 23346,
+      "collection_window_end_substep": 26681,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 176545,
+            "applied_responses": 176545,
+            "inward_normal_velocity_removed": 65494
+          },
+          "particles": {
+            "contact_candidates": 245743,
+            "applied_responses": 245743,
+            "inward_normal_velocity_removed": 244741
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 17630,
+            "applied_responses": 17630,
+            "inward_normal_velocity_removed": 10139
+          },
+          "particles": {
+            "contact_candidates": 6,
+            "applied_responses": 6,
+            "inward_normal_velocity_removed": 6
+          }
+        }
+      ]
+    }
+  ]
+}

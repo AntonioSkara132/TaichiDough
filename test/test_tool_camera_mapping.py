@@ -72,6 +72,30 @@ class ToolMeshCollisionTest(unittest.TestCase):
                 self.assertTrue(np.isfinite(local).all())
                 self.assertEqual(local.shape, vertices.shape)
 
+    def test_visual_meshes_are_rejected_as_non_solid_sdf_sources(self):
+        for filename, origin, rpy in (
+            ("ur_spathla.stl", scene.UR_TOOL_VISUAL_ORIGIN, scene.UR_TOOL_VISUAL_RPY),
+            ("gen3_spathla.stl", scene.KINOVA_TOOL_VISUAL_ORIGIN, scene.KINOVA_TOOL_VISUAL_RPY),
+        ):
+            with self.subTest(mesh=filename):
+                vertices, _ = scene.load_binary_stl(PACKAGE / "meshes" / filename, 0.001)
+                local = scene.mesh_in_tool_frame(vertices, origin, scene.rpy_to_matrix(rpy))
+                with self.assertRaisesRegex(ValueError, "no negative interior voxels"):
+                    scene.build_mesh_sdf(local, 64, 0.0)
+
+    def test_generated_collision_solids_have_signed_interiors(self):
+        for filename, origin, rpy in (
+            ("ur_spathla_collision_solid.stl", scene.UR_TOOL_VISUAL_ORIGIN, scene.UR_TOOL_VISUAL_RPY),
+            ("gen3_spathla_collision_solid.stl", scene.KINOVA_TOOL_VISUAL_ORIGIN, scene.KINOVA_TOOL_VISUAL_RPY),
+        ):
+            with self.subTest(mesh=filename):
+                vertices, _ = scene.load_binary_stl(PACKAGE / "meshes" / filename, 0.001)
+                local = scene.mesh_in_tool_frame(vertices, origin, scene.rpy_to_matrix(rpy))
+                distance, gradients, _lower, _spacing = scene.build_mesh_sdf(local, 64, 0.0)
+                self.assertGreater(int(np.count_nonzero(distance < 0.0)), 0)
+                self.assertGreater(int(np.count_nonzero(distance > 0.0)), 0)
+                self.assertTrue(np.isfinite(gradients).all())
+
 
 if __name__ == "__main__":
     unittest.main()

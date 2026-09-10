@@ -1,5 +1,7 @@
 taichi==1.7.4
 numpy
+scipy==1.15.3
+scikit-image==0.25.2
 pillow
 opencv-python
 gymnasium

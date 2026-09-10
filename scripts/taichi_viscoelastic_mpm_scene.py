@@ -270,6 +270,11 @@ def build_mesh_sdf(vertices: np.ndarray, resolution: int, padding: float) -> tup
     outside = _outside_voxels(surface)
     distance = _euclidean_distance_to_surface(surface, spacing)
     signed_distance = np.where(outside | surface, distance, -distance).astype(np.float32)
+    if not np.any(signed_distance < 0.0):
+        raise ValueError(
+            "SDF source has no negative interior voxels; it cannot provide signed solid collision. "
+            "Use a validated watertight collision mesh rather than a visual STL."
+        )
     gradients = np.stack(np.gradient(signed_distance, *spacing, edge_order=1), axis=-1).astype(np.float32)
     gradient_norm = np.linalg.norm(gradients, axis=-1, keepdims=True)
     gradients /= np.maximum(gradient_norm, 1e-8)
@@ -287,12 +292,25 @@ def create_mesh_collision_fields(meshes: list[np.ndarray], resolution: int, padd
     gradients.from_numpy(np.stack([volume[1] for volume in volumes]))
     minimums.from_numpy(np.stack([volume[2] for volume in volumes]))
     spacings.from_numpy(np.stack([volume[3] for volume in volumes]))
+    statistics = []
     for index, (distance, _gradient, minimum, spacing) in enumerate(volumes):
+        stats = {
+            "negative_voxels": int(np.count_nonzero(distance < 0.0)),
+            "zero_voxels": int(np.count_nonzero(distance == 0.0)),
+            "positive_voxels": int(np.count_nonzero(distance > 0.0)),
+            "minimum_signed_distance_m": float(distance.min()),
+            "maximum_signed_distance_m": float(distance.max()),
+            "minimum_scene_m": minimum.tolist(),
+            "maximum_scene_m": (minimum + spacing * (resolution - 1)).tolist(),
+            "voxel_spacing_scene_m": spacing.tolist(),
+        }
+        statistics.append(stats)
         print(
-            f"Tool SDF {index}: {resolution}^3, bounds={minimum.tolist()} to "
-            f"{(minimum + spacing * (resolution - 1)).tolist()}, range={distance.min():.4f} to {distance.max():.4f} m"
+            f"Tool SDF {index}: {resolution}^3, bounds={stats['minimum_scene_m']} to "
+            f"{stats['maximum_scene_m']}, range={distance.min():.4f} to {distance.max():.4f} m, "
+            f"negative_voxels={stats['negative_voxels']}"
         )
-    return SimpleNamespace(sdf=sdf, gradients=gradients, minimums=minimums, spacings=spacings, resolution=resolution)
+    return SimpleNamespace(sdf=sdf, gradients=gradients, minimums=minimums, spacings=spacings, resolution=resolution, statistics=statistics)
 
 
 CAMERA_VIEWS = {
@@ -793,7 +811,7 @@ def resize_initial_particles(points, count, seed):
     return points[indices].astype(np.float32, copy=False)
 
 
-def build_sim(args, mesh_collision=None):
+def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
     dim = 3
     n_particles = args.particles
     n_grid = args.grid
@@ -840,6 +858,7 @@ def build_sim(args, mesh_collision=None):
     tool_half_0 = tool_half_by_tool[0]
     tool_half_1 = tool_half_by_tool[1]
     collision_mode = getattr(args, "tool_collision", "box")
+    record_sdf_contact_diagnostics = bool(getattr(args, "record_sdf_contact_diagnostics", False))
     if collision_mode not in {"sdf", "box", "none"}:
         raise ValueError(f"Unsupported tool collision mode: {collision_mode}")
     if collision_mode == "sdf" and mesh_collision is None:
@@ -873,6 +892,22 @@ def build_sim(args, mesh_collision=None):
     invalid_pre_p2g_stencil = ti.field(dtype=ti.i32, shape=())
     invalid_post_g2p_state = ti.field(dtype=ti.i32, shape=())
     invalid_post_g2p_stencil = ti.field(dtype=ti.i32, shape=())
+    sdf_grid_evaluated = ti.field(dtype=ti.i32, shape=2)
+    sdf_grid_valid = ti.field(dtype=ti.i32, shape=2)
+    sdf_grid_invalid = ti.field(dtype=ti.i32, shape=2)
+    sdf_grid_min_distance = ti.field(dtype=ti.f32, shape=2)
+    sdf_grid_inside = ti.field(dtype=ti.i32, shape=2)
+    sdf_grid_candidate = ti.field(dtype=ti.i32, shape=2)
+    sdf_grid_applied = ti.field(dtype=ti.i32, shape=2)
+    sdf_grid_inward_removed = ti.field(dtype=ti.i32, shape=2)
+    sdf_particle_evaluated = ti.field(dtype=ti.i32, shape=2)
+    sdf_particle_valid = ti.field(dtype=ti.i32, shape=2)
+    sdf_particle_invalid = ti.field(dtype=ti.i32, shape=2)
+    sdf_particle_min_distance = ti.field(dtype=ti.f32, shape=2)
+    sdf_particle_inside = ti.field(dtype=ti.i32, shape=2)
+    sdf_particle_candidate = ti.field(dtype=ti.i32, shape=2)
+    sdf_particle_applied = ti.field(dtype=ti.i32, shape=2)
+    sdf_particle_inward_removed = ti.field(dtype=ti.i32, shape=2)
 
     @ti.func
     def quat_to_matrix(q):
@@ -1050,6 +1085,7 @@ def build_sim(args, mesh_collision=None):
     @ti.func
     def mesh_collision_velocity_and_normal(pos, t):
         hit = 0
+        selected_tool = -1
         normal = ti.Vector([0.0, 0.0, 0.0])
         collider_v = ti.Vector([0.0, 0.0, 0.0])
         closest_distance = 1e6
@@ -1057,12 +1093,16 @@ def build_sim(args, mesh_collision=None):
             center, cvel = tool_pose_and_velocity(k, t)
             rotation = quat_to_matrix(tool_quat[k])
             valid, distance, local_normal = mesh_sdf_at(k, rotation.transpose() @ (pos - center))
-            if valid and distance < tool_contact_padding and distance < closest_distance:
-                hit = 1
-                closest_distance = distance
-                normal = rotation @ local_normal
-                collider_v = cvel + tool_angular_velocity[k].cross(pos - center)
-        return hit, normal, collider_v
+            if valid and distance < tool_contact_padding:
+                if ti.static(record_sdf_contact_diagnostics):
+                    ti.atomic_add(sdf_grid_candidate[k], 1)
+                if distance < closest_distance:
+                    hit = 1
+                    selected_tool = k
+                    closest_distance = distance
+                    normal = rotation @ local_normal
+                    collider_v = cvel + tool_angular_velocity[k].cross(pos - center)
+        return hit, selected_tool, normal, collider_v
 
     @ti.func
     def project_particle_out_of_meshes(pos, vel, t):
@@ -1074,6 +1114,9 @@ def build_sim(args, mesh_collision=None):
             local_pos = rotation.transpose() @ (new_pos - center)
             valid, distance, local_normal = mesh_sdf_at(k, local_pos)
             if valid and distance < tool_contact_padding:
+                if ti.static(record_sdf_contact_diagnostics):
+                    ti.atomic_add(sdf_particle_candidate[k], 1)
+                    ti.atomic_add(sdf_particle_applied[k], 1)
                 penetration = tool_contact_padding - distance + 1e-4
                 normal = rotation @ local_normal
                 new_pos += normal * penetration
@@ -1082,6 +1125,8 @@ def build_sim(args, mesh_collision=None):
                 normal_velocity = relative_velocity.dot(normal)
                 if normal_velocity < 0.0:
                     relative_velocity -= normal * normal_velocity
+                    if ti.static(record_sdf_contact_diagnostics):
+                        ti.atomic_add(sdf_particle_inward_removed[k], 1)
                 relative_velocity *= tool_contact_friction * (1.0 - tool_contact_absorption)
                 relative_velocity *= 1.0 - tool_stickiness
                 new_vel = cvel + relative_velocity
@@ -1189,6 +1234,26 @@ def build_sim(args, mesh_collision=None):
         invalid_post_g2p_stencil[None] = n_particles
 
     @ti.kernel
+    def reset_sdf_contact_diagnostics():
+        for tool_id in range(2):
+            sdf_grid_evaluated[tool_id] = 0
+            sdf_grid_valid[tool_id] = 0
+            sdf_grid_invalid[tool_id] = 0
+            sdf_grid_min_distance[tool_id] = ti.math.inf
+            sdf_grid_inside[tool_id] = 0
+            sdf_grid_candidate[tool_id] = 0
+            sdf_grid_applied[tool_id] = 0
+            sdf_grid_inward_removed[tool_id] = 0
+            sdf_particle_evaluated[tool_id] = 0
+            sdf_particle_valid[tool_id] = 0
+            sdf_particle_invalid[tool_id] = 0
+            sdf_particle_min_distance[tool_id] = ti.math.inf
+            sdf_particle_inside[tool_id] = 0
+            sdf_particle_candidate[tool_id] = 0
+            sdf_particle_applied[tool_id] = 0
+            sdf_particle_inward_removed[tool_id] = 0
+
+    @ti.kernel
     def substep_kernel(time: ti.f32):
         for I in ti.grouped(grid_m):
             grid_v[I] = ti.Vector.zero(ti.f32, dim)
@@ -1257,17 +1322,22 @@ def build_sim(args, mesh_collision=None):
                     grid_v[I].z *= floor_friction * (1.0 - floor_stickiness)
 
                 hit = 0
+                selected_tool = -1
                 normal = ti.Vector([0.0, 0.0, 0.0])
                 collider_v = ti.Vector([0.0, 0.0, 0.0])
                 if ti.static(use_mesh_collision):
-                    hit, normal, collider_v = mesh_collision_velocity_and_normal(pos, time)
+                    hit, selected_tool, normal, collider_v = mesh_collision_velocity_and_normal(pos, time)
                 elif ti.static(use_box_collision):
                     hit, normal, collider_v = box_collision_velocity_and_normal(pos, time)
                 if hit == 1:
+                    if ti.static(use_mesh_collision and record_sdf_contact_diagnostics):
+                        ti.atomic_add(sdf_grid_applied[selected_tool], 1)
                     rel_v = grid_v[I] - collider_v
                     vn = rel_v.dot(normal)
                     if vn < 0.0:
                         rel_v -= normal * vn
+                        if ti.static(use_mesh_collision and record_sdf_contact_diagnostics):
+                            ti.atomic_add(sdf_grid_inward_removed[selected_tool], 1)
                     rel_v *= tool_contact_friction * (1.0 - tool_contact_absorption)
                     rel_v *= 1.0 - tool_stickiness
                     grid_v[I] = collider_v + rel_v
@@ -1407,7 +1477,33 @@ def build_sim(args, mesh_collision=None):
             raise MpmInvalidStateError(diagnostic)
         substep_ordinal += 1
 
-    return x, tool_x, initialize, substep, update_tool_visuals, set_tool_state
+    def sdf_contact_diagnostics():
+        grid_candidates = sdf_grid_candidate.to_numpy()
+        grid_applied = sdf_grid_applied.to_numpy()
+        grid_inward_removed = sdf_grid_inward_removed.to_numpy()
+        particle_candidates = sdf_particle_candidate.to_numpy()
+        particle_applied = sdf_particle_applied.to_numpy()
+        particle_inward_removed = sdf_particle_inward_removed.to_numpy()
+        return [
+            {
+                "grid_nodes": {
+                    "contact_candidates": int(grid_candidates[index]),
+                    "applied_responses": int(grid_applied[index]),
+                    "inward_normal_velocity_removed": int(grid_inward_removed[index]),
+                },
+                "particles": {
+                    "contact_candidates": int(particle_candidates[index]),
+                    "applied_responses": int(particle_applied[index]),
+                    "inward_normal_velocity_removed": int(particle_inward_removed[index]),
+                },
+            }
+            for index in range(2)
+        ]
+
+    result = x, tool_x, initialize, substep, update_tool_visuals, set_tool_state
+    if return_sdf_contact_diagnostics:
+        return (*result, reset_sdf_contact_diagnostics, sdf_contact_diagnostics)
+    return result
 
 
 def compute_camera_basis(position, look_at):
@@ -1841,6 +1937,11 @@ def main():
     parser.add_argument("--tool-motion-start", type=float, default=1.0)
     parser.add_argument("--tool-contact-padding", type=float, default=0.035)
     parser.add_argument(
+        "--record-sdf-contact-diagnostics",
+        action="store_true",
+        help="Write per-replay-frame SDF proximity and applied-contact measurements.",
+    )
+    parser.add_argument(
         "--tool-collision",
         choices=("sdf", "box", "none"),
         default="box",
@@ -1856,13 +1957,25 @@ def main():
         "--ur-tool-mesh",
         type=Path,
         default=None,
-        help="Override the UR STL; defaults to the ROS package or bundled meshes/ur_spathla.stl.",
+        help="Override the UR visual STL; used for rendering only, not solid-SDF collision.",
     )
     parser.add_argument(
         "--kinova-tool-mesh",
         type=Path,
         default=None,
-        help="Override the Kinova STL; defaults to the ROS package or bundled meshes/gen3_spathla.stl.",
+        help="Override the Kinova visual STL; used for rendering only, not solid-SDF collision.",
+    )
+    parser.add_argument(
+        "--ur-tool-collision-mesh",
+        type=Path,
+        default=None,
+        help="Override the validated UR watertight collision STL.",
+    )
+    parser.add_argument(
+        "--kinova-tool-collision-mesh",
+        type=Path,
+        default=None,
+        help="Override the validated Kinova watertight collision STL.",
     )
     parser.add_argument(
         "--tool-mesh-scale",
@@ -2157,13 +2270,13 @@ def main():
 
     mesh_collision = None
     if args.tool_collision == "sdf":
-        ur_tool_mesh_path = find_tool_mesh("ur_spathla.stl", args.ur_tool_mesh)
-        kinova_tool_mesh_path = find_tool_mesh("gen3_spathla.stl", args.kinova_tool_mesh)
+        ur_tool_mesh_path = find_tool_mesh("ur_spathla_collision_solid.stl", args.ur_tool_collision_mesh)
+        kinova_tool_mesh_path = find_tool_mesh("gen3_spathla_collision_solid.stl", args.kinova_tool_collision_mesh)
         ur_tool_mesh, _ = load_binary_stl(ur_tool_mesh_path, args.tool_mesh_scale)
         kinova_tool_mesh, _ = load_binary_stl(kinova_tool_mesh_path, args.tool_mesh_scale)
-        print(f"UR tool mesh: {ur_tool_mesh_path}")
-        print(f"Kinova tool mesh: {kinova_tool_mesh_path}")
-        print(f"Building STL collision SDFs at {args.tool_sdf_resolution}^3 voxels per tool...")
+        print(f"UR solid collision mesh: {ur_tool_mesh_path}")
+        print(f"Kinova solid collision mesh: {kinova_tool_mesh_path}")
+        print(f"Building solid STL collision SDFs at {args.tool_sdf_resolution}^3 voxels per tool...")
         mesh_collision = create_mesh_collision_fields(
             [
                 mesh_in_tool_frame(ur_tool_mesh, UR_TOOL_VISUAL_ORIGIN, rpy_to_matrix(UR_TOOL_VISUAL_RPY)),
@@ -2172,6 +2285,25 @@ def main():
             args.tool_sdf_resolution,
             args.tool_contact_padding,
         )
+        mesh_collision.asset_paths = [str(ur_tool_mesh_path.resolve()), str(kinova_tool_mesh_path.resolve())]
+        mesh_collision.asset_sha256 = [hashlib.sha256(path.read_bytes()).hexdigest() for path in (ur_tool_mesh_path, kinova_tool_mesh_path)]
+        collision_manifest = PROJECT_ROOT / "meshes" / "tool_collision_meshes_v1.json"
+        use_default_collision_assets = args.ur_tool_collision_mesh is None and args.kinova_tool_collision_mesh is None
+        if use_default_collision_assets:
+            if not collision_manifest.is_file():
+                raise FileNotFoundError(f"Missing solid collision manifest: {collision_manifest}")
+            manifest = json.loads(collision_manifest.read_text())
+            if manifest.get("schema") != "taichidough/tool-collision-meshes/v1":
+                raise ValueError(f"Unsupported solid collision manifest schema: {manifest.get('schema')!r}")
+            expected = {entry.get("name"): entry.get("collision_sha256") for entry in manifest.get("tools", [])}
+            actual = dict(zip(("UR5e_spathla", "gen3_spathla"), mesh_collision.asset_sha256))
+            if expected != actual:
+                raise ValueError("Solid collision mesh hashes do not match tool_collision_meshes_v1.json")
+            mesh_collision.manifest_path = str(collision_manifest.resolve())
+            mesh_collision.manifest_sha256 = hashlib.sha256(collision_manifest.read_bytes()).hexdigest()
+        else:
+            mesh_collision.manifest_path = None
+            mesh_collision.manifest_sha256 = None
 
     run_dir = args.output_dir
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -2180,7 +2312,10 @@ def main():
         view_configs["deformpath_top"] = calibration.camera
     views = args.view or list(view_configs)
 
-    x, tool_x, initialize, substep, update_tool_visuals, set_tool_state = build_sim(args, mesh_collision)
+    (
+        x, tool_x, initialize, substep, update_tool_visuals, set_tool_state,
+        reset_sdf_contact_diagnostics, sdf_contact_diagnostics,
+    ) = build_sim(args, mesh_collision, return_sdf_contact_diagnostics=True)
     initialize()
     if initial_particles is not None:
         x.from_numpy(initial_particles)
@@ -2189,6 +2324,7 @@ def main():
     else:
         set_tool_state(TOOL_INITIAL_POSES, np.zeros((2, 3), dtype=np.float32))
     update_tool_visuals(0.0)
+    reset_sdf_contact_diagnostics()
 
     def run_substep(current_time):
         try:
@@ -2250,6 +2386,7 @@ def main():
 
     if replay is not None:
         replay_is_sdf = args.tool_collision == "sdf"
+        write_sdf_contact_diagnostics = replay_is_sdf and args.record_sdf_contact_diagnostics
         metadata["replay"] = {
             "mode": "captured_trajectory_sdf_tools" if replay_is_sdf else "captured_trajectory_proxy_tools",
             "tool_collision": args.tool_collision,
@@ -2262,6 +2399,16 @@ def main():
             "tool_geometry": tool_geometry,
             "max_interpolation_gap_s": args.replay_max_gap,
             "tool_contact_padding_scene_m": args.tool_contact_padding,
+            "solid_collision_assets": (
+                {
+                    "paths": mesh_collision.asset_paths,
+                    "sha256": mesh_collision.asset_sha256,
+                    "manifest_path": mesh_collision.manifest_path,
+                    "manifest_sha256": mesh_collision.manifest_sha256,
+                    "sdf_statistics": mesh_collision.statistics,
+                }
+                if replay_is_sdf else None
+            ),
             "limitations": [
                 "SDF collision approximates the physical tool surfaces with voxelized STL meshes."
                 if replay_is_sdf else (
@@ -2274,6 +2421,51 @@ def main():
                 "Volume comes from floor-filled voxel reconstruction; unobserved side geometry remains approximate.",
             ],
         }
+        if write_sdf_contact_diagnostics:
+            contact_debug_path = run_dir / "replay_sdf_contact_debug.json"
+            metadata["replay"]["sdf_contact_diagnostics"] = {
+                "schema": "taichidough/replay-sdf-contact-debug/v1",
+                "path": str(contact_debug_path.resolve()),
+            }
+            contact_debug = {
+                "schema": "taichidough/replay-sdf-contact-debug/v1",
+                "units": "scene metres and collision-branch executions",
+                "tool_collision": "sdf",
+                "tool_names": observation_sequence.names,
+                "sequence_fingerprint": observation_sequence.fingerprint,
+                "tool_contact_padding_scene_m": float(args.tool_contact_padding),
+                "tool_sdf_resolution": int(args.tool_sdf_resolution),
+                "predicate": {
+                    "valid_sdf_sample": "point is inside the finite local SDF volume",
+                    "inside_mesh": "valid && signed_distance_m < 0",
+                    "contact_candidate": "valid && signed_distance_m < tool_contact_padding_scene_m",
+                    "grid_applied_response": "selected candidate executes the grid velocity response",
+                    "particle_applied_response": "candidate executes post-G2P particle projection; counts can include both tools for one particle",
+                },
+                "sdf_local_bounds": [
+                    {
+                        "minimum_scene_m": minimum.tolist(),
+                        "maximum_scene_m": (minimum + spacing * (args.tool_sdf_resolution - 1)).tolist(),
+                        "voxel_spacing_scene_m": spacing.tolist(),
+                    }
+                    for minimum, spacing in zip(mesh_collision.minimums.to_numpy(), mesh_collision.spacings.to_numpy())
+                ],
+                "frames": [],
+            }
+
+            def append_contact_debug(frame, window_start_substep, snapshot=False):
+                contact_debug["frames"].append({
+                    "frame": int(frame["frame"]),
+                    "simulation_step": int(frame["simulation_step"]),
+                    "completed_substeps": int(frame["completed_substeps"]),
+                    "sim_time_s": float(frame["sim_time_s"]),
+                    "source_frame": int(frame["source_frame"]),
+                    "original_source_frame": int(frame["original_source_frame"]),
+                    "collection_window_start_substep": int(window_start_substep),
+                    "collection_window_end_substep": int(frame["completed_substeps"]),
+                    "snapshot_without_substep_evaluations": bool(snapshot),
+                    "tools": sdf_contact_diagnostics(),
+                })
         if tool_geometry["source"] == "legacy_cli":
             metadata["replay"]["tool_half_extents_scene_m"] = list(args.tool_half_extents)
             metadata["replay"]["tool_marker_offset_source_m"] = list(args.tool_marker_offset)
@@ -2288,11 +2480,15 @@ def main():
                 "tool_validity": observation_sequence.valid[source_index].tolist(),
             })
         annotate_replay_frame(metadata["frames"][0], replay.start)
+        if write_sdf_contact_diagnostics:
+            append_contact_debug(metadata["frames"][0], 0, snapshot=True)
+            reset_sdf_contact_diagnostics()
         source_indices = list(range(replay.start + args.replay_stride, replay.end + 1, args.replay_stride))
         if replay.end > replay.start and (not source_indices or source_indices[-1] != replay.end):
             source_indices.append(replay.end)
         completed = 0
         for source_index in source_indices:
+            window_start_substep = completed
             target = float(observation_sequence.times[source_index] - observation_sequence.times[replay.start])
             target_substeps = int(np.ceil(target / args.dt - 1e-10))
             while completed < target_substeps:
@@ -2309,10 +2505,15 @@ def main():
                                        completed // args.substeps_per_frame, view_configs, completed)
             annotate_replay_frame(frame, source_index)
             metadata["frames"].append(frame)
+            if write_sdf_contact_diagnostics:
+                append_contact_debug(frame, window_start_substep)
+                reset_sdf_contact_diagnostics()
             frame_idx += 1
             print(f"Replay: source={source_index} sim={frame['sim_time_s']:.6f}s lag={frame['pairing_error_s']:.6f}s", flush=True)
         metadata_path = run_dir / "camera_parameters.json"
         metadata_path.write_text(json.dumps(metadata, indent=2))
+        if write_sdf_contact_diagnostics:
+            contact_debug_path.write_text(json.dumps(contact_debug, indent=2))
         if dough_center_tx is not None:
             dough_center_tx.close()
         replay_label = "SDF mesh-frame" if args.tool_collision == "sdf" else "proxy-tool"

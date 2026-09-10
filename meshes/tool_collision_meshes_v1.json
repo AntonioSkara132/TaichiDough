@@ -1,0 +1,105 @@
+{
+  "generator": {
+    "algorithm": "triangle voxelization + closing + exterior fill + marching cubes",
+    "scikit_image": "0.25.2",
+    "scipy": "1.15.3",
+    "script": "scripts/build_tool_collision_meshes.py"
+  },
+  "schema": "taichidough/tool-collision-meshes/v1",
+  "tools": [
+    {
+      "bounds_mm": {
+        "maximum": [
+          54.193199157714844,
+          134.59205627441406,
+          121.3583984375
+        ],
+        "minimum": [
+          -38.806800842285156,
+          -1.4079411029815674,
+          -39.641605377197266
+        ]
+      },
+      "build": {
+        "closed_surface_voxels": 138210,
+        "closing_radius_voxels": 1,
+        "marching_cubes_level": 0.5,
+        "padding_voxels": 3,
+        "solid_volume_mm3": 149612.0,
+        "solid_voxels": 149612,
+        "surface_voxels": 136127,
+        "voxel_dimensions": [
+          98,
+          141,
+          166
+        ],
+        "voxel_origin_mm": [
+          -40.306800842285156,
+          -2.9079410657286644,
+          -41.141605377197266
+        ],
+        "voxel_pitch_mm": 1.0
+      },
+      "collision_mesh": "ur_spathla_collision_solid.stl",
+      "collision_sha256": "f5e509d84816d1496f6250c2afae88838a58996a25480b282a4daa896eee61cb",
+      "coordinate_frame": "raw_stl_visual",
+      "name": "UR5e_spathla",
+      "source_mesh": "ur_spathla.stl",
+      "source_sha256": "3b34d89277511b3d0b2404c2807be0cbc80d60655ca6ae52c1b1c64bce61eeb4",
+      "topology": {
+        "boundary_edges": 0,
+        "faces": 98724,
+        "nonmanifold_edges": 0,
+        "vertices": 49362
+      },
+      "units": "millimetres"
+    },
+    {
+      "bounds_mm": {
+        "maximum": [
+          62.514739990234375,
+          138.75894165039062,
+          122.67903900146484
+        ],
+        "minimum": [
+          -38.485260009765625,
+          -2.241065263748169,
+          -38.320960998535156
+        ]
+      },
+      "build": {
+        "closed_surface_voxels": 168682,
+        "closing_radius_voxels": 1,
+        "marching_cubes_level": 0.5,
+        "padding_voxels": 3,
+        "solid_volume_mm3": 182797.0,
+        "solid_voxels": 182797,
+        "surface_voxels": 154628,
+        "voxel_dimensions": [
+          105,
+          146,
+          165
+        ],
+        "voxel_origin_mm": [
+          -39.985260009765625,
+          -3.7410653233528137,
+          -39.820960998535156
+        ],
+        "voxel_pitch_mm": 1.0
+      },
+      "collision_mesh": "gen3_spathla_collision_solid.stl",
+      "collision_sha256": "c4d7a910e928d265f387003f33638a3ac123f7c8472af5d691882a099fb4867a",
+      "coordinate_frame": "raw_stl_visual",
+      "name": "gen3_spathla",
+      "source_mesh": "gen3_spathla.stl",
+      "source_sha256": "ac4d1cda9212e59411e1f34ba711a80f66ab5eb0abecc18cd9fe0199a0b38f42",
+      "topology": {
+        "boundary_edges": 0,
+        "faces": 110712,
+        "nonmanifold_edges": 0,
+        "vertices": 55356
+      },
+      "units": "millimetres"
+    }
+  ]
+}

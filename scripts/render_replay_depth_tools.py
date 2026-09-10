@@ -13,7 +13,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 try:
-    from deformpath_topview import project_camera_points, rigid_inverse, transform_points
+    from deformpath_topview import project_camera_points, rasterize_depth, rigid_inverse, transform_points
     from taichi_viscoelastic_mpm_scene import (
         KINOVA_TOOL_VISUAL_ORIGIN,
         KINOVA_TOOL_VISUAL_RPY,
@@ -25,7 +25,7 @@ try:
         rpy_to_matrix,
     )
 except ImportError:
-    from .deformpath_topview import project_camera_points, rigid_inverse, transform_points
+    from .deformpath_topview import project_camera_points, rasterize_depth, rigid_inverse, transform_points
     from .taichi_viscoelastic_mpm_scene import (
         KINOVA_TOOL_VISUAL_ORIGIN,
         KINOVA_TOOL_VISUAL_RPY,
@@ -63,6 +63,34 @@ def validate_camera(camera: dict[str, Any]) -> None:
     transform = np.asarray(camera["scene_from_camera"], dtype=np.float64)
     if transform.shape != (4, 4) or not np.isfinite(transform).all():
         raise ValueError("Replay camera scene_from_camera must be a finite 4x4 matrix")
+
+
+def make_isometric_camera(
+    position: np.ndarray,
+    look_at: np.ndarray,
+    width: int,
+    height: int,
+    field_of_view_deg: float,
+) -> dict[str, Any]:
+    position = np.asarray(position, dtype=np.float64)
+    look_at = np.asarray(look_at, dtype=np.float64)
+    forward = look_at - position
+    forward /= np.linalg.norm(forward)
+    world_up = np.array([0.0, 1.0, 0.0], dtype=np.float64)
+    right = np.cross(forward, world_up)
+    right /= np.linalg.norm(right)
+    up = np.cross(right, forward)
+    focal = height / (2.0 * np.tan(np.radians(field_of_view_deg) / 2.0))
+    scene_from_camera = np.eye(4, dtype=np.float64)
+    scene_from_camera[:3, 0] = right
+    scene_from_camera[:3, 1] = -up
+    scene_from_camera[:3, 2] = forward
+    scene_from_camera[:3, 3] = position
+    return {
+        "width": int(width), "height": int(height), "fx": float(focal), "fy": float(focal),
+        "cx": (width - 1) / 2.0, "cy": (height - 1) / 2.0,
+        "zNear": 0.01, "zFar": 5.0, "scene_from_camera": scene_from_camera.tolist(),
+    }
 
 
 def validate_tool_poses(frame: dict[str, Any]) -> np.ndarray:
@@ -137,9 +165,9 @@ def rasterize_triangles(
             region_owner[update] = tool_index
 
 
-def colorize_depth(depth: np.ndarray, owner: np.ndarray, z_near: float, z_far: float) -> np.ndarray:
+def colorize_depth(depth: np.ndarray, owner: np.ndarray, display_near: float, display_far: float, z_far: float) -> np.ndarray:
     valid = depth < z_far - 1e-6
-    normalized = np.clip((depth - z_near) / max(z_far - z_near, 1e-6), 0.0, 1.0)
+    normalized = np.clip((depth - display_near) / max(display_far - display_near, 1e-6), 0.0, 1.0)
     brightness = 0.38 + 0.62 * (1.0 - normalized)
     rgb = np.full((*depth.shape, 3), 18.0, dtype=np.float32)
     dough = valid & (owner < 0)
@@ -154,18 +182,56 @@ def render_frame(
     frame: dict[str, Any],
     camera: dict[str, Any],
     tool_link_meshes: list[np.ndarray],
+    display_near: float,
+    display_far: float,
+    use_saved_depth: bool,
 ) -> np.ndarray:
     poses = validate_tool_poses(frame)
-    depth_path = Path(frame_view_path(frame, camera, "depth_array"))
-    dough_depth = np.load(depth_path).astype(np.float64)
     expected = (int(camera["height"]), int(camera["width"]))
-    if dough_depth.shape != expected or not np.isfinite(dough_depth).all():
-        raise ValueError(f"Replay dough depth {depth_path} does not match the calibrated camera")
+    if use_saved_depth:
+        depth_path = Path(frame_view_path(frame, camera, "depth_array"))
+        dough_depth = np.load(depth_path).astype(np.float64)
+        if dough_depth.shape != expected or not np.isfinite(dough_depth).all():
+            raise ValueError(f"Replay dough depth {depth_path} does not match the calibrated camera")
+    else:
+        particles = np.load(frame["particles"])
+        dough_depth, _, _, _, _, _ = rasterize_depth(
+            particles, expected[1], expected[0], camera, splat_radius=2
+        )
+        dough_depth = dough_depth.astype(np.float64)
     depth = dough_depth.copy()
     owner = np.full(depth.shape, -1, dtype=np.int8)
     for tool_index, (mesh, pose) in enumerate(zip(tool_link_meshes, poses)):
         rasterize_triangles(depth, owner, mesh_scene_vertices(mesh, pose), camera, tool_index)
-    return colorize_depth(depth, owner, float(camera["zNear"]), float(camera["zFar"]))
+    return colorize_depth(depth, owner, display_near, display_far, float(camera["zFar"]))
+
+
+def depth_display_range(
+    frames: list[dict[str, Any]], camera: dict[str, Any], use_saved_depth: bool
+) -> tuple[float, float]:
+    values = []
+    z_far = float(camera["zFar"])
+    camera_from_scene = rigid_inverse(np.asarray(camera["scene_from_camera"], dtype=np.float64))
+    for frame in frames:
+        if use_saved_depth:
+            depth = np.load(frame_view_path(frame, camera, "depth_array"), mmap_mode="r")
+            valid = depth[np.isfinite(depth) & (depth < z_far - 1e-6)]
+        else:
+            points = np.load(frame["particles"])
+            camera_points = transform_points(points, camera_from_scene)
+            valid = camera_points[:, 2]
+            valid = valid[np.isfinite(valid) & (valid > float(camera["zNear"])) & (valid < z_far)]
+        if valid.size:
+            values.append(valid)
+    if not values:
+        raise ValueError("Replay contains no finite dough depth samples")
+    combined = np.concatenate(values)
+    lower, upper = np.quantile(combined, [0.01, 0.99])
+    if upper - lower < 1e-5:
+        lower, upper = float(combined.min()), float(combined.max())
+    if upper - lower < 1e-5:
+        upper = lower + 1e-5
+    return float(lower), float(upper)
 
 
 def frame_view_path(frame: dict[str, Any], camera: dict[str, Any], key: str) -> str:
@@ -202,6 +268,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-video", type=Path, required=True)
     parser.add_argument("--frames-dir", type=Path, default=None)
     parser.add_argument("--fps", type=float, default=7.572)
+    parser.add_argument("--view", choices=("calibrated", "isometric"), default="calibrated")
+    parser.add_argument("--width", type=int, default=960, help="Isometric output width.")
+    parser.add_argument("--height", type=int, default=720, help="Isometric output height.")
+    parser.add_argument("--camera-position", type=float, nargs=3, default=(0.72, 0.42, 1.34))
+    parser.add_argument("--camera-look-at", type=float, nargs=3, default=(0.23, 0.04, 0.73))
+    parser.add_argument("--field-of-view", type=float, default=52.0)
     parser.add_argument("--youngs-modulus", type=float, default=None)
     parser.add_argument("--ur-tool-mesh", type=Path, default=Path(__file__).resolve().parents[1] / "meshes/ur_spathla.stl")
     parser.add_argument("--kinova-tool-mesh", type=Path, default=Path(__file__).resolve().parents[1] / "meshes/gen3_spathla.stl")
@@ -220,20 +292,31 @@ def main() -> None:
     frames = metadata.get("frames") or []
     if not frames:
         raise ValueError("Replay metadata contains no frames")
-    camera = find_view(frames[0], "deformpath_top")
-    validate_camera(camera)
+    use_saved_depth = args.view == "calibrated"
+    if use_saved_depth:
+        camera = find_view(frames[0], "deformpath_top")
+        validate_camera(camera)
+    else:
+        if args.width <= 0 or args.height <= 0 or not 1.0 < args.field_of_view < 179.0:
+            raise ValueError("Isometric camera dimensions and field of view are invalid")
+        camera = make_isometric_camera(
+            args.camera_position, args.camera_look_at, args.width, args.height, args.field_of_view
+        )
     for frame in frames:
-        view = find_view(frame, "deformpath_top")
-        if any(view.get(key) != camera.get(key) for key in ("width", "height", "fx", "fy", "cx", "cy", "zNear", "zFar", "scene_from_camera")):
-            raise ValueError("Replay camera changes between frames")
+        if use_saved_depth:
+            view = find_view(frame, "deformpath_top")
+            if any(view.get(key) != camera.get(key) for key in ("width", "height", "fx", "fy", "cx", "cy", "zNear", "zFar", "scene_from_camera")):
+                raise ValueError("Replay camera changes between frames")
         validate_tool_poses(frame)
     tool_link_meshes = load_tool_link_meshes(args.ur_tool_mesh, args.kinova_tool_mesh, args.tool_mesh_scale)
+    display_near, display_far = depth_display_range(frames, camera, use_saved_depth)
+    print(f"Dough display depth range: {display_near:.6g} to {display_far:.6g} m", flush=True)
     frames_dir = args.frames_dir or replay_dir / "depth_tools_frames"
     if frames_dir.exists() and any(frames_dir.iterdir()):
         raise ValueError(f"Frame output directory must be empty: {frames_dir}")
     frames_dir.mkdir(parents=True, exist_ok=True)
     for index, frame in enumerate(frames):
-        image = render_frame(frame, camera, tool_link_meshes)
+        image = render_frame(frame, camera, tool_link_meshes, display_near, display_far, use_saved_depth)
         add_label(image, frame, args.youngs_modulus).save(frames_dir / f"frame_{index:06d}.png")
         print(f"Rendered {index + 1}/{len(frames)} source={frame.get('source_frame')}", flush=True)
     args.output_video.parent.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,158 @@
+{
+  "schema": "taichidough/sdf-collision-inspection/v1",
+  "provenance": {
+    "replay_dir": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/output/episode18_e2000_full_replay",
+    "collision_manifest": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/meshes/tool_collision_meshes_v1.json",
+    "tool_names": [
+      "UR5e_spathla",
+      "gen3_spathla"
+    ],
+    "replay_frames": 98,
+    "contact_debug": null,
+    "sdf_reconstruction": {
+      "resolution": 64,
+      "padding_m": 0.0,
+      "mesh_scale": 0.001,
+      "slice_fraction": 0.5,
+      "slice_limit_m": 0.00560716527979821,
+      "runtime_sdf_persisted": false
+    },
+    "tools": [
+      {
+        "name": "UR5e_spathla",
+        "visual_stl": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/meshes/ur_spathla.stl",
+        "collision_solid_stl": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/meshes/ur_spathla_collision_solid.stl",
+        "visual_sha256": "3b34d89277511b3d0b2404c2807be0cbc80d60655ca6ae52c1b1c64bce61eeb4",
+        "collision_sha256": "f5e509d84816d1496f6250c2afae88838a58996a25480b282a4daa896eee61cb",
+        "manifest_build": {
+          "closed_surface_voxels": 138210,
+          "closing_radius_voxels": 1,
+          "marching_cubes_level": 0.5,
+          "padding_voxels": 3,
+          "solid_volume_mm3": 149612.0,
+          "solid_voxels": 149612,
+          "surface_voxels": 136127,
+          "voxel_dimensions": [
+            98,
+            141,
+            166
+          ],
+          "voxel_origin_mm": [
+            -40.306800842285156,
+            -2.9079410657286644,
+            -41.141605377197266
+          ],
+          "voxel_pitch_mm": 1.0
+        },
+        "manifest_topology": {
+          "boundary_edges": 0,
+          "faces": 98724,
+          "nonmanifold_edges": 0,
+          "vertices": 49362
+        },
+        "sdf_statistics": {
+          "resolution": [
+            64,
+            64,
+            64
+          ],
+          "finite_voxels": 262144,
+          "nonfinite_voxels": 0,
+          "negative_voxels": 817,
+          "zero_voxels": 27313,
+          "positive_voxels": 234014,
+          "negative_fraction": 0.003116607666015625,
+          "zero_fraction": 0.10419082641601562,
+          "positive_fraction": 0.8926925659179688,
+          "minimum_signed_distance_m": -0.004104907158762217,
+          "maximum_signed_distance_m": 0.11583849787712097,
+          "minimum_scene_m": [
+            -0.04673696681857109,
+            -0.0353032723069191,
+            -0.10533609986305237
+          ],
+          "maximum_scene_m": [
+            0.12559070228599012,
+            0.10577538143843412,
+            0.023968475637957454
+          ],
+          "voxel_spacing_scene_m": [
+            0.002735359827056527,
+            0.002239343710243702,
+            0.0020524535793811083
+          ],
+          "voxel_volume_m3": 1.2572121121934288e-08,
+          "estimated_negative_volume_m3": 1.0271422956620313e-05
+        }
+      },
+      {
+        "name": "gen3_spathla",
+        "visual_stl": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/meshes/gen3_spathla.stl",
+        "collision_solid_stl": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/meshes/gen3_spathla_collision_solid.stl",
+        "visual_sha256": "ac4d1cda9212e59411e1f34ba711a80f66ab5eb0abecc18cd9fe0199a0b38f42",
+        "collision_sha256": "c4d7a910e928d265f387003f33638a3ac123f7c8472af5d691882a099fb4867a",
+        "manifest_build": {
+          "closed_surface_voxels": 168682,
+          "closing_radius_voxels": 1,
+          "marching_cubes_level": 0.5,
+          "padding_voxels": 3,
+          "solid_volume_mm3": 182797.0,
+          "solid_voxels": 182797,
+          "surface_voxels": 154628,
+          "voxel_dimensions": [
+            105,
+            146,
+            165
+          ],
+          "voxel_origin_mm": [
+            -39.985260009765625,
+            -3.7410653233528137,
+            -39.820960998535156
+          ],
+          "voxel_pitch_mm": 1.0
+        },
+        "manifest_topology": {
+          "boundary_edges": 0,
+          "faces": 110712,
+          "nonmanifold_edges": 0,
+          "vertices": 55356
+        },
+        "sdf_statistics": {
+          "resolution": [
+            64,
+            64,
+            64
+          ],
+          "finite_voxels": 262144,
+          "nonfinite_voxels": 0,
+          "negative_voxels": 1815,
+          "zero_voxels": 29265,
+          "positive_voxels": 231064,
+          "negative_fraction": 0.006923675537109375,
+          "zero_fraction": 0.11163711547851562,
+          "positive_fraction": 0.881439208984375,
+          "minimum_signed_distance_m": -0.004465609788894653,
+          "maximum_signed_distance_m": 0.10885211825370789,
+          "minimum_scene_m": [
+            -0.09673450142145157,
+            -0.03250953555107117,
+            -0.1442379653453827
+          ],
+          "maximum_scene_m": [
+            0.021015969454310834,
+            0.12139886151999235,
+            0.03050147066824138
+          ],
+          "voxel_spacing_scene_m": [
+            0.0018690550932660699,
+            0.002442990429699421,
+            0.0027736418414860964
+          ],
+          "voxel_volume_m3": 1.2664680859586497e-08,
+          "estimated_negative_volume_m3": 2.2986395760149492e-05
+        }
+      }
+    ]
+  },
+  "contact_rows": []
+}
