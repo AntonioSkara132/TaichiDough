@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import socket
 import time as wall_time
@@ -7,6 +8,25 @@ from pathlib import Path
 import numpy as np
 import taichi as ti
 from PIL import Image
+
+try:
+    from deformpath_topview import (
+        apply_calibration,
+        calibration_metadata,
+        depth_to_pointcloud as topview_depth_to_pointcloud,
+        format_pointcloud,
+        load_calibration,
+        rasterize_depth,
+    )
+except ImportError:
+    from .deformpath_topview import (
+        apply_calibration,
+        calibration_metadata,
+        depth_to_pointcloud as topview_depth_to_pointcloud,
+        format_pointcloud,
+        load_calibration,
+        rasterize_depth,
+    )
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -41,6 +61,14 @@ CAMERA_VIEWS = {
         "zNear": 0.01,
         "zFar": 2.0,
     },
+    "deformpath_top": {
+        "position": [0.5, 0.8, 0.5],
+        "lookAt": SCENE_CENTER,
+        "up": [0.0, 0.0, -1.0],
+        "fieldOfView": 57.0,
+        "zNear": 0.01,
+        "zFar": 2.0,
+    },
     "side_dough": {
         "position": [1.25, 0.36, 0.5],
         "lookAt": SCENE_CENTER,
@@ -49,6 +77,444 @@ CAMERA_VIEWS = {
         "zFar": 2.0,
     },
 }
+
+
+def _load_torch_tensor(path):
+    try:
+        import torch
+    except ImportError as exc:
+        raise ImportError(f"Loading {path} requires torch because it is not a .npy file.") from exc
+
+    obj = torch.load(path, map_location="cpu")
+    if isinstance(obj, dict):
+        for key in ("sampled_particles_xyz", "particles", "points", "pointcloud", "current_frame"):
+            if key in obj:
+                obj = obj[key]
+                break
+    if hasattr(obj, "detach"):
+        obj = obj.detach().cpu().numpy()
+    return np.asarray(obj)
+
+
+def load_initial_particles(path):
+    path = Path(path)
+    if path.suffix == ".npy":
+        points = np.load(path)
+    else:
+        points = _load_torch_tensor(path)
+
+    points = np.asarray(points, dtype=np.float32)
+    if points.ndim != 2 or points.shape[1] < 3:
+        raise ValueError(f"{path} must contain an array/tensor with shape [N, >=3], got {points.shape}.")
+
+    points = points[:, :3]
+    finite = np.isfinite(points).all(axis=1)
+    points = points[finite]
+    if len(points) == 0:
+        raise ValueError(f"{path} did not contain any finite XYZ points.")
+    return points
+
+
+def particle_array_sha256(points):
+    array = np.ascontiguousarray(np.asarray(points, dtype=np.float32))
+    return hashlib.sha256(array.tobytes(order="C")).hexdigest()
+
+
+def _rigid_matrix(value, name):
+    matrix = np.asarray(value, dtype=np.float64)
+    if matrix.shape != (4, 4) or not np.isfinite(matrix).all():
+        raise ValueError(f"{name} must be a finite 4x4 matrix")
+    if not np.allclose(matrix[3], [0.0, 0.0, 0.0, 1.0], atol=1e-9, rtol=0.0):
+        raise ValueError(f"{name} must have homogeneous last row [0, 0, 0, 1]")
+    rotation = matrix[:3, :3]
+    if not np.allclose(rotation.T @ rotation, np.eye(3), atol=1e-7, rtol=0.0):
+        raise ValueError(f"{name} rotation must be orthonormal")
+    if not np.isclose(np.linalg.det(rotation), 1.0, atol=1e-7, rtol=0.0):
+        raise ValueError(f"{name} rotation determinant must be +1")
+    return matrix
+
+
+def load_tool_geometry(path):
+    geometry_path = Path(path)
+    raw = geometry_path.read_bytes()
+    try:
+        document = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid tool geometry JSON in {geometry_path}") from exc
+    if not isinstance(document, dict) or document.get("schema") != "taichidough/tool-geometry/v1":
+        raise ValueError("Tool geometry must use schema taichidough/tool-geometry/v1")
+    tools = document.get("tools")
+    if not isinstance(tools, list) or len(tools) != 2:
+        raise ValueError("Tool geometry must contain exactly two tools")
+
+    names = []
+    half_extents = []
+    marker_from_collider = []
+    for index, tool in enumerate(tools):
+        if not isinstance(tool, dict):
+            raise ValueError(f"tools[{index}] must be an object")
+        name = tool.get("name")
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError(f"tools[{index}].name must be a nonempty string")
+        extents = np.asarray(tool.get("half_extents_m"), dtype=np.float64)
+        if extents.shape != (3,) or not np.isfinite(extents).all() or np.any(extents <= 0.0):
+            raise ValueError(f"tools[{index}].half_extents_m must contain three positive finite values")
+        transform = _rigid_matrix(tool.get("marker_from_collider"), f"tools[{index}].marker_from_collider")
+        names.append(name.strip())
+        half_extents.append(extents.tolist())
+        marker_from_collider.append(transform.tolist())
+    if len(set(names)) != 2:
+        raise ValueError("Tool geometry names must be unique")
+    return {
+        "schema": "taichidough/tool-geometry/v1",
+        "names": names,
+        "half_extents_m": half_extents,
+        "marker_from_collider": marker_from_collider,
+        "fingerprint": hashlib.sha256(raw).hexdigest(),
+        "source": str(geometry_path.resolve()),
+        "proxy": bool(document.get("proxy", False)),
+    }
+
+
+def legacy_tool_geometry(half_extents, marker_offset):
+    extents = np.asarray(half_extents, dtype=np.float64)
+    offset = np.asarray(marker_offset, dtype=np.float64)
+    if extents.shape != (3,) or not np.isfinite(extents).all() or np.any(extents <= 0.0):
+        raise ValueError("Tool half-extents must contain three positive finite values")
+    if offset.shape != (3,) or not np.isfinite(offset).all():
+        raise ValueError("Tool marker offset must contain three finite values")
+    transform = np.eye(4, dtype=np.float64)
+    transform[:3, 3] = offset
+    result = {
+        "schema": "taichidough/tool-geometry/v1",
+        "names": ["tool_0", "tool_1"],
+        "half_extents_m": [extents.tolist(), extents.tolist()],
+        "marker_from_collider": [transform.tolist(), transform.tolist()],
+        "source": "legacy_cli",
+        "proxy": True,
+    }
+    payload = json.dumps(result, sort_keys=True, separators=(",", ":")).encode()
+    result["fingerprint"] = hashlib.sha256(payload).hexdigest()
+    return result
+
+
+def resolve_tool_geometry(geometry_path=None, half_extents=None, marker_offset=None):
+    if geometry_path is not None:
+        if half_extents is not None or marker_offset is not None:
+            raise ValueError("--tool-geometry cannot be combined with --tool-half-extents or --tool-marker-offset")
+        return load_tool_geometry(geometry_path)
+    return legacy_tool_geometry(
+        (0.05, 0.05, 0.05) if half_extents is None else half_extents,
+        (0.0, 0.0, 0.0) if marker_offset is None else marker_offset,
+    )
+
+
+def align_tool_geometry(tool_geometry, expected_names):
+    names = [str(name) for name in expected_names]
+    if len(names) != 2 or len(set(names)) != 2 or any(not name for name in names):
+        raise ValueError("Captured replay must contain two uniquely named tool streams")
+    result = dict(tool_geometry)
+    raw_names = list(result.get("names", []))
+    if result.get("source") == "legacy_cli":
+        order = [0, 1]
+    else:
+        if len(raw_names) != 2 or set(raw_names) != set(names):
+            raise ValueError(f"Tool geometry names {raw_names} do not match pose streams {names}")
+        order = [raw_names.index(name) for name in names]
+    result["names"] = names
+    result["half_extents_m"] = [result["half_extents_m"][index] for index in order]
+    result["marker_from_collider"] = [result["marker_from_collider"][index] for index in order]
+    if result.get("source") == "legacy_cli":
+        fingerprint_payload = {key: value for key, value in result.items() if key != "fingerprint"}
+        payload = json.dumps(fingerprint_payload, sort_keys=True, separators=(",", ":")).encode()
+        result["fingerprint"] = hashlib.sha256(payload).hexdigest()
+    return result
+
+
+def resolve_sim_tool_half_extents(args):
+    legacy = getattr(args, "tool_half_extents", None)
+    if legacy is None:
+        legacy = (0.05, 0.05, 0.05)
+    by_tool = getattr(args, "tool_half_extents_by_tool", None)
+    if by_tool is None:
+        by_tool = [legacy, legacy]
+    values = np.asarray(by_tool, dtype=np.float64)
+    if values.shape != (2, 3) or not np.isfinite(values).all() or np.any(values <= 0.0):
+        raise ValueError("Simulator tool half-extents must contain two positive finite XYZ vectors")
+    return tuple(tuple(float(value) for value in row) for row in values)
+
+
+def _positive_finite(value, name):
+    try:
+        number = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{name} must be positive and finite") from exc
+    if not np.isfinite(number) or number <= 0.0:
+        raise ValueError(f"{name} must be positive and finite")
+    return number
+
+
+def normalize_plane(plane):
+    if isinstance(plane, dict):
+        if "coefficients" in plane:
+            values = plane["coefficients"]
+        elif "normal" in plane:
+            normal = np.asarray(plane["normal"], dtype=np.float64)
+            if "point" in plane:
+                point = np.asarray(plane["point"], dtype=np.float64)
+                values = [*normal, -float(np.dot(normal, point))]
+            else:
+                offset = plane.get("offset", plane.get("d", plane.get("distance")))
+                if offset is None:
+                    raise ValueError("Floor plane with a normal requires offset, d, distance, or point")
+                values = [*normal, offset]
+        else:
+            values = [plane.get(key) for key in ("a", "b", "c", "d")]
+    else:
+        values = plane
+    coefficients = np.asarray(values, dtype=np.float64)
+    if coefficients.shape != (4,) or not np.isfinite(coefficients).all():
+        raise ValueError("Floor plane must contain four finite coefficients")
+    normal_norm = float(np.linalg.norm(coefficients[:3]))
+    if normal_norm <= 1e-12:
+        raise ValueError("Floor plane normal must be nonzero")
+    return coefficients / normal_norm
+
+
+def floor_y_from_plane(plane, tilt_tolerance=1e-6):
+    normalized = normalize_plane(plane)
+    if abs(normalized[0]) > tilt_tolerance or abs(normalized[2]) > tilt_tolerance:
+        raise ValueError("The reconstructed floor plane is tilted and cannot be used by the constant-Y collider")
+    if abs(abs(normalized[1]) - 1.0) > tilt_tolerance:
+        raise ValueError("The reconstructed floor plane is incompatible with the constant-Y collider")
+    floor_y = -normalized[3] / normalized[1]
+    if not np.isfinite(floor_y):
+        raise ValueError("The reconstructed floor height is not finite")
+    return float(floor_y)
+
+
+def compute_mass_properties(
+    particle_count,
+    grid_size,
+    density,
+    object_volume_m3=None,
+    object_mass_kg=None,
+):
+    if int(particle_count) != particle_count or particle_count <= 0:
+        raise ValueError("Particle count must be a positive integer")
+    if int(grid_size) != grid_size or grid_size <= 0:
+        raise ValueError("Grid size must be a positive integer")
+    density = _positive_finite(density, "Density")
+
+    if object_volume_m3 is None:
+        if object_mass_kg is not None:
+            raise ValueError("--object-mass-kg requires reconstructed object volume metadata")
+        particle_volume = (0.5 / float(grid_size)) ** 3
+        total_volume = particle_volume * int(particle_count)
+        total_mass = density * total_volume
+        mass_source = "grid_derived_particle_volume_and_density"
+    else:
+        total_volume = _positive_finite(object_volume_m3, "Object volume")
+        if object_mass_kg is None:
+            total_mass = density * total_volume
+            mass_source = "reconstructed_volume_and_density"
+        else:
+            total_mass = _positive_finite(object_mass_kg, "Object mass")
+            density = total_mass / total_volume
+            mass_source = "reconstructed_volume_and_measured_mass"
+        particle_volume = total_volume / int(particle_count)
+
+    particle_mass = total_mass / int(particle_count)
+    for value, name in (
+        (total_volume, "Object volume"),
+        (density, "Density"),
+        (total_mass, "Total mass"),
+        (particle_volume, "Particle volume"),
+        (particle_mass, "Particle mass"),
+    ):
+        _positive_finite(value, name)
+    return {
+        "mass_source": mass_source,
+        "object_volume_m3": float(total_volume),
+        "density_kg_m3": float(density),
+        "total_mass_kg": float(total_mass),
+        "particle_volume_m3": float(particle_volume),
+        "particle_mass_kg": float(particle_mass),
+        "particle_count": int(particle_count),
+        "grid_size": int(grid_size),
+    }
+
+
+def validate_reconstructed_particle_options(axis_map=None, fit=None, scale=None, offset=None):
+    if axis_map not in (None, "xyz"):
+        raise ValueError("Reconstructed scene-coordinate particles cannot use an axis-map transform")
+    if fit not in (None, "none"):
+        raise ValueError("Reconstructed scene-coordinate particles cannot use a fitting transform")
+    if scale is not None and (not np.isfinite(scale) or not np.isclose(scale, 1.0)):
+        raise ValueError("Reconstructed scene-coordinate particles cannot use an additional scale")
+    if offset is not None:
+        offset_array = np.asarray(offset, dtype=np.float64)
+        if offset_array.shape != (3,) or not np.isfinite(offset_array).all() or not np.allclose(offset_array, 0.0):
+            raise ValueError("Reconstructed scene-coordinate particles cannot use an additional offset")
+
+
+def _metadata_output_matches(metadata_path, recorded_path, actual_path):
+    if not recorded_path:
+        return True
+    recorded = Path(recorded_path).expanduser()
+    candidates = [recorded.resolve()]
+    if not recorded.is_absolute():
+        candidates.append((Path(metadata_path).resolve().parent / recorded).resolve())
+    actual = Path(actual_path).resolve()
+    return actual in candidates
+
+
+def load_reconstruction_metadata(metadata_path, particles_path, loaded_particles, calibration=None):
+    metadata_path = Path(metadata_path)
+    raw = metadata_path.read_bytes()
+    try:
+        metadata = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid reconstruction metadata JSON in {metadata_path}") from exc
+    if not isinstance(metadata, dict):
+        raise ValueError("Reconstruction metadata must contain a JSON object")
+    schema = str(metadata.get("schema", ""))
+    if schema != "voxel_dough_reconstruction/v2":
+        raise ValueError("Scene-coordinate initialization requires voxel_dough_reconstruction/v2 metadata")
+
+    object_volume = _positive_finite(metadata.get("object_volume_m3"), "Reconstructed object volume")
+    voxel_size = _positive_finite(metadata.get("voxel_size"), "Reconstruction voxel size")
+    voxel_count = metadata.get("voxel_count", metadata.get("voxel_centers"))
+    if isinstance(voxel_count, bool) or not isinstance(voxel_count, int) or voxel_count <= 0:
+        raise ValueError("Reconstruction voxel count must be a positive integer")
+    expected_volume = voxel_count * voxel_size**3
+    if not np.isclose(object_volume, expected_volume, rtol=1e-9, atol=1e-15):
+        raise ValueError("Reconstructed object volume is inconsistent with voxel count and voxel size")
+    sampled_count = metadata.get("sampled_particles")
+    if sampled_count is not None and sampled_count != len(loaded_particles):
+        raise ValueError("Initial particle count does not match reconstruction metadata")
+
+    fill_info = metadata.get("fill") or {}
+    if fill_info.get("mode") != "floor":
+        raise ValueError("Scene-coordinate volume initialization requires floor-mode reconstruction metadata")
+    floor_plane = fill_info.get("floor_plane_scene", metadata.get("floor_plane_scene"))
+    if floor_plane is None:
+        raise ValueError("Reconstruction metadata does not contain a scene floor plane")
+    normalized_plane = normalize_plane(floor_plane)
+
+    calibration_info = metadata.get("calibration") or {}
+    calibration_schema = metadata.get("calibration_schema") or calibration_info.get("schema")
+    schema_text = str(calibration_schema).lower()
+    if not (calibration_info.get("is_metric") is True and schema_text.endswith("/v2")):
+        raise ValueError("Reconstruction metadata must identify a metric v2 calibration")
+    scene_frame = calibration_info.get("scene_frame")
+    particle_frame = (metadata.get("array_frames") or {}).get("sampled_particles_xyz")
+    if not scene_frame:
+        scene_frame = particle_frame
+    if not particle_frame or particle_frame != scene_frame:
+        raise ValueError("Sampled particles are not identified as scene-coordinate data")
+
+    recorded_output = (metadata.get("outputs") or {}).get("sampled_particles_xyz")
+    if recorded_output and not _metadata_output_matches(metadata_path, recorded_output, particles_path):
+        raise ValueError("Initial particle path does not match reconstruction metadata")
+    expected_hash = metadata.get("sampled_particles_sha256")
+    actual_hash = particle_array_sha256(loaded_particles)
+    if expected_hash and expected_hash != actual_hash:
+        raise ValueError("Initial particle SHA-256 does not match reconstruction metadata")
+
+    calibration_fingerprint = metadata.get("calibration_fingerprint") or calibration_info.get("fingerprint")
+    if calibration is not None and calibration_fingerprint:
+        if getattr(calibration, "fingerprint", None) != calibration_fingerprint:
+            raise ValueError("Initial particle calibration fingerprint does not match reconstruction metadata")
+    return {
+        "metadata": metadata,
+        "metadata_path": str(metadata_path.resolve()),
+        "metadata_sha256": hashlib.sha256(raw).hexdigest(),
+        "particle_sha256": actual_hash,
+        "object_volume_m3": object_volume,
+        "floor_plane_scene": normalized_plane.tolist(),
+        "floor_y": floor_y_from_plane(normalized_plane),
+        "scene_frame": scene_frame,
+        "calibration_fingerprint": calibration_fingerprint,
+    }
+
+
+def parse_axis_map(axis_map):
+    compact = axis_map.replace(",", "").replace(" ", "").lower()
+    result = []
+    i = 0
+    while i < len(compact):
+        sign = 1.0
+        if compact[i] == "-":
+            sign = -1.0
+            i += 1
+        elif compact[i] == "+":
+            i += 1
+        if i >= len(compact) or compact[i] not in "xyz":
+            raise ValueError(f"Invalid --initial-particles-axis-map '{axis_map}'. Use values like xyz, xzy, x-z-y.")
+        result.append((sign, "xyz".index(compact[i])))
+        i += 1
+
+    if len(result) != 3:
+        raise ValueError(f"Invalid --initial-particles-axis-map '{axis_map}'. It must define three destination axes.")
+    if sorted(index for _, index in result) != [0, 1, 2]:
+        raise ValueError(f"Invalid --initial-particles-axis-map '{axis_map}'. Each source axis must be used once.")
+    return result
+
+
+def map_initial_particle_axes(points, axis_map):
+    mapping = parse_axis_map(axis_map)
+    mapped = np.empty_like(points[:, :3], dtype=np.float32)
+    for dest_axis, (sign, src_axis) in enumerate(mapping):
+        mapped[:, dest_axis] = sign * points[:, src_axis]
+    return mapped
+
+
+def fit_initial_particles_to_scene(points, args, calibration=None):
+    if calibration is not None:
+        if args.initial_particles_fit != "none" or args.initial_particles_raw_scene_coordinates:
+            raise ValueError(
+                "--initial-particles-calibration requires --initial-particles-fit none and cannot use "
+                "--initial-particles-raw-scene-coordinates."
+            )
+        mapped = apply_calibration(points, calibration)
+        if not np.isfinite(mapped).all() or np.any(mapped <= 0.0) or np.any(mapped >= 1.0):
+            raise ValueError("Calibrated initial particles must be finite and strictly inside the unit Taichi scene.")
+        return mapped.astype(np.float32, copy=False)
+
+    points = map_initial_particle_axes(points, args.initial_particles_axis_map)
+    if args.initial_particles_raw_scene_coordinates:
+        return points.astype(np.float32, copy=False)
+
+    mins = points.min(axis=0)
+    maxs = points.max(axis=0)
+    source_center = 0.5 * (mins + maxs)
+    centered = points - source_center
+    half_extent = np.maximum(0.5 * (maxs - mins), 1e-6)
+    target_half_extent = np.asarray(DOUGH_RADIUS, dtype=np.float32)
+
+    if args.initial_particles_fit == "anisotropic":
+        scale = target_half_extent / half_extent
+    elif args.initial_particles_fit == "isotropic":
+        scale = np.full(3, np.min(target_half_extent / half_extent), dtype=np.float32)
+    else:
+        scale = np.ones(3, dtype=np.float32)
+
+    offset = np.asarray(args.initial_particles_offset, dtype=np.float32)
+    scene_center = np.asarray(SCENE_CENTER, dtype=np.float32) + offset
+    return (scene_center + centered * scale * args.initial_particles_scale).astype(np.float32)
+
+
+def resize_initial_particles(points, count, seed):
+    if count == len(points):
+        return points.astype(np.float32, copy=False)
+
+    rng = np.random.default_rng(seed)
+    if count < len(points):
+        indices = rng.choice(len(points), size=count, replace=False)
+    else:
+        indices = rng.choice(len(points), size=count, replace=True)
+    return points[indices].astype(np.float32, copy=False)
 
 
 def build_sim(args):
@@ -61,9 +527,11 @@ def build_sim(args):
     inv_dx = float(n_grid)
     dt = args.dt
 
-    p_vol = (dx * 0.5) ** dim
-    p_rho = args.density
-    p_mass = p_vol * p_rho
+    mass_properties = getattr(args, "mass_properties", None)
+    if mass_properties is None:
+        mass_properties = compute_mass_properties(n_particles, n_grid, args.density)
+    p_vol = mass_properties["particle_volume_m3"]
+    p_mass = mass_properties["particle_mass_kg"]
     E = args.youngs_modulus
     nu = args.poisson_ratio
     mu_0 = E / (2 * (1 + nu))
@@ -91,7 +559,10 @@ def build_sim(args):
     jp_hardening = args.jp_hardening
     jp_min = args.jp_min
     jp_max = args.jp_max
-    scripted_tools = 0 if args.ros_control else 1
+    scripted_tools = 0 if args.ros_control or getattr(args, "replay_episode", None) else 1
+    tool_half_by_tool = resolve_sim_tool_half_extents(args)
+    tool_half_0 = tool_half_by_tool[0]
+    tool_half_1 = tool_half_by_tool[1]
     scene_center_x = SCENE_CENTER[0]
     scene_center_y = SCENE_CENTER[1]
     scene_center_z = SCENE_CENTER[2]
@@ -114,6 +585,7 @@ def build_sim(args):
     tool_center = ti.Vector.field(dim, dtype=ti.f32, shape=2)
     tool_quat = ti.Vector.field(4, dtype=ti.f32, shape=2)
     tool_velocity = ti.Vector.field(dim, dtype=ti.f32, shape=2)
+    tool_angular_velocity = ti.Vector.field(dim, dtype=ti.f32, shape=2)
 
     @ti.func
     def quat_to_matrix(q):
@@ -130,6 +602,9 @@ def build_sim(args):
             tool_center[i] = ti.Vector([poses[i, 0], poses[i, 1], poses[i, 2]])
             tool_quat[i] = ti.Vector([poses[i, 3], poses[i, 4], poses[i, 5], poses[i, 6]])
             tool_velocity[i] = ti.Vector([velocities[i, 0], velocities[i, 1], velocities[i, 2]])
+            tool_angular_velocity[i] = ti.Vector([0.0, 0.0, 0.0])
+            if velocities.shape[1] >= 6:
+                tool_angular_velocity[i] = ti.Vector([velocities[i, 3], velocities[i, 4], velocities[i, 5]])
 
     @ti.func
     def tool_pose_and_velocity(tool_id, t):
@@ -158,13 +633,14 @@ def build_sim(args):
 
     @ti.func
     def box_collision_velocity_and_normal(pos, t):
-        inflated_half = ti.Vector([0.05, 0.05, 0.05]) + tool_contact_padding
-
         hit = 0
         normal = ti.Vector([0.0, 0.0, 0.0])
         collider_v = ti.Vector([0.0, 0.0, 0.0])
 
         for k in ti.static(range(2)):
+            inflated_half = ti.Vector([tool_half_0[0], tool_half_0[1], tool_half_0[2]]) + tool_contact_padding
+            if ti.static(k == 1):
+                inflated_half = ti.Vector([tool_half_1[0], tool_half_1[1], tool_half_1[2]]) + tool_contact_padding
             center, cvel = tool_pose_and_velocity(k, t)
             rot = quat_to_matrix(tool_quat[k])
             q = rot.transpose() @ (pos - center)
@@ -190,7 +666,7 @@ def build_sim(args):
 
                 hit = 1
                 normal = rot @ local_normal
-                collider_v = cvel
+                collider_v = cvel + tool_angular_velocity[k].cross(pos - center)
 
         return hit, normal, collider_v
 
@@ -198,9 +674,11 @@ def build_sim(args):
     def project_particle_out_of_tools(pos, vel, t):
         new_pos = pos
         new_vel = vel
-        inflated_half = ti.Vector([0.05, 0.05, 0.05]) + tool_contact_padding
 
         for k in ti.static(range(2)):
+            inflated_half = ti.Vector([tool_half_0[0], tool_half_0[1], tool_half_0[2]]) + tool_contact_padding
+            if ti.static(k == 1):
+                inflated_half = ti.Vector([tool_half_1[0], tool_half_1[1], tool_half_1[2]]) + tool_contact_padding
             center, cvel = tool_pose_and_velocity(k, t)
             rot = quat_to_matrix(tool_quat[k])
             q = rot.transpose() @ (new_pos - center)
@@ -240,6 +718,7 @@ def build_sim(args):
                 normal = rot @ local_normal
                 new_pos = center + rot @ q
 
+                cvel += tool_angular_velocity[k].cross(new_pos - center)
                 rel_v = new_vel - cvel
                 vn = rel_v.dot(normal)
                 if vn < 0.0:
@@ -288,7 +767,6 @@ def build_sim(args):
 
     @ti.kernel
     def update_tool_visuals(time: ti.f32):
-        half = ti.Vector([0.05, 0.05, 0.05])
         motion_time = ti.max(time - tool_motion_start, 0.0)
         progress = 0.0
         if time >= tool_motion_start:
@@ -304,10 +782,12 @@ def build_sim(args):
                 iy / (tool_vis_resolution - 1),
                 iz / (tool_vis_resolution - 1),
             ])
-            local = (uvw * 2.0 - 1.0) * half
             tool_id = 0
+            half = ti.Vector([tool_half_0[0], tool_half_0[1], tool_half_0[2]])
             if p >= tool_vis_count // 2:
                 tool_id = 1
+                half = ti.Vector([tool_half_1[0], tool_half_1[1], tool_half_1[2]])
+            local = (uvw * 2.0 - 1.0) * half
 
             center = tool_center[tool_id]
             if scripted_tools == 1:
@@ -452,54 +932,86 @@ def compute_camera_basis(position, look_at):
     return right, corrected_up, forward
 
 
-def render_particle_depth(points, width, height, view_name, config, output_dir, frame_idx):
-    right, up, forward = compute_camera_basis(config["position"], config["lookAt"])
-    camera_pos = np.asarray(config["position"], dtype=np.float32)
-    rel = points - camera_pos[None, :]
-    cam_x = rel @ right
-    cam_y = rel @ up
-    cam_z = rel @ forward
-
-    f = height / (2.0 * np.tan(np.radians(config["fieldOfView"]) / 2.0))
-    u = (f * cam_x / cam_z + width * 0.5).astype(np.int32)
-    v = (height * 0.5 - f * cam_y / cam_z).astype(np.int32)
-
-    valid = (
-        (cam_z > config["zNear"])
-        & (cam_z < config["zFar"])
-        & (u >= 0)
-        & (u < width)
-        & (v >= 0)
-        & (v < height)
+def render_particle_depth(points, width, height, view_name, config, output_dir, frame_idx, splat_radius=0):
+    depth, nearest_indices, right, up, forward, camera_pos = rasterize_depth(
+        points, width, height, config, splat_radius=splat_radius
     )
-
-    depth = np.full((height, width), config["zFar"], dtype=np.float32)
-    for px, py, z in zip(u[valid], v[valid], cam_z[valid]):
-        depth[py, px] = min(depth[py, px], z)
-
-    finite = depth < config["zFar"]
+    finite = nearest_indices >= 0
     normalized = np.zeros_like(depth, dtype=np.uint8)
     if finite.any():
-        d = depth[finite]
-        normalized[finite] = ((1.0 - (d - d.min()) / max(d.max() - d.min(), 1e-6)) * 255).astype(np.uint8)
+        values = depth[finite]
+        normalized[finite] = ((1.0 - (values - values.min()) / max(values.max() - values.min(), 1e-6)) * 255).astype(np.uint8)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     stem = f"{view_name}_depth_{frame_idx:06d}"
-    np.save(output_dir / f"{stem}.npy", depth)
+    depth_path = output_dir / f"{stem}.npy"
+    np.save(depth_path, depth)
     Image.fromarray(normalized, "L").save(output_dir / f"{stem}.png")
-
+    camera_metadata = {key: value for key, value in config.items()}
     return {
         "name": view_name,
-        "depth_array": str(output_dir / f"{stem}.npy"),
+        "depth_array": str(depth_path),
         "depth_image": str(output_dir / f"{stem}.png"),
-        "position": config["position"],
-        "lookAt": config["lookAt"],
-        "fieldOfView": config["fieldOfView"],
-        "zNear": config["zNear"],
-        "zFar": config["zFar"],
+        **camera_metadata,
         "width": width,
         "height": height,
+        "splat_radius": splat_radius,
+        "_depth": depth,
+        "_nearest_indices": nearest_indices,
+        "_right": right,
+        "_up": up,
+        "_forward": forward,
+        "_camera_pos": camera_pos,
     }
+
+
+def depth_to_pointcloud(
+    depth,
+    nearest_indices,
+    right,
+    up,
+    forward,
+    camera_pos,
+    width,
+    height,
+    config,
+    max_points,
+    pointcloud_format,
+    pointcloud_frame="world",
+):
+    visible = nearest_indices >= 0
+    pixel_y, pixel_x = np.nonzero(visible)
+    if pixel_x.size == 0:
+        columns = 7 if pointcloud_format == "deformpath7" else 3
+        return np.empty((0, columns), dtype=np.float32)
+
+    z = depth[pixel_y, pixel_x]
+    f = height / (2.0 * np.tan(np.radians(config["fieldOfView"]) / 2.0))
+    cam_x = (pixel_x.astype(np.float32) + 0.5 - width * 0.5) * z / f
+    cam_y = (height * 0.5 - (pixel_y.astype(np.float32) + 0.5)) * z / f
+    if pointcloud_frame == "world":
+        xyz = (
+            camera_pos[None, :]
+            + cam_x[:, None] * right[None, :]
+            + cam_y[:, None] * up[None, :]
+            + z[:, None] * forward[None, :]
+        ).astype(np.float32)
+    elif pointcloud_frame == "camera":
+        xyz = np.stack([cam_x, cam_y, z], axis=1).astype(np.float32)
+    else:
+        raise ValueError(f"Unsupported depth pointcloud frame: {pointcloud_frame}")
+
+    if max_points > 0 and xyz.shape[0] > max_points:
+        selected = np.linspace(0, xyz.shape[0] - 1, max_points).round().astype(np.int64)
+        xyz = xyz[selected]
+
+    if pointcloud_format == "xyz":
+        return xyz
+    if pointcloud_format == "deformpath7":
+        extra = np.zeros((xyz.shape[0], 4), dtype=np.float32)
+        extra[:, 2] = 1.0
+        return np.concatenate([xyz, extra], axis=1)
+    raise ValueError(f"Unsupported depth pointcloud format: {pointcloud_format}")
 
 
 def normalize_quaternion(quaternion):
@@ -648,13 +1160,59 @@ class DoughCenterTransmitter:
         self.sock.close()
 
 
-def save_frame_outputs(points, args, views, run_dir, frame_idx, step):
-    np.save(run_dir / f"particles_{frame_idx:06d}.npy", points)
-    frame = {"frame": frame_idx, "step": step, "views": []}
+def save_frame_outputs(points, args, views, run_dir, frame_idx, step, view_configs, completed_substeps=None):
+    if completed_substeps is None:
+        completed_substeps = step * args.substeps_per_frame
+    particles_path = run_dir / f"particles_{frame_idx:06d}.npy"
+    np.save(particles_path, points)
+    frame = {
+        "frame": frame_idx, "step": step, "particles": str(particles_path.resolve()), "views": [],
+        "simulation_step": completed_substeps, "completed_substeps": completed_substeps,
+        "sim_time_s": completed_substeps * args.dt, "initial_state": completed_substeps == 0,
+    }
     for view_name in views:
-        frame["views"].append(
-            render_particle_depth(points, args.width, args.height, view_name, CAMERA_VIEWS[view_name], run_dir, frame_idx)
+        config = view_configs[view_name]
+        rendered = render_particle_depth(
+            points,
+            args.depth_width if args.save_depth_pointclouds else args.width,
+            args.depth_height if args.save_depth_pointclouds else args.height,
+            view_name,
+            config,
+            run_dir,
+            frame_idx,
+            args.depth_splat_radius if args.save_depth_pointclouds else 0,
         )
+        if args.save_depth_pointclouds:
+            pointcloud = topview_depth_to_pointcloud(
+                rendered.pop("_depth"),
+                rendered.pop("_nearest_indices"),
+                rendered.pop("_right"),
+                rendered.pop("_up"),
+                rendered.pop("_forward"),
+                rendered.pop("_camera_pos"),
+                config,
+                max_points=args.depth_pointcloud_max_points,
+                frame=args.depth_pointcloud_frame,
+            )
+            formatted = format_pointcloud(pointcloud, args.depth_pointcloud_format)
+            pointcloud_path = run_dir / f"{view_name}_pointcloud_{frame_idx:06d}.npy"
+            np.save(pointcloud_path, formatted)
+            rendered["pointcloud_array"] = str(pointcloud_path)
+            rendered["pointcloud_frame"] = args.depth_pointcloud_frame
+            rendered["pointcloud_format"] = args.depth_pointcloud_format
+            rendered["pointcloud_count"] = int(len(formatted))
+            if args.depth_pointcloud_save_pt:
+                try:
+                    import torch
+                except ImportError as exc:
+                    raise ImportError("--depth-pointcloud-save-pt requires torch.") from exc
+                pointcloud_pt_path = pointcloud_path.with_suffix(".pt")
+                torch.save(torch.from_numpy(formatted), pointcloud_pt_path)
+                rendered["pointcloud_tensor"] = str(pointcloud_pt_path)
+        else:
+            for key in ("_depth", "_nearest_indices", "_right", "_up", "_forward", "_camera_pos"):
+                rendered.pop(key)
+        frame["views"].append(rendered)
     return frame
 
 
@@ -693,7 +1251,7 @@ def create_video_writer(output_path, fps, frame_size):
 
 def main():
     parser = argparse.ArgumentParser(description="Taichi MLS-MPM viscoelastic dough scene prototype.")
-    parser.add_argument("--particles", type=int, default=24000)
+    parser.add_argument("--particles", type=int, default=None)
     parser.add_argument("--grid", type=int, default=48)
     parser.add_argument("--steps", type=int, default=240)
     parser.add_argument("--dt", type=float, default=2e-4)
@@ -703,10 +1261,25 @@ def main():
     parser.add_argument("--height", type=int, default=600)
     parser.add_argument("--view", choices=list(CAMERA_VIEWS), action="append")
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
+    parser.add_argument("--save-initial-frame", action="store_true", help="Save a step-0 frame immediately after initialization.")
+    parser.add_argument("--save-depth-pointclouds", action="store_true", help="Export z-buffered virtual depth point clouds with saved frames.")
+    parser.add_argument("--depth-pointcloud-save-pt", action="store_true", help="Also write exported virtual point clouds as Torch tensors.")
+    parser.add_argument("--depth-pointcloud-frame", choices=("world", "camera", "camera_optical"), default="camera")
+    parser.add_argument("--depth-pointcloud-format", choices=("xyz", "deformpath7"), default="deformpath7")
+    parser.add_argument("--depth-pointcloud-max-points", type=int, default=0, help="Maximum points per exported cloud; 0 keeps all visible pixels.")
+    parser.add_argument("--depth-width", type=int, default=640)
+    parser.add_argument("--depth-height", type=int, default=480)
+    parser.add_argument("--depth-splat-radius", type=int, default=3, help="Pixel radius for virtual depth splats.")
     parser.add_argument("--youngs-modulus", type=float, default=2000)
     parser.add_argument("--poisson-ratio", type=float, default=0.35)
     parser.add_argument("--viscosity", type=float, default=2.5)
     parser.add_argument("--density", type=float, default=1100.0)
+    parser.add_argument(
+        "--object-mass-kg",
+        type=float,
+        default=None,
+        help="Independent object mass measurement. Requires reconstructed volume metadata and determines density.",
+    )
     parser.add_argument("--gravity", type=float, default=-9.81)
     parser.add_argument("--floor-y", type=float, default=0.20)
     parser.add_argument("--floor-friction", type=float, default=0.7)
@@ -715,6 +1288,31 @@ def main():
         type=float,
         default=0.0,
         help="Normal bounce kept at floor impact. 0 removes downward velocity, 1 is fully elastic bounce.",
+    )
+    parser.add_argument("--replay-episode", type=Path, help="Replay captured tools on simulation time and export at observation timestamps (headless).")
+    parser.add_argument("--replay-start-frame", type=int, default=0)
+    parser.add_argument("--replay-end-frame", type=int, default=None, help="Inclusive retained frame index; defaults to the last observation. --steps is ignored for replay.")
+    parser.add_argument("--replay-stride", type=int, default=1, help="Observation export stride; tool interpolation still uses every captured pose.")
+    parser.add_argument("--replay-max-gap", type=float, default=0.1, help="Largest allowed tool interpolation gap in seconds.")
+    parser.add_argument(
+        "--tool-geometry",
+        type=Path,
+        default=None,
+        help="Two-tool collider geometry JSON using schema taichidough/tool-geometry/v1.",
+    )
+    parser.add_argument(
+        "--tool-half-extents",
+        nargs=3,
+        type=float,
+        default=None,
+        help="Legacy shared proxy half-extents in scene metres. Defaults to 0.05 m per axis.",
+    )
+    parser.add_argument(
+        "--tool-marker-offset",
+        nargs=3,
+        type=float,
+        default=None,
+        help="Legacy shared marker-local offset to proxy center in source metres. Defaults to zero.",
     )
     parser.add_argument("--tool-close-time", type=float, default=0.04)
     parser.add_argument("--tool-motion-start", type=float, default=1.0)
@@ -799,7 +1397,71 @@ def main():
     )
     parser.add_argument("--ros-tool-max-vel", type=float, default=1.0)
     parser.add_argument("--publish-dough-center", action="store_true", help="Publish particle mean center over UDP.", default=True)
+    parser.add_argument(
+        "--no-publish-dough-center",
+        action="store_false",
+        dest="publish_dough_center",
+        help="Disable UDP publishing of the particle mean center.",
+    )
     parser.add_argument("--dough-center-port", type=int, default=5010)
+    parser.add_argument(
+        "--initial-particles",
+        type=Path,
+        default=None,
+        help="Initialize dough particle positions from a .npy or .pt file with shape [N, >=3].",
+    )
+    parser.add_argument(
+        "--initial-particles-metadata",
+        type=Path,
+        default=None,
+        help="Reconstruction metadata for scene-coordinate initial particles and conserved object volume.",
+    )
+    parser.add_argument(
+        "--initial-particles-calibration",
+        type=Path,
+        default=None,
+        help="Calibration JSON used for camera and replay geometry. Reconstructed particles are not transformed again.",
+    )
+    parser.add_argument(
+        "--initial-particles-axis-map",
+        type=str,
+        default=None,
+        help=(
+            "Source axes used for destination Taichi x,y,z. Legacy initialization defaults to xzy; "
+            "reconstruction metadata defaults to xyz and rejects non-identity maps."
+        ),
+    )
+    parser.add_argument(
+        "--initial-particles-fit",
+        choices=["anisotropic", "isotropic", "none"],
+        default=None,
+        help="How to scale loaded particles into the current dough bounding box. Legacy initialization defaults to anisotropic.",
+    )
+    parser.add_argument(
+        "--initial-particles-scale",
+        type=float,
+        default=None,
+        help="Extra scale multiplier applied after fitting loaded particles. Defaults to 1.",
+    )
+    parser.add_argument(
+        "--initial-particles-offset",
+        type=float,
+        nargs=3,
+        default=None,
+        metavar=("DX", "DY", "DZ"),
+        help="Scene-coordinate offset added after fitting loaded particles. Defaults to zero.",
+    )
+    parser.add_argument(
+        "--initial-particles-raw-scene-coordinates",
+        action="store_true",
+        help="Use loaded XYZ directly as Taichi scene coordinates, only applying the axis map.",
+    )
+    parser.add_argument(
+        "--initial-particles-seed",
+        type=int,
+        default=0,
+        help="Seed used when --particles requires subsampling or repeating loaded particles.",
+    )
     parser.add_argument(
         "--timing-report-interval",
         type=float,
@@ -807,16 +1469,148 @@ def main():
         help="Wall-clock seconds between sim/real speed reports. 0 disables reports.",
     )
     args = parser.parse_args()
+    if args.depth_pointcloud_max_points < 0 or args.depth_splat_radius < 0:
+        raise ValueError("Depth pointcloud limits and splat radius must be non-negative")
+    if not np.isfinite(args.dt) or args.dt <= 0 or min(args.substeps_per_frame, args.gui_fps_substeps, args.save_every) <= 0 or args.steps < 0:
+        raise ValueError("dt, substeps-per-frame, gui-fps-substeps and save-every must be positive; steps cannot be negative")
+    tool_geometry = resolve_tool_geometry(
+        args.tool_geometry,
+        args.tool_half_extents,
+        args.tool_marker_offset,
+    )
+    args.tool_half_extents_by_tool = tool_geometry["half_extents_m"]
+    args.tool_marker_from_collider = tool_geometry["marker_from_collider"]
+    if tool_geometry["source"] == "legacy_cli":
+        args.tool_half_extents = tuple(tool_geometry["half_extents_m"][0])
+        args.tool_marker_offset = tuple(
+            float(value) for value in np.asarray(tool_geometry["marker_from_collider"][0])[:3, 3]
+        )
+    if args.initial_particles_metadata is not None and args.initial_particles is None:
+        raise ValueError("--initial-particles-metadata requires --initial-particles")
+
+    calibration = load_calibration(args.initial_particles_calibration) if args.initial_particles_calibration else None
+    reconstruction_info = None
+    initial_particles = None
+    if args.initial_particles is not None:
+        loaded_particles = load_initial_particles(args.initial_particles)
+        if args.initial_particles_metadata is not None:
+            validate_reconstructed_particle_options(
+                args.initial_particles_axis_map,
+                args.initial_particles_fit,
+                args.initial_particles_scale,
+                args.initial_particles_offset,
+            )
+            reconstruction_info = load_reconstruction_metadata(
+                args.initial_particles_metadata,
+                args.initial_particles,
+                loaded_particles,
+                calibration,
+            )
+            if np.any(loaded_particles <= 0.0) or np.any(loaded_particles >= 1.0):
+                raise ValueError("Reconstructed scene-coordinate particles must lie strictly inside the unit Taichi scene")
+            fitted_particles = loaded_particles
+            args.initial_particles_axis_map = "xyz"
+            args.initial_particles_fit = "none"
+            args.initial_particles_scale = 1.0
+            args.initial_particles_offset = (0.0, 0.0, 0.0)
+            args.initial_particles_raw_scene_coordinates = True
+            args.floor_y = reconstruction_info["floor_y"]
+        else:
+            args.initial_particles_axis_map = args.initial_particles_axis_map or "xzy"
+            args.initial_particles_fit = args.initial_particles_fit or "anisotropic"
+            args.initial_particles_scale = 1.0 if args.initial_particles_scale is None else args.initial_particles_scale
+            args.initial_particles_offset = args.initial_particles_offset or (0.0, 0.0, 0.0)
+            fitted_particles = fit_initial_particles_to_scene(loaded_particles, args, calibration)
+        if args.particles is None:
+            args.particles = len(fitted_particles)
+        initial_particles = resize_initial_particles(fitted_particles, args.particles, args.initial_particles_seed)
+        print(
+            f"Loaded {len(loaded_particles)} initial particles from {args.initial_particles}; "
+            f"using {len(initial_particles)} particles in the simulation.",
+            flush=True,
+        )
+    else:
+        args.initial_particles_axis_map = args.initial_particles_axis_map or "xzy"
+        args.initial_particles_fit = args.initial_particles_fit or "anisotropic"
+        args.initial_particles_scale = 1.0 if args.initial_particles_scale is None else args.initial_particles_scale
+        args.initial_particles_offset = args.initial_particles_offset or (0.0, 0.0, 0.0)
+        if args.particles is None:
+            args.particles = 24000
+
+    args.mass_properties = compute_mass_properties(
+        args.particles,
+        args.grid,
+        args.density,
+        reconstruction_info["object_volume_m3"] if reconstruction_info is not None else None,
+        args.object_mass_kg,
+    )
+    args.density = args.mass_properties["density_kg_m3"]
+    if not np.isfinite(args.floor_y):
+        raise ValueError("Floor height must be finite")
+
+    replay = None
+    if args.replay_episode:
+        if (
+            args.gui
+            or args.ros_control
+            or args.no_save
+            or not args.initial_particles
+            or calibration is None
+            or reconstruction_info is None
+        ):
+            raise ValueError("Replay requires headless saved output, reconstruction metadata, calibration, and no UDP tool control")
+        if args.replay_stride < 1:
+            raise ValueError("Replay stride must be positive")
+        try:
+            from deformpath_dynamics import ToolReplay, load_observation_sequence
+        except ImportError:
+            from .deformpath_dynamics import ToolReplay, load_observation_sequence
+        observation_sequence = load_observation_sequence(args.replay_episode)
+        tool_geometry = align_tool_geometry(tool_geometry, observation_sequence.names)
+        args.tool_half_extents_by_tool = tool_geometry["half_extents_m"]
+        args.tool_marker_from_collider = tool_geometry["marker_from_collider"]
+        initialization = reconstruction_info["metadata"]
+        if (
+            initialization.get("frame") != args.replay_start_frame
+            or Path(initialization.get("episode_dir", "")).resolve() != observation_sequence.episode_dir
+            or initialization.get("pointclouds_name") != "pointclouds_interpolated.pt"
+            or reconstruction_info.get("calibration_fingerprint") != calibration.fingerprint
+        ):
+            raise ValueError("Initial reconstruction must match the replay episode, start frame and calibration")
+        replay_end = len(observation_sequence.times) - 1 if args.replay_end_frame is None else args.replay_end_frame
+        replay = ToolReplay(
+            observation_sequence,
+            calibration,
+            args.replay_start_frame,
+            replay_end,
+            max_gap_s=args.replay_max_gap,
+            marker_from_colliders=np.asarray(tool_geometry["marker_from_collider"], dtype=np.float64),
+        )
+        args.save_initial_frame = True
+        args.save_depth_pointclouds = True
+        args.depth_pointcloud_frame = "camera_optical"
+        args.depth_pointcloud_format = "xyz"
+        args.view = ["deformpath_top"]
+        if args.output_dir.exists() and any(args.output_dir.iterdir()):
+            raise ValueError("Replay output directory must be empty; preserve previous benchmark artifacts")
 
     ti.init(arch=ti.cpu if args.cpu else ti.gpu)
 
     run_dir = args.output_dir
     run_dir.mkdir(parents=True, exist_ok=True)
-    views = args.view or list(CAMERA_VIEWS)
+    view_configs = dict(CAMERA_VIEWS)
+    if calibration is not None:
+        view_configs["deformpath_top"] = calibration.camera
+    views = args.view or list(view_configs)
 
     x, tool_x, initialize, substep, update_tool_visuals, set_tool_state = build_sim(args)
     initialize()
-    set_tool_state(TOOL_INITIAL_POSES, np.zeros((2, 3), dtype=np.float32))
+    if initial_particles is not None:
+        x.from_numpy(initial_particles)
+    if replay is not None:
+        set_tool_state(*replay.at(0.0))
+    else:
+        set_tool_state(TOOL_INITIAL_POSES, np.zeros((2, 3), dtype=np.float32))
     update_tool_visuals(0.0)
     ros_control = UdpRigidBoxControl(max_vel=args.ros_tool_max_vel) if args.ros_control else None
     dough_center_tx = DoughCenterTransmitter(port=args.dough_center_port) if args.publish_dough_center else None
@@ -826,10 +1620,107 @@ def main():
         "model": "compressible corotated/Neo-Hookean stress plus viscosity, with optional SVD clamp plasticity",
         "frames": [],
         "video": {},
+        "time_convention": "simulation_step counts completed MPM substeps; sim_time_s = simulation_step * dt; step counts outer integration batches",
+        "calibration": calibration_metadata(calibration) if calibration is not None else None,
+        "calibration_fingerprint": (
+            reconstruction_info.get("calibration_fingerprint")
+            if reconstruction_info is not None
+            else getattr(calibration, "fingerprint", None)
+        ),
+        "initial_particles_metadata_fingerprint": (
+            reconstruction_info["metadata_sha256"] if reconstruction_info is not None else None
+        ),
+        "initialization": (
+            {
+                "particle_path": str(args.initial_particles.resolve()),
+                "particle_sha256": reconstruction_info["particle_sha256"],
+                "metadata_path": reconstruction_info["metadata_path"],
+                "metadata_sha256": reconstruction_info["metadata_sha256"],
+                "scene_frame": reconstruction_info["scene_frame"],
+                "floor_plane_scene": reconstruction_info["floor_plane_scene"],
+            }
+            if reconstruction_info is not None
+            else None
+        ),
+        "mass": args.mass_properties,
+        "mass_source": args.mass_properties["mass_source"],
+        "object_volume_m3": args.mass_properties["object_volume_m3"],
+        "density_kg_m3": args.mass_properties["density_kg_m3"],
+        "total_mass_kg": args.mass_properties["total_mass_kg"],
+        "particle_volume_m3": args.mass_properties["particle_volume_m3"],
+        "particle_mass_kg": args.mass_properties["particle_mass_kg"],
+        "tool_geometry": tool_geometry,
         "parameters": {key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()},
     }
 
     frame_idx = 0
+    if args.save_initial_frame:
+        initial_frame = save_frame_outputs(x.to_numpy(), args, views, run_dir, frame_idx, 0, view_configs)
+        initial_frame["simulation_step"] = 0
+        initial_frame["initial_state"] = True
+        metadata["frames"].append(initial_frame)
+        frame_idx += 1
+
+    if replay is not None:
+        metadata["replay"] = {
+            "mode": "captured_trajectory_proxy_tools", "episode_dir": str(observation_sequence.episode_dir),
+            "sequence_fingerprint": observation_sequence.fingerprint,
+            "source_start_frame": replay.start, "source_end_frame": replay.end,
+            "source_time_origin_s": float(observation_sequence.times[replay.start]),
+            "tool_names": observation_sequence.names,
+            "tool_geometry": tool_geometry,
+            "max_interpolation_gap_s": args.replay_max_gap,
+            "tool_contact_padding_scene_m": args.tool_contact_padding,
+            "limitations": ["Box colliders approximate the physical tool surfaces.",
+                            "Camera calibration is supplied, not independently verified.",
+                            "Depth exports contain dough only; tool occlusion is not modeled.",
+                            "Velocity uses the derivative of piecewise-linear positions and SLERP orientations.",
+                            "Volume comes from floor-filled voxel reconstruction; unobserved side geometry remains approximate."],
+        }
+        if tool_geometry["source"] == "legacy_cli":
+            metadata["replay"]["tool_half_extents_scene_m"] = list(args.tool_half_extents)
+            metadata["replay"]["tool_marker_offset_source_m"] = list(args.tool_marker_offset)
+        def annotate_replay_frame(frame, source_index):
+            target = float(observation_sequence.times[source_index] - observation_sequence.times[replay.start])
+            poses, velocities = replay.at(min(frame["sim_time_s"], replay.times[-1]))
+            frame.update({
+                "source_frame": source_index, "original_source_frame": observation_sequence.original_indices[source_index],
+                "source_timestamp_s": float(observation_sequence.times[source_index]), "target_time_s": target,
+                "pairing_error_s": frame["sim_time_s"] - target,
+                "tool_poses_scene": poses.tolist(), "tool_velocities_scene": velocities.tolist(),
+                "tool_validity": observation_sequence.valid[source_index].tolist(),
+            })
+        annotate_replay_frame(metadata["frames"][0], replay.start)
+        source_indices = list(range(replay.start + args.replay_stride, replay.end + 1, args.replay_stride))
+        if replay.end > replay.start and (not source_indices or source_indices[-1] != replay.end):
+            source_indices.append(replay.end)
+        completed = 0
+        for source_index in source_indices:
+            target = float(observation_sequence.times[source_index] - observation_sequence.times[replay.start])
+            target_substeps = int(np.ceil(target / args.dt - 1e-10))
+            while completed < target_substeps:
+                current_time = completed * args.dt
+                set_tool_state(*replay.at(min(current_time, replay.times[-1])))
+                substep(current_time)
+                completed += 1
+            set_tool_state(*replay.at(min(completed * args.dt, replay.times[-1])))
+            update_tool_visuals(completed * args.dt)
+            points = x.to_numpy()
+            if not np.isfinite(points).all():
+                raise ValueError(f"Nonfinite simulated particles at time {completed * args.dt}")
+            frame = save_frame_outputs(points, args, views, run_dir, frame_idx,
+                                       completed // args.substeps_per_frame, view_configs, completed)
+            annotate_replay_frame(frame, source_index)
+            metadata["frames"].append(frame)
+            frame_idx += 1
+            print(f"Replay: source={source_index} sim={frame['sim_time_s']:.6f}s lag={frame['pairing_error_s']:.6f}s", flush=True)
+        metadata_path = run_dir / "camera_parameters.json"
+        metadata_path.write_text(json.dumps(metadata, indent=2))
+        if dough_center_tx is not None:
+            dough_center_tx.close()
+        print(f"Wrote {frame_idx} timestamped proxy-tool replay frames to {run_dir}")
+        return
+
     step = 0
     timing_start_wall = wall_time.perf_counter()
     timing_start_sim = 0.0
@@ -890,7 +1781,7 @@ def main():
             video_writer = create_video_writer(args.video_path, args.video_fps, (args.width, args.height))
 
         while window.running and step < args.steps:
-            for _ in range(args.gui_fps_substeps):
+            for _ in range(min(args.gui_fps_substeps, args.steps - step)):
                 if ros_control is not None:
                     poses, linear_velocities = ros_control.poll_and_integrate(args.dt * args.substeps_per_frame)
                     set_tool_state(poses, linear_velocities)
@@ -931,8 +1822,8 @@ def main():
                     frame_path.unlink()
                 gui_frame_idx += 1
 
-            if not args.no_save and (step % args.save_every == 0 or step == args.steps - 1):
-                metadata["frames"].append(save_frame_outputs(x.to_numpy(), args, views, run_dir, frame_idx, step))
+            if not args.no_save and (step % args.save_every == 0 or step == args.steps):
+                metadata["frames"].append(save_frame_outputs(x.to_numpy(), args, views, run_dir, frame_idx, step, view_configs))
                 frame_idx += 1
             report_timing(step * args.dt * args.substeps_per_frame)
 
@@ -940,12 +1831,12 @@ def main():
             video_writer.release()
             print(f"Wrote GUI video to {args.video_path}")
     else:
-        for step in range(args.steps):
+        for step in range(1, args.steps + 1):
             if ros_control is not None:
                 poses, linear_velocities = ros_control.poll_and_integrate(args.dt * args.substeps_per_frame)
                 set_tool_state(poses, linear_velocities)
                 ros_control.transmit_poses()
-            time = step * args.dt * args.substeps_per_frame
+            time = (step - 1) * args.dt * args.substeps_per_frame
             for _ in range(args.substeps_per_frame):
                 substep(time)
                 time += args.dt
@@ -953,10 +1844,10 @@ def main():
             if dough_center_tx is not None:
                 dough_center_tx.send(x.to_numpy().mean(axis=0))
 
-            if not args.no_save and (step % args.save_every == 0 or step == args.steps - 1):
-                metadata["frames"].append(save_frame_outputs(x.to_numpy(), args, views, run_dir, frame_idx, step))
+            if not args.no_save and (step % args.save_every == 0 or step == args.steps):
+                metadata["frames"].append(save_frame_outputs(x.to_numpy(), args, views, run_dir, frame_idx, step, view_configs))
                 frame_idx += 1
-            report_timing((step + 1) * args.dt * args.substeps_per_frame)
+            report_timing(step * args.dt * args.substeps_per_frame)
 
     metadata_path = run_dir / "camera_parameters.json"
     metadata_path.write_text(json.dumps(metadata, indent=2))

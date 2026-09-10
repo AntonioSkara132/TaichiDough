@@ -1,0 +1,31 @@
+;; This buffer is for text that is not saved, and for Lisp evaluation.
+;; To create a file, visit it with ‘C-x C-f’ and enter text in its buffer.
+
+  python3 -u DeformPath/src/training_act_chunked_pos_quat.py \
+    --dataset_root /home/antonio/diplomski_antonio/diplomski/data/deformpath_training/Deformapth2_downsampled_interpolated \
+    --pointclouds_name pointclouds_interpolated.pt \
+    --paths_name paths_interpolated.pt \
+    --path_dim 14 \
+    --raw_action_layout pose_only_7d \
+    --encoder_type pointmae \
+    --shape_encoder_checkpoint /home/antonio/diplomski_antonio/pointmae_pretrain_on_deformpath.pth \
+    --disable_history_shape \
+    --batch_size 16 \
+    --chunk_size 16 \
+    --history_stride 1 \
+    --niter 30 \
+    --start_lr 1e-3 \
+    --weight_decay 1e-5 \
+    --d_model 512 \
+    --num_heads 8 \
+    --num_decoder_layers 2 \
+    --hidden_dim 256 \
+    --dropout 0.1 \
+    --val_ratio 0.2 \
+    --seed 42 \
+    --num_workers 0 \
+    --ckpt_every 1 \
+    --output_path /home/antonio/diplomski_antonio/DeformPath/outputs/deformapth2_pointmae_current_only_act_pos_quat.pth \
+    --metrics_path /home/antonio/diplomski_antonio/DeformPath/outputs/deformapth2_pointmae_current_only_act_pos_quat.metrics.json \
+    --split_manifest_path /home/antonio/diplomski_antonio/DeformPath/outputs/deformapth2_pointmae_current_only_act_pos_quat.split.json \
+    --ckpt_path /home/antonio/diplomski_antonio/DeformPath/outputs/checkpoints_deformapth2_pointmae_current_only_act_pos_quat

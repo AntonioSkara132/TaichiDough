@@ -1,0 +1,15 @@
+{
+  "name": "episode18-topview-bootstrap",
+  "source_frame": "camera_depth_optical_frame",
+  "axis_map": "x-zy",
+  "uniform_scale": 2.0,
+  "translation": [0.5, 1.26, 0.5],
+  "camera": {
+    "position": [0.5, 0.8, 0.5],
+    "lookAt": [0.5, 0.32, 0.5],
+    "up": [0.0, 0.0, -1.0],
+    "fieldOfView": 57.0,
+    "zNear": 0.01,
+    "zFar": 2.0
+  }
+}
