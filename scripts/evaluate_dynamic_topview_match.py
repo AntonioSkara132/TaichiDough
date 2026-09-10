@@ -18,6 +18,23 @@ except ImportError:
     from .deformpath_dynamics import ToolReplay, depth_comparison, filter_scene_points, load_observation_sequence, load_scene_point_filter, paired_frame_indices, resolve_artifact, surface_summary, tool_geometry_from_metadata
 
 
+def replay_target_frame(replay_metadata: dict) -> str:
+    collision_mode = replay_metadata.get("tool_collision", "box")
+    if collision_mode not in {"box", "sdf", "none"}:
+        raise ValueError(f"Replay has unsupported tool collision mode: {collision_mode}")
+    target_frame = "mesh_tool_link" if collision_mode == "sdf" else "collider"
+    declared_frame = replay_metadata.get("tool_pose_frame")
+    if declared_frame is not None and declared_frame != target_frame:
+        raise ValueError(
+            f"Replay tool pose frame {declared_frame!r} is incompatible with tool collision mode {collision_mode!r}"
+        )
+    return target_frame
+
+
+def replay_marker_transforms(replay_metadata: dict, geometry) -> np.ndarray:
+    return geometry.marker_from_mesh if replay_target_frame(replay_metadata) == "mesh_tool_link" else geometry.marker_from_collider
+
+
 def validate_frames(metadata: dict, calibration, view_name: str) -> tuple[list[dict], list[dict]]:
     if metadata.get("calibration", {}).get("fingerprint") != calibration.fingerprint:
         raise ValueError("Simulation calibration fingerprint does not match --calibration")
@@ -137,14 +154,17 @@ def evaluate(args) -> Path:
     arrays_dir.mkdir()
     initial_depth, initial_valid = load_depth(views[0], args.taichi_metadata, calibration.camera)
     initial_sim_summary = surface_summary(optical_surface(initial_depth, initial_valid, calibration.camera), args.cell_size)
+    target_frame = replay_target_frame(replay_metadata)
     embedded_tool_geometry = replay_metadata.get("tool_geometry")
     if embedded_tool_geometry is None:
+        if target_frame == "mesh_tool_link":
+            raise ValueError("SDF replay metadata must embed marker_from_mesh tool geometry")
         marker_offset = replay_metadata.get("tool_marker_offset_source_m")
-        marker_from_colliders = None
+        marker_from_tool_frames = None
     else:
         geometry = tool_geometry_from_metadata(embedded_tool_geometry, sequence.names)
         marker_offset = None
-        marker_from_colliders = geometry.marker_from_collider
+        marker_from_tool_frames = replay_marker_transforms(replay_metadata, geometry)
     replay = ToolReplay(
         sequence,
         calibration,
@@ -152,7 +172,7 @@ def evaluate(args) -> Path:
         end,
         marker_offset=marker_offset,
         max_gap_s=replay_metadata.get("max_interpolation_gap_s", .1),
-        marker_from_colliders=marker_from_colliders,
+        marker_from_tool_frames=marker_from_tool_frames,
     )
     width, height, radius = views[0]["width"], views[0]["height"], views[0].get("splat_radius", 0)
     rows = []

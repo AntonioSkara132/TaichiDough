@@ -29,7 +29,7 @@ def make_sim_args(**overrides):
         "viscosity": 2.5,
         "density": 1100.0,
         "gravity": -9.81,
-        "floor_y": 0.20,
+        "floor_y": 0.33,
         "floor_friction": 0.7,
         "floor_absorption": 0.0,
         "tool_close_time": 0.04,
@@ -38,6 +38,7 @@ def make_sim_args(**overrides):
         "tool_contact_friction": 0.75,
         "tool_contact_absorption": 0.0,
         "tool_stickiness": 0.0,
+        "tool_collision": "box",
         "floor_stickiness": 0.0,
         "floor_plastic_damping_band": 0.02,
         "velocity_damping": 0.998,
@@ -51,6 +52,7 @@ def make_sim_args(**overrides):
         "jp_min": 0.6,
         "jp_max": 2.0,
         "ros_control": True,
+        "ros_tool_poses": False,
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)

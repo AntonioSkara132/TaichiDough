@@ -16,8 +16,8 @@ import numpy as np
 
 try:
     from deformpath_dynamics import ObservationSequence, ToolReplay, depth_comparison, filter_scene_points, load_scene_point_filter, load_tool_geometry, paired_frame_indices, tool_geometry_from_metadata, tool_geometry_metadata, quaternion_matrix, matrix_quaternion, slerp, surface_summary
-    from deformpath_topview import load_calibration
-    from evaluate_dynamic_topview_match import validate_frames, boundary_distance
+    from deformpath_topview import apply_calibration, load_calibration
+    from evaluate_dynamic_topview_match import boundary_distance, replay_marker_transforms, replay_target_frame, validate_frames
     from visualize_dynamic_topview_benchmark import depth_colors, residual_colors, create_report, normalize_report_context
 except ImportError:
     from .deformpath_dynamics import ObservationSequence, ToolReplay, depth_comparison, filter_scene_points, load_scene_point_filter, load_tool_geometry, paired_frame_indices, tool_geometry_from_metadata, tool_geometry_metadata, quaternion_matrix, matrix_quaternion, slerp, surface_summary
@@ -71,12 +71,20 @@ class DynamicsTests(unittest.TestCase):
         marker_from_collider = np.eye(4)
         marker_from_collider[:3, :3] = [[0, -1, 0], [1, 0, 0], [0, 0, 1]]
         marker_from_collider[:3, 3] = [0.01, 0.02, 0.03]
+        marker_from_mesh = np.eye(4)
+        marker_from_mesh[:3, :3] = [[0, 0, 1], [0, 1, 0], [-1, 0, 0]]
+        marker_from_mesh[:3, 3] = [0.04, -0.02, 0.01]
         fixture = {
             "schema": "taichidough/tool-geometry/v1",
             "proxy": False,
             "tools": [
                 {"name": "two", "half_extents_m": [0.04, 0.01, 0.06], "marker_from_collider": np.eye(4).tolist()},
-                {"name": "one", "half_extents_m": [0.03, 0.01, 0.05], "marker_from_collider": marker_from_collider.tolist()},
+                {
+                    "name": "one",
+                    "half_extents_m": [0.03, 0.01, 0.05],
+                    "marker_from_collider": marker_from_collider.tolist(),
+                    "marker_from_mesh": marker_from_mesh.tolist(),
+                },
             ],
         }
         with tempfile.TemporaryDirectory() as directory:
@@ -87,9 +95,15 @@ class DynamicsTests(unittest.TestCase):
                 load_tool_geometry(path, ["one", "missing"])
         self.assertEqual(geometry.names, ("one", "two"))
         np.testing.assert_allclose(geometry.half_extents_m[0], [0.03, 0.01, 0.05])
-        restored = tool_geometry_from_metadata(tool_geometry_metadata(geometry), self.sequence().names)
+        metadata = tool_geometry_metadata(geometry)
+        restored = tool_geometry_from_metadata(metadata, self.sequence().names)
         np.testing.assert_allclose(restored.half_extents_m, geometry.half_extents_m)
         np.testing.assert_allclose(restored.marker_from_collider, geometry.marker_from_collider)
+        np.testing.assert_allclose(restored.marker_from_mesh, geometry.marker_from_mesh)
+        legacy_metadata = dict(metadata)
+        del legacy_metadata["marker_from_mesh"]
+        legacy_restored = tool_geometry_from_metadata(legacy_metadata, self.sequence().names)
+        np.testing.assert_allclose(legacy_restored.marker_from_mesh, np.broadcast_to(np.eye(4), (2, 4, 4)))
         replay = ToolReplay(
             self.sequence(),
             self.calibration,
@@ -102,6 +116,26 @@ class DynamicsTests(unittest.TestCase):
         np.testing.assert_allclose(poses[0, :3], [0.52, 1.20, 0.54], atol=1e-6)
         expected_scene_rotation = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]]) @ marker_from_collider[:3, :3]
         np.testing.assert_allclose(quaternion_matrix(poses[0, 3:]), expected_scene_rotation, atol=1e-6)
+        mesh_replay = ToolReplay(
+            self.sequence(),
+            self.calibration,
+            0,
+            2,
+            max_gap_s=0.2,
+            marker_from_tool_frames=geometry.marker_from_mesh,
+        )
+        mesh_poses, _ = mesh_replay.at(0)
+        np.testing.assert_allclose(
+            mesh_poses[0, :3], apply_calibration(marker_from_mesh[None, :3, 3], self.calibration)[0], atol=1e-6
+        )
+        expected_mesh_rotation = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]]) @ marker_from_mesh[:3, :3]
+        np.testing.assert_allclose(quaternion_matrix(mesh_poses[0, 3:]), expected_mesh_rotation, atol=1e-6)
+        with self.assertRaisesRegex(ValueError, "either marker_from_tool_frames or marker_from_colliders"):
+            ToolReplay(
+                self.sequence(), self.calibration, 0, 2,
+                marker_from_tool_frames=geometry.marker_from_mesh,
+                marker_from_colliders=geometry.marker_from_collider,
+            )
 
     def test_v2_tool_replay_uses_metric_rigid_transform(self):
         scene_from_source = np.array([
@@ -251,10 +285,45 @@ class DynamicsTests(unittest.TestCase):
         self.assertFalse(report["replay"]["tool_geometry_proxy"])
         self.assertEqual(report["replay"]["tool_half_extents_by_tool_m"][1], [.04, .02, .06])
 
+    def test_dynamic_report_identifies_sdf_geometry_without_proxy_boxes(self):
+        report = {
+            "calibration": {"schema": "taichidough/scene-calibration/v2", "is_metric": True},
+            "replay": {
+                "tool_collision": "sdf",
+                "tool_geometry": {
+                    "schema": "taichidough/tool-geometry/v1",
+                    "names": ["one", "two"],
+                    "half_extents_m": [[.03, .01, .05], [.04, .02, .06]],
+                    "proxy": False,
+                },
+            },
+        }
+        normalize_report_context(report)
+        self.assertEqual(report["replay"]["tool_collision"], "sdf")
+        self.assertIn("voxelized STL", report["replay"]["tool_geometry_description"])
+        self.assertNotIn("proxy box", report["replay"]["tool_geometry_description"])
+
     def metadata(self):
         return {"calibration": {"fingerprint": self.calibration.fingerprint}, "parameters": {"dt": .001},
                 "frames": [{"sim_time_s": 0, "completed_substeps": 0, "initial_state": True,
                             "views": [dict(self.calibration.camera, name="deformpath_top", width=4, height=3, splat_radius=0)]}]}
+
+    def test_replay_target_frame_uses_collision_metadata(self):
+        self.assertEqual(replay_target_frame({}), "collider")
+        self.assertEqual(replay_target_frame({"tool_collision": "box", "tool_pose_frame": "collider"}), "collider")
+        self.assertEqual(replay_target_frame({"tool_collision": "sdf", "tool_pose_frame": "mesh_tool_link"}), "mesh_tool_link")
+        geometry = SimpleNamespace(
+            marker_from_collider=np.full((2, 4, 4), 1.0),
+            marker_from_mesh=np.full((2, 4, 4), 2.0),
+        )
+        np.testing.assert_array_equal(replay_marker_transforms({}, geometry), geometry.marker_from_collider)
+        np.testing.assert_array_equal(
+            replay_marker_transforms({"tool_collision": "sdf"}, geometry), geometry.marker_from_mesh
+        )
+        with self.assertRaisesRegex(ValueError, "incompatible"):
+            replay_target_frame({"tool_collision": "sdf", "tool_pose_frame": "collider"})
+        with self.assertRaisesRegex(ValueError, "unsupported"):
+            replay_target_frame({"tool_collision": "capsule"})
 
     def test_camera_and_step_validation(self):
         metadata = self.metadata()

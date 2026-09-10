@@ -145,6 +145,7 @@ def make_sim_args(args: argparse.Namespace) -> SimpleNamespace:
         tool_contact_friction=args.tool_contact_friction,
         tool_contact_absorption=args.tool_contact_absorption,
         tool_stickiness=args.tool_stickiness,
+        tool_collision="box",
         velocity_damping=args.velocity_damping,
         pure_viscoelastic=args.pure_viscoelastic,
         plastic_min=args.plastic_min,

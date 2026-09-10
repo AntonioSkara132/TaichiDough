@@ -2,8 +2,11 @@ import argparse
 import hashlib
 import json
 import socket
+import struct
 import time as wall_time
+from collections import deque
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import taichi as ti
@@ -37,6 +40,11 @@ TOOL_Z_OFFSET = 0.24
 TOOL_TRAVEL = 0.28
 DOUGH_RADIUS = [0.14, 0.055, 0.12]
 
+UR_TOOL_VISUAL_ORIGIN = np.array([-0.002395874, -0.017992075, -0.019913439], dtype=np.float32)
+UR_TOOL_VISUAL_RPY = np.array([4.5910, 1.379415965, -1.740698498], dtype=np.float32)
+KINOVA_TOOL_VISUAL_ORIGIN = np.array([-0.02345833, -0.02261066, -0.01297941], dtype=np.float32)
+KINOVA_TOOL_VISUAL_RPY = np.array([3.12897712, 0.06996522, -3.11041673], dtype=np.float32)
+
 TOOL_INITIAL_POSES = np.array(
     [
         [SCENE_CENTER[0], TOOL_Y, SCENE_CENTER[2] + TOOL_Z_OFFSET, 0.0, 0.0, 0.0, 1.0],
@@ -44,6 +52,234 @@ TOOL_INITIAL_POSES = np.array(
     ],
     dtype=np.float32,
 )
+
+
+def find_tool_mesh(filename: str, override: Path | None = None) -> Path:
+    """Use explicit meshes, the sourced ROS package, or bundled standalone assets."""
+    if override is not None:
+        path = Path(override).expanduser()
+        if not path.is_file():
+            raise FileNotFoundError(f"Tool mesh does not exist: {path}")
+        return path
+    try:
+        from ament_index_python.packages import get_package_share_directory, PackageNotFoundError
+    except ImportError:
+        pass
+    else:
+        try:
+            installed = Path(get_package_share_directory("ur_dual_bringup")) / "meshes" / filename
+        except PackageNotFoundError:
+            pass
+        else:
+            if installed.is_file():
+                return installed
+    bundled = PROJECT_ROOT / "meshes" / filename
+    if not bundled.is_file():
+        raise FileNotFoundError(f"Tool mesh missing: {bundled}; provide --ur-tool-mesh/--kinova-tool-mesh")
+    return bundled
+
+
+def load_binary_stl(path: Path, scale: float) -> tuple[np.ndarray, np.ndarray]:
+    """Load an STL as an unindexed triangle mesh for Taichi's scene renderer."""
+    raw = path.read_bytes()
+    if len(raw) < 84:
+        raise ValueError(f"{path} is too short to be a binary STL file")
+    triangle_count = struct.unpack_from("<I", raw, 80)[0]
+    expected_size = 84 + triangle_count * 50
+    if len(raw) != expected_size:
+        raise ValueError(
+            f"{path} is not a supported binary STL file "
+            f"(expected {expected_size} bytes, found {len(raw)})"
+        )
+    triangle_dtype = np.dtype(
+        [("normal", "<f4", (3,)), ("vertices", "<f4", (3, 3)), ("attribute", "<u2")]
+    )
+    triangles = np.frombuffer(raw, dtype=triangle_dtype, count=triangle_count, offset=84)
+    vertices = np.array(triangles["vertices"].reshape(-1, 3) * scale, dtype=np.float32)
+    indices = np.arange(vertices.shape[0], dtype=np.int32)
+    return vertices, indices
+
+
+def rpy_to_matrix(rpy: np.ndarray) -> np.ndarray:
+    roll, pitch, yaw = rpy
+    cr, sr = np.cos(roll), np.sin(roll)
+    cp, sp = np.cos(pitch), np.sin(pitch)
+    cy, sy = np.cos(yaw), np.sin(yaw)
+    return np.array(
+        [
+            [cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
+            [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
+            [-sp, cp * sr, cp * cr],
+        ],
+        dtype=np.float32,
+    )
+
+
+def transformed_tool_mesh(
+    vertices: np.ndarray,
+    pose: np.ndarray,
+    visual_origin: np.ndarray,
+    visual_rotation: np.ndarray,
+) -> np.ndarray:
+    """Apply mesh-to-link URDF origin, then link-to-scene tool pose."""
+    local_vertices = vertices @ visual_rotation.T + visual_origin
+    return local_vertices @ quaternion_to_matrix(pose[3:]).T + pose[:3]
+
+
+def mesh_in_tool_frame(vertices: np.ndarray, visual_origin: np.ndarray, visual_rotation: np.ndarray) -> np.ndarray:
+    """Apply the URDF visual transform, yielding mesh vertices in tool-link axes."""
+    return vertices @ visual_rotation.T + visual_origin
+
+
+def _mark_triangle_surface(surface: np.ndarray, triangle: np.ndarray, minimum: np.ndarray, spacing: np.ndarray) -> None:
+    """Conservatively rasterize one triangle into a local SDF voxel grid."""
+    longest_edge = max(
+        np.linalg.norm(triangle[1] - triangle[0]),
+        np.linalg.norm(triangle[2] - triangle[1]),
+        np.linalg.norm(triangle[0] - triangle[2]),
+    )
+    subdivisions = max(1, int(np.ceil(longest_edge / float(np.min(spacing)))))
+    samples = []
+    for row in range(subdivisions + 1):
+        for column in range(subdivisions + 1 - row):
+            u = row / subdivisions
+            v = column / subdivisions
+            samples.append(triangle[0] + u * (triangle[1] - triangle[0]) + v * (triangle[2] - triangle[0]))
+    indices = np.rint((np.asarray(samples) - minimum) / spacing).astype(np.int32)
+    indices = np.clip(indices, 0, np.asarray(surface.shape) - 1)
+    for offset_x in (-1, 0, 1):
+        for offset_y in (-1, 0, 1):
+            for offset_z in (-1, 0, 1):
+                marked = np.clip(indices + (offset_x, offset_y, offset_z), 0, np.asarray(surface.shape) - 1)
+                surface[marked[:, 0], marked[:, 1], marked[:, 2]] = True
+
+
+def _outside_voxels(surface: np.ndarray) -> np.ndarray:
+    """Flood-fill empty boundary voxels; unvisited empty voxels are inside the mesh."""
+    outside = np.zeros_like(surface, dtype=bool)
+    queue = deque()
+    nx, ny, nz = surface.shape
+    for x in range(nx):
+        for y in range(ny):
+            for z in (0, nz - 1):
+                if not surface[x, y, z] and not outside[x, y, z]:
+                    outside[x, y, z] = True
+                    queue.append((x, y, z))
+    for x in range(nx):
+        for z in range(nz):
+            for y in (0, ny - 1):
+                if not surface[x, y, z] and not outside[x, y, z]:
+                    outside[x, y, z] = True
+                    queue.append((x, y, z))
+    for y in range(ny):
+        for z in range(nz):
+            for x in (0, nx - 1):
+                if not surface[x, y, z] and not outside[x, y, z]:
+                    outside[x, y, z] = True
+                    queue.append((x, y, z))
+    while queue:
+        x, y, z = queue.popleft()
+        for dx, dy, dz in ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)):
+            xn, yn, zn = x + dx, y + dy, z + dz
+            if 0 <= xn < nx and 0 <= yn < ny and 0 <= zn < nz and not surface[xn, yn, zn] and not outside[xn, yn, zn]:
+                outside[xn, yn, zn] = True
+                queue.append((xn, yn, zn))
+    return outside
+
+
+def _distance_transform_1d(values: np.ndarray, spacing: float) -> np.ndarray:
+    """Exact squared Euclidean distance transform for a one-dimensional line."""
+    finite = np.flatnonzero(np.isfinite(values))
+    if finite.size == 0:
+        return values.copy()
+    count = len(values)
+    sites = np.empty(count, dtype=np.int32)
+    boundaries = np.empty(count + 1, dtype=np.float64)
+    site_count = 0
+    sites[0] = finite[0]
+    boundaries[0], boundaries[1] = -np.inf, np.inf
+    for point in finite[1:]:
+        while True:
+            previous = sites[site_count]
+            boundary = ((values[point] + (point * spacing) ** 2) - (values[previous] + (previous * spacing) ** 2)) / (2.0 * spacing * (point - previous))
+            if boundary > boundaries[site_count]:
+                break
+            site_count -= 1
+            if site_count < 0:
+                break
+        if site_count < 0:
+            site_count = 0
+            sites[0] = point
+            boundaries[0], boundaries[1] = -np.inf, np.inf
+        else:
+            site_count += 1
+            sites[site_count] = point
+            boundaries[site_count] = boundary
+            boundaries[site_count + 1] = np.inf
+    output = np.empty(count, dtype=np.float64)
+    site_index = 0
+    for point in range(count):
+        while boundaries[site_index + 1] < point * spacing:
+            site_index += 1
+        source = sites[site_index]
+        output[point] = values[source] + ((point - source) * spacing) ** 2
+    return output
+
+
+def _euclidean_distance_to_surface(surface: np.ndarray, spacing: np.ndarray) -> np.ndarray:
+    squared = np.where(surface, 0.0, np.inf).astype(np.float64)
+    for axis, voxel_size in enumerate(spacing):
+        squared = np.moveaxis(squared, axis, 0)
+        for index in np.ndindex(squared.shape[1:]):
+            squared[(slice(None),) + index] = _distance_transform_1d(squared[(slice(None),) + index], float(voxel_size))
+        squared = np.moveaxis(squared, 0, axis)
+    return np.sqrt(squared).astype(np.float32)
+
+
+def build_mesh_sdf(vertices: np.ndarray, resolution: int, padding: float) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Build a conservative signed distance field for a closed binary-STL mesh."""
+    if resolution < 16:
+        raise ValueError("tool_sdf_resolution must be at least 16")
+    if len(vertices) == 0 or len(vertices) % 3:
+        raise ValueError("Mesh must contain a non-empty sequence of triangle vertices")
+    lower = vertices.min(axis=0)
+    upper = vertices.max(axis=0)
+    base_spacing = np.max(upper - lower) / max(resolution - 5, 1)
+    margin = max(float(padding), float(base_spacing) * 2.0)
+    lower -= margin
+    upper += margin
+    spacing = (upper - lower) / (resolution - 1)
+    surface = np.zeros((resolution, resolution, resolution), dtype=bool)
+    for triangle in vertices.reshape(-1, 3, 3):
+        _mark_triangle_surface(surface, triangle, lower, spacing)
+    if not surface.any():
+        raise ValueError("Mesh SDF rasterization produced no surface voxels")
+    outside = _outside_voxels(surface)
+    distance = _euclidean_distance_to_surface(surface, spacing)
+    signed_distance = np.where(outside | surface, distance, -distance).astype(np.float32)
+    gradients = np.stack(np.gradient(signed_distance, *spacing, edge_order=1), axis=-1).astype(np.float32)
+    gradient_norm = np.linalg.norm(gradients, axis=-1, keepdims=True)
+    gradients /= np.maximum(gradient_norm, 1e-8)
+    return signed_distance, gradients, lower.astype(np.float32), spacing.astype(np.float32)
+
+
+def create_mesh_collision_fields(meshes: list[np.ndarray], resolution: int, padding: float):
+    """Upload two local-mesh SDFs to Taichi fields used by the MPM kernels."""
+    volumes = [build_mesh_sdf(mesh, resolution, padding) for mesh in meshes]
+    sdf = ti.field(dtype=ti.f32, shape=(len(volumes), resolution, resolution, resolution))
+    gradients = ti.Vector.field(3, dtype=ti.f32, shape=(len(volumes), resolution, resolution, resolution))
+    minimums = ti.Vector.field(3, dtype=ti.f32, shape=len(volumes))
+    spacings = ti.Vector.field(3, dtype=ti.f32, shape=len(volumes))
+    sdf.from_numpy(np.stack([volume[0] for volume in volumes]))
+    gradients.from_numpy(np.stack([volume[1] for volume in volumes]))
+    minimums.from_numpy(np.stack([volume[2] for volume in volumes]))
+    spacings.from_numpy(np.stack([volume[3] for volume in volumes]))
+    for index, (distance, _gradient, minimum, spacing) in enumerate(volumes):
+        print(
+            f"Tool SDF {index}: {resolution}^3, bounds={minimum.tolist()} to "
+            f"{(minimum + spacing * (resolution - 1)).tolist()}, range={distance.min():.4f} to {distance.max():.4f} m"
+        )
+    return SimpleNamespace(sdf=sdf, gradients=gradients, minimums=minimums, spacings=spacings, resolution=resolution)
 
 
 CAMERA_VIEWS = {
@@ -150,6 +386,7 @@ def load_tool_geometry(path):
     names = []
     half_extents = []
     marker_from_collider = []
+    marker_from_mesh = []
     for index, tool in enumerate(tools):
         if not isinstance(tool, dict):
             raise ValueError(f"tools[{index}] must be an object")
@@ -159,10 +396,12 @@ def load_tool_geometry(path):
         extents = np.asarray(tool.get("half_extents_m"), dtype=np.float64)
         if extents.shape != (3,) or not np.isfinite(extents).all() or np.any(extents <= 0.0):
             raise ValueError(f"tools[{index}].half_extents_m must contain three positive finite values")
-        transform = _rigid_matrix(tool.get("marker_from_collider"), f"tools[{index}].marker_from_collider")
+        collider_transform = _rigid_matrix(tool.get("marker_from_collider"), f"tools[{index}].marker_from_collider")
+        mesh_transform = _rigid_matrix(tool.get("marker_from_mesh", np.eye(4)), f"tools[{index}].marker_from_mesh")
         names.append(name.strip())
         half_extents.append(extents.tolist())
-        marker_from_collider.append(transform.tolist())
+        marker_from_collider.append(collider_transform.tolist())
+        marker_from_mesh.append(mesh_transform.tolist())
     if len(set(names)) != 2:
         raise ValueError("Tool geometry names must be unique")
     return {
@@ -170,6 +409,7 @@ def load_tool_geometry(path):
         "names": names,
         "half_extents_m": half_extents,
         "marker_from_collider": marker_from_collider,
+        "marker_from_mesh": marker_from_mesh,
         "fingerprint": hashlib.sha256(raw).hexdigest(),
         "source": str(geometry_path.resolve()),
         "proxy": bool(document.get("proxy", False)),
@@ -190,6 +430,7 @@ def legacy_tool_geometry(half_extents, marker_offset):
         "names": ["tool_0", "tool_1"],
         "half_extents_m": [extents.tolist(), extents.tolist()],
         "marker_from_collider": [transform.tolist(), transform.tolist()],
+        "marker_from_mesh": [np.eye(4).tolist(), np.eye(4).tolist()],
         "source": "legacy_cli",
         "proxy": True,
     }
@@ -224,11 +465,24 @@ def align_tool_geometry(tool_geometry, expected_names):
     result["names"] = names
     result["half_extents_m"] = [result["half_extents_m"][index] for index in order]
     result["marker_from_collider"] = [result["marker_from_collider"][index] for index in order]
+    result["marker_from_mesh"] = [result["marker_from_mesh"][index] for index in order]
     if result.get("source") == "legacy_cli":
         fingerprint_payload = {key: value for key, value in result.items() if key != "fingerprint"}
         payload = json.dumps(fingerprint_payload, sort_keys=True, separators=(",", ":")).encode()
         result["fingerprint"] = hashlib.sha256(payload).hexdigest()
     return result
+
+
+def replay_marker_transforms(tool_geometry, collision_mode):
+    transform_key = "marker_from_mesh" if collision_mode == "sdf" else "marker_from_collider"
+    if collision_mode not in {"box", "sdf", "none"}:
+        raise ValueError(f"Unsupported tool collision mode: {collision_mode}")
+    transforms = np.asarray(tool_geometry.get(transform_key), dtype=np.float64)
+    if transforms.shape != (2, 4, 4):
+        raise ValueError(f"Tool geometry {transform_key} must have shape [2, 4, 4]")
+    return np.stack([
+        _rigid_matrix(transform, f"{transform_key}[{index}]") for index, transform in enumerate(transforms)
+    ])
 
 
 def resolve_sim_tool_half_extents(args):
@@ -517,7 +771,7 @@ def resize_initial_particles(points, count, seed):
     return points[indices].astype(np.float32, copy=False)
 
 
-def build_sim(args):
+def build_sim(args, mesh_collision=None):
     dim = 3
     n_particles = args.particles
     n_grid = args.grid
@@ -563,6 +817,13 @@ def build_sim(args):
     tool_half_by_tool = resolve_sim_tool_half_extents(args)
     tool_half_0 = tool_half_by_tool[0]
     tool_half_1 = tool_half_by_tool[1]
+    collision_mode = getattr(args, "tool_collision", "box")
+    if collision_mode not in {"sdf", "box", "none"}:
+        raise ValueError(f"Unsupported tool collision mode: {collision_mode}")
+    if collision_mode == "sdf" and mesh_collision is None:
+        raise ValueError("SDF collision mode requires prebuilt mesh collision fields")
+    use_mesh_collision = collision_mode == "sdf"
+    use_box_collision = collision_mode == "box"
     scene_center_x = SCENE_CENTER[0]
     scene_center_y = SCENE_CENTER[1]
     scene_center_z = SCENE_CENTER[2]
@@ -729,6 +990,77 @@ def build_sim(args):
 
         return new_pos, new_vel
 
+    @ti.func
+    def mesh_sdf_at(tool_id, local_pos):
+        """Trilinearly sample one tool's local signed-distance volume."""
+        grid_pos = (local_pos - mesh_collision.minimums[tool_id]) / mesh_collision.spacings[tool_id]
+        valid = (
+            grid_pos.x >= 0.0 and grid_pos.x <= mesh_collision.resolution - 1 and
+            grid_pos.y >= 0.0 and grid_pos.y <= mesh_collision.resolution - 1 and
+            grid_pos.z >= 0.0 and grid_pos.z <= mesh_collision.resolution - 1
+        )
+        distance = 1e6
+        gradient = ti.Vector([0.0, 0.0, 0.0])
+        if valid:
+            distance = 0.0
+            maximum_base = mesh_collision.resolution - 2
+            ix = ti.max(0, ti.min(maximum_base, ti.cast(ti.floor(grid_pos.x), ti.i32)))
+            iy = ti.max(0, ti.min(maximum_base, ti.cast(ti.floor(grid_pos.y), ti.i32)))
+            iz = ti.max(0, ti.min(maximum_base, ti.cast(ti.floor(grid_pos.z), ti.i32)))
+            fx = ti.max(0.0, ti.min(1.0, grid_pos.x - ti.cast(ix, ti.f32)))
+            fy = ti.max(0.0, ti.min(1.0, grid_pos.y - ti.cast(iy, ti.f32)))
+            fz = ti.max(0.0, ti.min(1.0, grid_pos.z - ti.cast(iz, ti.f32)))
+            for dx, dy, dz in ti.static(ti.ndrange(2, 2, 2)):
+                wx = fx if dx == 1 else 1.0 - fx
+                wy = fy if dy == 1 else 1.0 - fy
+                wz = fz if dz == 1 else 1.0 - fz
+                weight = wx * wy * wz
+                index = ti.Vector([ix + dx, iy + dy, iz + dz])
+                distance += weight * mesh_collision.sdf[tool_id, index.x, index.y, index.z]
+                gradient += weight * mesh_collision.gradients[tool_id, index.x, index.y, index.z]
+            gradient /= ti.max(gradient.norm(), 1e-6)
+        return valid, distance, gradient
+
+    @ti.func
+    def mesh_collision_velocity_and_normal(pos, t):
+        hit = 0
+        normal = ti.Vector([0.0, 0.0, 0.0])
+        collider_v = ti.Vector([0.0, 0.0, 0.0])
+        closest_distance = 1e6
+        for k in ti.static(range(2)):
+            center, cvel = tool_pose_and_velocity(k, t)
+            rotation = quat_to_matrix(tool_quat[k])
+            valid, distance, local_normal = mesh_sdf_at(k, rotation.transpose() @ (pos - center))
+            if valid and distance < tool_contact_padding and distance < closest_distance:
+                hit = 1
+                closest_distance = distance
+                normal = rotation @ local_normal
+                collider_v = cvel + tool_angular_velocity[k].cross(pos - center)
+        return hit, normal, collider_v
+
+    @ti.func
+    def project_particle_out_of_meshes(pos, vel, t):
+        new_pos = pos
+        new_vel = vel
+        for k in ti.static(range(2)):
+            center, cvel = tool_pose_and_velocity(k, t)
+            rotation = quat_to_matrix(tool_quat[k])
+            local_pos = rotation.transpose() @ (new_pos - center)
+            valid, distance, local_normal = mesh_sdf_at(k, local_pos)
+            if valid and distance < tool_contact_padding:
+                penetration = tool_contact_padding - distance + 1e-4
+                normal = rotation @ local_normal
+                new_pos += normal * penetration
+                cvel += tool_angular_velocity[k].cross(new_pos - center)
+                relative_velocity = new_vel - cvel
+                normal_velocity = relative_velocity.dot(normal)
+                if normal_velocity < 0.0:
+                    relative_velocity -= normal * normal_velocity
+                relative_velocity *= tool_contact_friction * (1.0 - tool_contact_absorption)
+                relative_velocity *= 1.0 - tool_stickiness
+                new_vel = cvel + relative_velocity
+        return new_pos, new_vel
+
     @ti.kernel
     def initialize():
         for i in range(n_particles):
@@ -859,7 +1191,13 @@ def build_sim(args):
                     grid_v[I].x *= floor_friction * (1.0 - floor_stickiness)
                     grid_v[I].z *= floor_friction * (1.0 - floor_stickiness)
 
-                hit, normal, collider_v = box_collision_velocity_and_normal(pos, time)
+                hit = 0
+                normal = ti.Vector([0.0, 0.0, 0.0])
+                collider_v = ti.Vector([0.0, 0.0, 0.0])
+                if ti.static(use_mesh_collision):
+                    hit, normal, collider_v = mesh_collision_velocity_and_normal(pos, time)
+                elif ti.static(use_box_collision):
+                    hit, normal, collider_v = box_collision_velocity_and_normal(pos, time)
                 if hit == 1:
                     rel_v = grid_v[I] - collider_v
                     vn = rel_v.dot(normal)
@@ -900,7 +1238,12 @@ def build_sim(args):
                 new_C += 4 * inv_dx * weight * g_v.outer_product(dpos)
             v[p] = new_v * velocity_damping
             x[p] += dt * v[p]
-            projected_x, projected_v = project_particle_out_of_tools(x[p], v[p], time)
+            projected_x = x[p]
+            projected_v = v[p]
+            if ti.static(use_mesh_collision):
+                projected_x, projected_v = project_particle_out_of_meshes(x[p], v[p], time)
+            elif ti.static(use_box_collision):
+                projected_x, projected_v = project_particle_out_of_tools(x[p], v[p], time)
             x[p] = projected_x
             v[p] = projected_v
             if x[p].y < floor_y + floor_plastic_damping_band:
@@ -1012,6 +1355,36 @@ def depth_to_pointcloud(
         extra[:, 2] = 1.0
         return np.concatenate([xyz, extra], axis=1)
     raise ValueError(f"Unsupported depth pointcloud format: {pointcloud_format}")
+
+
+def quaternion_to_matrix(quaternion):
+    x, y, z, w = normalize_quaternion(quaternion)
+    return np.asarray([
+        [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+        [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+        [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
+    ], dtype=np.float32)
+
+
+def matrix_to_quaternion(matrix):
+    matrix = np.asarray(matrix, dtype=np.float64)
+    trace = np.trace(matrix)
+    if trace > 0:
+        s = 2.0 * np.sqrt(trace + 1.0)
+        q = np.array([(matrix[2, 1] - matrix[1, 2]) / s,
+                      (matrix[0, 2] - matrix[2, 0]) / s,
+                      (matrix[1, 0] - matrix[0, 1]) / s, 0.25 * s])
+    else:
+        axis = int(np.argmax(np.diag(matrix)))
+        nxt = (axis + 1) % 3
+        last = (axis + 2) % 3
+        s = 2.0 * np.sqrt(max(1.0 + matrix[axis, axis] - matrix[nxt, nxt] - matrix[last, last], 1e-12))
+        q = np.zeros(4)
+        q[axis] = 0.25 * s
+        q[3] = (matrix[last, nxt] - matrix[nxt, last]) / s
+        q[nxt] = (matrix[nxt, axis] + matrix[axis, nxt]) / s
+        q[last] = (matrix[last, axis] + matrix[axis, last]) / s
+    return normalize_quaternion(q)
 
 
 def normalize_quaternion(quaternion):
@@ -1317,6 +1690,36 @@ def main():
     parser.add_argument("--tool-close-time", type=float, default=0.04)
     parser.add_argument("--tool-motion-start", type=float, default=1.0)
     parser.add_argument("--tool-contact-padding", type=float, default=0.035)
+    parser.add_argument(
+        "--tool-collision",
+        choices=("sdf", "box", "none"),
+        default="box",
+        help="Tool collision geometry: calibrated box proxy (default), STL signed-distance field, or none.",
+    )
+    parser.add_argument(
+        "--tool-sdf-resolution",
+        type=int,
+        default=64,
+        help="Voxel resolution per STL axis for --tool-collision sdf.",
+    )
+    parser.add_argument(
+        "--ur-tool-mesh",
+        type=Path,
+        default=None,
+        help="Override the UR STL; defaults to the ROS package or bundled meshes/ur_spathla.stl.",
+    )
+    parser.add_argument(
+        "--kinova-tool-mesh",
+        type=Path,
+        default=None,
+        help="Override the Kinova STL; defaults to the ROS package or bundled meshes/gen3_spathla.stl.",
+    )
+    parser.add_argument(
+        "--tool-mesh-scale",
+        type=float,
+        default=0.001,
+        help="Scale applied to STL coordinates in millimetres.",
+    )
     parser.add_argument("--tool-contact-friction", type=float, default=0.75)
     parser.add_argument(
         "--tool-contact-absorption",
@@ -1473,6 +1876,10 @@ def main():
         raise ValueError("Depth pointcloud limits and splat radius must be non-negative")
     if not np.isfinite(args.dt) or args.dt <= 0 or min(args.substeps_per_frame, args.gui_fps_substeps, args.save_every) <= 0 or args.steps < 0:
         raise ValueError("dt, substeps-per-frame, gui-fps-substeps and save-every must be positive; steps cannot be negative")
+    if args.tool_mesh_scale <= 0.0:
+        raise ValueError("--tool-mesh-scale must be positive")
+    if args.tool_sdf_resolution < 16:
+        raise ValueError("--tool-sdf-resolution must be at least 16")
     tool_geometry = resolve_tool_geometry(
         args.tool_geometry,
         args.tool_half_extents,
@@ -1480,6 +1887,7 @@ def main():
     )
     args.tool_half_extents_by_tool = tool_geometry["half_extents_m"]
     args.tool_marker_from_collider = tool_geometry["marker_from_collider"]
+    args.tool_marker_from_mesh = tool_geometry["marker_from_mesh"]
     if tool_geometry["source"] == "legacy_cli":
         args.tool_half_extents = tuple(tool_geometry["half_extents_m"][0])
         args.tool_marker_offset = tuple(
@@ -1569,6 +1977,7 @@ def main():
         tool_geometry = align_tool_geometry(tool_geometry, observation_sequence.names)
         args.tool_half_extents_by_tool = tool_geometry["half_extents_m"]
         args.tool_marker_from_collider = tool_geometry["marker_from_collider"]
+        args.tool_marker_from_mesh = tool_geometry["marker_from_mesh"]
         initialization = reconstruction_info["metadata"]
         if (
             initialization.get("frame") != args.replay_start_frame
@@ -1584,7 +1993,7 @@ def main():
             args.replay_start_frame,
             replay_end,
             max_gap_s=args.replay_max_gap,
-            marker_from_colliders=np.asarray(tool_geometry["marker_from_collider"], dtype=np.float64),
+            marker_from_tool_frames=replay_marker_transforms(tool_geometry, args.tool_collision),
         )
         args.save_initial_frame = True
         args.save_depth_pointclouds = True
@@ -1596,6 +2005,24 @@ def main():
 
     ti.init(arch=ti.cpu if args.cpu else ti.gpu)
 
+    mesh_collision = None
+    if args.tool_collision == "sdf":
+        ur_tool_mesh_path = find_tool_mesh("ur_spathla.stl", args.ur_tool_mesh)
+        kinova_tool_mesh_path = find_tool_mesh("gen3_spathla.stl", args.kinova_tool_mesh)
+        ur_tool_mesh, _ = load_binary_stl(ur_tool_mesh_path, args.tool_mesh_scale)
+        kinova_tool_mesh, _ = load_binary_stl(kinova_tool_mesh_path, args.tool_mesh_scale)
+        print(f"UR tool mesh: {ur_tool_mesh_path}")
+        print(f"Kinova tool mesh: {kinova_tool_mesh_path}")
+        print(f"Building STL collision SDFs at {args.tool_sdf_resolution}^3 voxels per tool...")
+        mesh_collision = create_mesh_collision_fields(
+            [
+                mesh_in_tool_frame(ur_tool_mesh, UR_TOOL_VISUAL_ORIGIN, rpy_to_matrix(UR_TOOL_VISUAL_RPY)),
+                mesh_in_tool_frame(kinova_tool_mesh, KINOVA_TOOL_VISUAL_ORIGIN, rpy_to_matrix(KINOVA_TOOL_VISUAL_RPY)),
+            ],
+            args.tool_sdf_resolution,
+            args.tool_contact_padding,
+        )
+
     run_dir = args.output_dir
     run_dir.mkdir(parents=True, exist_ok=True)
     view_configs = dict(CAMERA_VIEWS)
@@ -1603,7 +2030,7 @@ def main():
         view_configs["deformpath_top"] = calibration.camera
     views = args.view or list(view_configs)
 
-    x, tool_x, initialize, substep, update_tool_visuals, set_tool_state = build_sim(args)
+    x, tool_x, initialize, substep, update_tool_visuals, set_tool_state = build_sim(args, mesh_collision)
     initialize()
     if initial_particles is not None:
         x.from_numpy(initial_particles)
@@ -1662,8 +2089,12 @@ def main():
         frame_idx += 1
 
     if replay is not None:
+        replay_is_sdf = args.tool_collision == "sdf"
         metadata["replay"] = {
-            "mode": "captured_trajectory_proxy_tools", "episode_dir": str(observation_sequence.episode_dir),
+            "mode": "captured_trajectory_sdf_tools" if replay_is_sdf else "captured_trajectory_proxy_tools",
+            "tool_collision": args.tool_collision,
+            "tool_pose_frame": "mesh_tool_link" if replay_is_sdf else "collider",
+            "episode_dir": str(observation_sequence.episode_dir),
             "sequence_fingerprint": observation_sequence.fingerprint,
             "source_start_frame": replay.start, "source_end_frame": replay.end,
             "source_time_origin_s": float(observation_sequence.times[replay.start]),
@@ -1671,11 +2102,17 @@ def main():
             "tool_geometry": tool_geometry,
             "max_interpolation_gap_s": args.replay_max_gap,
             "tool_contact_padding_scene_m": args.tool_contact_padding,
-            "limitations": ["Box colliders approximate the physical tool surfaces.",
-                            "Camera calibration is supplied, not independently verified.",
-                            "Depth exports contain dough only; tool occlusion is not modeled.",
-                            "Velocity uses the derivative of piecewise-linear positions and SLERP orientations.",
-                            "Volume comes from floor-filled voxel reconstruction; unobserved side geometry remains approximate."],
+            "limitations": [
+                "SDF collision approximates the physical tool surfaces with voxelized STL meshes."
+                if replay_is_sdf else (
+                    "Box colliders approximate the physical tool surfaces."
+                    if args.tool_collision == "box" else "Tool collision is disabled."
+                ),
+                "Camera calibration is supplied, not independently verified.",
+                "Depth exports contain dough only; tool occlusion is not modeled.",
+                "Velocity uses the derivative of piecewise-linear positions and SLERP orientations.",
+                "Volume comes from floor-filled voxel reconstruction; unobserved side geometry remains approximate.",
+            ],
         }
         if tool_geometry["source"] == "legacy_cli":
             metadata["replay"]["tool_half_extents_scene_m"] = list(args.tool_half_extents)
@@ -1718,7 +2155,8 @@ def main():
         metadata_path.write_text(json.dumps(metadata, indent=2))
         if dough_center_tx is not None:
             dough_center_tx.close()
-        print(f"Wrote {frame_idx} timestamped proxy-tool replay frames to {run_dir}")
+        replay_label = "SDF mesh-frame" if args.tool_collision == "sdf" else "proxy-tool"
+        print(f"Wrote {frame_idx} timestamped {replay_label} replay frames to {run_dir}")
         return
 
     step = 0

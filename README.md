@@ -57,6 +57,12 @@ python3 scripts/taichi_viscoelastic_mpm_scene.py \
 
 Procedural initialization derives particle volume from the MPM grid. Calibrated experiments must instead use reconstructed particles and `--initial-particles-metadata`, as shown below.
 
+## STL/SDF tool collision
+
+The default `--tool-collision box` preserves calibrated proxy geometry used by replay, LeRobot, and UDP workflows. Use `--tool-collision sdf` to build a voxel SDF from the bundled `ur_spathla.stl` and `gen3_spathla.stl` meshes, or provide replacements with `--ur-tool-mesh` and `--kinova-tool-mesh`. Mesh coordinates are millimetres by default (`--tool-mesh-scale 0.001`); `--tool-sdf-resolution` controls the approximation resolution.
+
+Captured replay supports both representations. Box replay composes each captured marker pose with `marker_from_collider`; SDF replay composes it with `marker_from_mesh`, which maps the marker into the mesh/tool-link frame. `marker_from_mesh` defaults to identity for existing geometry documents, but a non-identity value must be calibrated when the captured marker is not already the tool-link frame. The URDF visual origin and rotation are already applied while each SDF is built, so they must not be included in `marker_from_mesh`.
+
 ## Record video
 
 ```bash
@@ -260,7 +266,7 @@ object_volume_m3 = voxel_count * voxel_size^3
 
 `--fill-mode floor` requires a metric v2 calibration and rejects `--thickness` and `--fill-limit`. Omitting `--fill-mode` keeps the legacy fixed-thickness behavior for reproducing earlier runs; do not use that implicit mode for new calibrated results.
 
-## Measured two-tool collider geometry
+## Measured two-tool replay geometry
 
 Recorded replay uses `taichidough/tool-geometry/v1`. Tool names must match the two names in `paths_interpolated.pt` under `pose_frames`. Each `half_extents_m` entry contains half the measured full collider dimensions in scene metres. Each `marker_from_collider` matrix gives the collider pose in that tool marker's local frame:
 
@@ -276,6 +282,12 @@ Recorded replay uses `taichidough/tool-geometry/v1`. Tool names must match the t
         ["<R10>", "<R11>", "<R12>", "<TY_M>"],
         ["<R20>", "<R21>", "<R22>", "<TZ_M>"],
         [0, 0, 0, 1]
+      ],
+      "marker_from_mesh": [
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
       ]
     },
     {
@@ -286,15 +298,21 @@ Recorded replay uses `taichidough/tool-geometry/v1`. Tool names must match the t
         ["<R10>", "<R11>", "<R12>", "<TY_M>"],
         ["<R20>", "<R21>", "<R22>", "<TZ_M>"],
         [0, 0, 0, 1]
+      ],
+      "marker_from_mesh": [
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
       ]
     }
   ]
 }
 ```
 
-Store measured values as JSON numbers, not the strings shown as placeholders. The simulator reorders the two entries to match the recorded pose-stream order and applies the complete local rotation and translation. Collider contact velocity includes both linear velocity and `angular_velocity × (particle_position - collider_center)`.
+Store measured values as JSON numbers, not the strings shown as placeholders. The simulator reorders the two entries to match the recorded pose-stream order and applies the complete local rotation and translation. `marker_from_collider` is required and supplies `source_from_marker @ marker_from_collider` for box replay. `marker_from_mesh` is optional and supplies `source_from_marker @ marker_from_mesh` for `--tool-collision sdf`; omitting it selects an identity transform for legacy v1 documents. It maps marker to the SDF mesh/tool-link frame, not raw STL visual coordinates: do not include URDF visual origins or RPY rotations because SDF construction already applies them. Collider contact velocity includes both linear velocity and `angular_velocity × (particle_position - collider_center)`.
 
-`--tool-half-extents` and `--tool-marker-offset` remain available for smoke tests. They create two identical proxy boxes and must not be described as measured tool geometry.
+`--tool-half-extents` and `--tool-marker-offset` remain available for smoke tests. They create two identical proxy boxes and identity mesh transforms, and must not be described as measured tool geometry.
 
 ## Volume- and mass-preserving MPM initialization
 

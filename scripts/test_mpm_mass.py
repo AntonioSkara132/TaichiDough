@@ -28,6 +28,12 @@ class MpmMassTests(unittest.TestCase):
                             [0, 0, 1, 0.03],
                             [0, 0, 0, 1],
                         ],
+                        "marker_from_mesh": [
+                            [0, -1, 0, 0.04],
+                            [1, 0, 0, -0.01],
+                            [0, 0, 1, 0.02],
+                            [0, 0, 0, 1],
+                        ],
                     },
                     {
                         "name": "right",
@@ -47,6 +53,8 @@ class MpmMassTests(unittest.TestCase):
             self.assertEqual(parsed["names"], ["left", "right"])
             self.assertEqual(parsed["half_extents_m"][1], [0.05, 0.02, 0.09])
             self.assertEqual(parsed["marker_from_collider"][0][0][3], 0.01)
+            self.assertEqual(parsed["marker_from_mesh"][0][0][3], 0.04)
+            self.assertEqual(parsed["marker_from_mesh"][1], np.eye(4).tolist())
             self.assertEqual(parsed["source"], str(path.resolve()))
             self.assertFalse(parsed["proxy"])
             self.assertEqual(len(parsed["fingerprint"]), 64)
@@ -54,6 +62,7 @@ class MpmMassTests(unittest.TestCase):
             self.assertEqual(aligned["names"], ["right", "left"])
             self.assertEqual(aligned["half_extents_m"][0], [0.05, 0.02, 0.09])
             self.assertEqual(aligned["marker_from_collider"][1][0][3], 0.01)
+            self.assertEqual(aligned["marker_from_mesh"][1][0][3], 0.04)
 
     def test_tool_geometry_rejects_invalid_schema_count_extents_and_transform(self):
         valid_tool = {
@@ -79,6 +88,17 @@ class MpmMassTests(unittest.TestCase):
                     },
                 ],
             },
+            {
+                "schema": "taichidough/tool-geometry/v1",
+                "tools": [
+                    valid_tool,
+                    {
+                        **valid_tool,
+                        "name": "right",
+                        "marker_from_mesh": [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]],
+                    },
+                ],
+            },
         ]
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "tools.json"
@@ -95,11 +115,25 @@ class MpmMassTests(unittest.TestCase):
         self.assertEqual(len(legacy["fingerprint"]), 64)
         self.assertEqual(legacy["half_extents_m"], [[0.05, 0.06, 0.07]] * 2)
         self.assertEqual(legacy["marker_from_collider"][0][0][3], 0.01)
+        self.assertEqual(legacy["marker_from_mesh"], [np.eye(4).tolist(), np.eye(4).tolist()])
         aligned = mpm.align_tool_geometry(legacy, ["gripper_a", "gripper_b"])
         self.assertEqual(aligned["names"], ["gripper_a", "gripper_b"])
         self.assertNotEqual(aligned["fingerprint"], legacy["fingerprint"])
         with self.assertRaisesRegex(ValueError, "cannot be combined"):
             mpm.resolve_tool_geometry("tools.json", [0.05, 0.05, 0.05], None)
+
+    def test_replay_marker_transforms_follow_collision_mode(self):
+        geometry = {
+            "marker_from_collider": np.broadcast_to(np.eye(4), (2, 4, 4)).copy().tolist(),
+            "marker_from_mesh": np.broadcast_to(np.eye(4), (2, 4, 4)).copy().tolist(),
+        }
+        geometry["marker_from_collider"][0][0][3] = .01
+        geometry["marker_from_mesh"][0][0][3] = .04
+        self.assertAlmostEqual(mpm.replay_marker_transforms(geometry, "box")[0, 0, 3], .01)
+        self.assertAlmostEqual(mpm.replay_marker_transforms(geometry, "none")[0, 0, 3], .01)
+        self.assertAlmostEqual(mpm.replay_marker_transforms(geometry, "sdf")[0, 0, 3], .04)
+        with self.assertRaisesRegex(ValueError, "Unsupported"):
+            mpm.replay_marker_transforms(geometry, "capsule")
 
     def test_simulator_tool_extents_support_udp_sender_arguments(self):
         defaults = mpm.resolve_sim_tool_half_extents(SimpleNamespace())

@@ -1,4 +1,4 @@
-"""Timestamped DeformPath observations and deterministic, proxy-tool replay."""
+"""Timestamped DeformPath observations and deterministic selected-tool-frame replay."""
 
 from __future__ import annotations
 
@@ -182,6 +182,7 @@ class ToolGeometry:
     names: tuple[str, str]
     half_extents_m: np.ndarray
     marker_from_collider: np.ndarray
+    marker_from_mesh: np.ndarray
     fingerprint: str
     source: str
     proxy: bool
@@ -233,13 +234,18 @@ def load_tool_geometry(path: str | Path, expected_names: list[str] | tuple[str, 
     half_extents = np.asarray([row.get("half_extents_m") for row in ordered], dtype=np.float64)
     if half_extents.shape != (2, 3) or not np.isfinite(half_extents).all() or np.any(half_extents <= 0):
         raise ValueError("Tool half_extents_m must contain two positive finite XYZ vectors")
-    transforms = np.stack(
+    marker_from_collider = np.stack(
         [_rigid_matrix(row.get("marker_from_collider"), f"marker_from_collider for {row['name']}") for row in ordered]
     )
+    marker_from_mesh = np.stack([
+        _rigid_matrix(row.get("marker_from_mesh", np.eye(4)), f"marker_from_mesh for {row['name']}")
+        for row in ordered
+    ])
     return ToolGeometry(
         names=(str(names[0]), str(names[1])),
         half_extents_m=half_extents.astype(np.float32),
-        marker_from_collider=transforms,
+        marker_from_collider=marker_from_collider,
+        marker_from_mesh=marker_from_mesh,
         fingerprint=file_fingerprint(path),
         source=str(path),
         proxy=bool(data.get("proxy", False)),
@@ -262,13 +268,20 @@ def tool_geometry_from_metadata(
         raise ValueError(f"Tool geometry names {raw_names} do not match pose streams {list(names)}")
     order = [raw_names.index(name) for name in names]
     half_extents = np.asarray(data.get("half_extents_m"), dtype=np.float64)
-    transforms = np.asarray(data.get("marker_from_collider"), dtype=np.float64)
+    marker_from_collider = np.asarray(data.get("marker_from_collider"), dtype=np.float64)
+    marker_from_mesh = np.asarray(data.get("marker_from_mesh", np.broadcast_to(np.eye(4), (2, 4, 4))), dtype=np.float64)
     if half_extents.shape != (2, 3) or not np.isfinite(half_extents).all() or np.any(half_extents <= 0):
         raise ValueError("Embedded tool half_extents_m must contain two positive finite XYZ vectors")
-    if transforms.shape != (2, 4, 4):
+    if marker_from_collider.shape != (2, 4, 4):
         raise ValueError("Embedded marker_from_collider must have shape [2, 4, 4]")
-    transforms = np.stack([
-        _rigid_matrix(transforms[index], f"marker_from_collider for {raw_names[index]}")
+    if marker_from_mesh.shape != (2, 4, 4):
+        raise ValueError("Embedded marker_from_mesh must have shape [2, 4, 4]")
+    marker_from_collider = np.stack([
+        _rigid_matrix(marker_from_collider[index], f"marker_from_collider for {raw_names[index]}")
+        for index in order
+    ])
+    marker_from_mesh = np.stack([
+        _rigid_matrix(marker_from_mesh[index], f"marker_from_mesh for {raw_names[index]}")
         for index in order
     ])
     fingerprint = data.get("fingerprint")
@@ -280,7 +293,8 @@ def tool_geometry_from_metadata(
     return ToolGeometry(
         names=(str(names[0]), str(names[1])),
         half_extents_m=half_extents[order].astype(np.float32),
-        marker_from_collider=transforms,
+        marker_from_collider=marker_from_collider,
+        marker_from_mesh=marker_from_mesh,
         fingerprint=fingerprint,
         source=source,
         proxy=bool(data.get("proxy", False)),
@@ -304,8 +318,9 @@ def legacy_tool_geometry(
         offset = np.broadcast_to(offset, (2, 3)).copy()
     if offset.shape != (2, 3) or not np.isfinite(offset).all():
         raise ValueError("Legacy tool marker offsets must be one or two finite XYZ vectors")
-    transforms = np.broadcast_to(np.eye(4), (2, 4, 4)).copy()
-    transforms[:, :3, 3] = offset
+    marker_from_collider = np.broadcast_to(np.eye(4), (2, 4, 4)).copy()
+    marker_from_collider[:, :3, 3] = offset
+    marker_from_mesh = np.broadcast_to(np.eye(4), (2, 4, 4)).copy()
     payload = {
         "names": list(names),
         "half_extents_m": half.tolist(),
@@ -315,7 +330,8 @@ def legacy_tool_geometry(
     return ToolGeometry(
         names=(str(names[0]), str(names[1])),
         half_extents_m=half.astype(np.float32),
-        marker_from_collider=transforms,
+        marker_from_collider=marker_from_collider,
+        marker_from_mesh=marker_from_mesh,
         fingerprint=fingerprint,
         source="legacy-cli",
         proxy=True,
@@ -328,6 +344,7 @@ def tool_geometry_metadata(geometry: ToolGeometry) -> dict[str, Any]:
         "names": list(geometry.names),
         "half_extents_m": geometry.half_extents_m.tolist(),
         "marker_from_collider": geometry.marker_from_collider.tolist(),
+        "marker_from_mesh": geometry.marker_from_mesh.tolist(),
         "fingerprint": geometry.fingerprint,
         "source": geometry.source,
         "proxy": geometry.proxy,
@@ -380,6 +397,7 @@ class ToolReplay:
         end: int,
         marker_offset: np.ndarray | None = None,
         max_gap_s: float = 0.1,
+        marker_from_tool_frames: np.ndarray | None = None,
         marker_from_colliders: np.ndarray | None = None,
     ):
         if not 0 <= start <= end < len(sequence.times):
@@ -404,24 +422,30 @@ class ToolReplay:
         ):
             raise ValueError("Tool replay requires a proper rigid rotation")
 
-        if marker_from_colliders is None:
+        if marker_from_tool_frames is not None and marker_from_colliders is not None:
+            raise ValueError("Use either marker_from_tool_frames or marker_from_colliders, not both")
+        if marker_from_tool_frames is None:
+            marker_from_tool_frames = marker_from_colliders
+        if marker_from_tool_frames is None:
             offset = np.asarray(marker_offset if marker_offset is not None else [0, 0, 0], dtype=np.float64)
             if offset.shape == (3,):
                 offset = np.broadcast_to(offset, (2, 3)).copy()
             if offset.shape != (2, 3) or not np.isfinite(offset).all():
                 raise ValueError("Tool marker offset must contain one or two finite XYZ vectors")
-            marker_from_colliders = np.broadcast_to(np.eye(4), (2, 4, 4)).copy()
-            marker_from_colliders[:, :3, 3] = offset
+            marker_from_tool_frames = np.broadcast_to(np.eye(4), (2, 4, 4)).copy()
+            marker_from_tool_frames[:, :3, 3] = offset
         else:
             if marker_offset is not None and np.any(np.asarray(marker_offset, dtype=float) != 0):
-                raise ValueError("Use either marker offsets or marker_from_colliders, not both")
-            marker_from_colliders = np.asarray(marker_from_colliders, dtype=np.float64)
-            if marker_from_colliders.shape != (2, 4, 4):
-                raise ValueError("marker_from_colliders must have shape [2, 4, 4]")
-            marker_from_colliders = np.stack(
-                [_rigid_matrix(matrix, f"marker_from_collider[{index}]") for index, matrix in enumerate(marker_from_colliders)]
-            )
-        self.marker_from_colliders = marker_from_colliders
+                raise ValueError("Use either marker offsets or marker_from_tool_frames, not both")
+            marker_from_tool_frames = np.asarray(marker_from_tool_frames, dtype=np.float64)
+            if marker_from_tool_frames.shape != (2, 4, 4):
+                raise ValueError("marker_from_tool_frames must have shape [2, 4, 4]")
+            marker_from_tool_frames = np.stack([
+                _rigid_matrix(matrix, f"marker_from_tool_frame[{index}]")
+                for index, matrix in enumerate(marker_from_tool_frames)
+            ])
+        self.marker_from_tool_frames = marker_from_tool_frames
+        self.marker_from_colliders = marker_from_tool_frames
 
         self.poses = sequence.poses[selected, :, :7].copy()
         for i in range(len(self.times)):
@@ -429,9 +453,9 @@ class ToolReplay:
                 source_from_marker = np.eye(4, dtype=np.float64)
                 source_from_marker[:3, :3] = quaternion_matrix(self.poses[i, tool, 3:7])
                 source_from_marker[:3, 3] = self.poses[i, tool, :3]
-                source_from_collider = source_from_marker @ marker_from_colliders[tool]
-                self.poses[i, tool, :3] = apply_calibration(source_from_collider[None, :3, 3], calibration)[0]
-                self.poses[i, tool, 3:7] = matrix_quaternion(rotation @ source_from_collider[:3, :3])
+                source_from_tool_frame = source_from_marker @ marker_from_tool_frames[tool]
+                self.poses[i, tool, :3] = apply_calibration(source_from_tool_frame[None, :3, 3], calibration)[0]
+                self.poses[i, tool, 3:7] = matrix_quaternion(rotation @ source_from_tool_frame[:3, :3])
         self.start = start
         self.end = end
 

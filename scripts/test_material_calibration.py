@@ -32,6 +32,7 @@ try:
     )
     from calibrate_youngs_modulus import (
         MANIFEST_SCHEMA,
+        _validate_tool_geometry_document,
         render_command,
         score_evaluation_artifact,
         validate_manifest,
@@ -58,6 +59,7 @@ except ImportError:
     )
     from .calibrate_youngs_modulus import (
         MANIFEST_SCHEMA,
+        _validate_tool_geometry_document,
         render_command,
         score_evaluation_artifact,
         validate_manifest,
@@ -284,6 +286,21 @@ class CacheAndBootstrapTests(unittest.TestCase):
 
 
 class ManifestValidationTests(unittest.TestCase):
+    def test_tool_geometry_accepts_optional_mesh_transform(self):
+        identity = np.eye(4).tolist()
+        document = {
+            "schema": "taichidough/tool-geometry/v1",
+            "tools": [
+                {"name": "left", "half_extents_m": [.1, .1, .1], "marker_from_collider": identity, "marker_from_mesh": identity},
+                {"name": "right", "half_extents_m": [.1, .1, .1], "marker_from_collider": identity},
+            ],
+        }
+        _validate_tool_geometry_document(document)
+        invalid = json.loads(json.dumps(document))
+        invalid["tools"][0]["marker_from_mesh"][0][0] = -1
+        with self.assertRaisesRegex(ValueError, "marker_from_mesh"):
+            _validate_tool_geometry_document(invalid)
+
     def make_manifest(self, root: Path) -> tuple[dict, Path]:
         geometry = root / "tool_geometry.json"
         identity = np.eye(4).tolist()

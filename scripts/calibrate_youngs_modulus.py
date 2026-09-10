@@ -203,6 +203,17 @@ def _validate_tool_geometry_document(document: Any) -> None:
             float(np.linalg.det(rotation)), 1.0, rel_tol=0, abs_tol=1e-6
         ):
             raise ValueError(f"Tool geometry tools[{index}].marker_from_collider rotation must be proper and orthonormal")
+        if "marker_from_mesh" in tool:
+            mesh_transform = np.asarray(tool["marker_from_mesh"], dtype=np.float64)
+            if mesh_transform.shape != (4, 4) or not np.isfinite(mesh_transform).all():
+                raise ValueError(f"Tool geometry tools[{index}].marker_from_mesh must be a finite 4x4 matrix")
+            if not np.allclose(mesh_transform[3], [0, 0, 0, 1], atol=1e-8, rtol=0):
+                raise ValueError(f"Tool geometry tools[{index}].marker_from_mesh has an invalid last row")
+            mesh_rotation = mesh_transform[:3, :3]
+            if not np.allclose(mesh_rotation.T @ mesh_rotation, np.eye(3), atol=1e-6, rtol=0) or not math.isclose(
+                float(np.linalg.det(mesh_rotation)), 1.0, rel_tol=0, abs_tol=1e-6
+            ):
+                raise ValueError(f"Tool geometry tools[{index}].marker_from_mesh rotation must be proper and orthonormal")
     if len(set(names)) != 2:
         raise ValueError("Tool geometry names must be unique")
 
