@@ -9,6 +9,7 @@ import math
 from pathlib import Path
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -648,6 +649,17 @@ def render_command(template: Iterable[str], context: Mapping[str, Any]) -> list[
     return argv
 
 
+def _subprocess_failure_reason(returncode: int) -> str | None:
+    if returncode == 0:
+        return None
+    if returncode < 0:
+        try:
+            return f"command terminated by signal {signal.Signals(-returncode).name}"
+        except ValueError:
+            return f"command terminated by signal {-returncode}"
+    return f"command exited with status {returncode}"
+
+
 def _run_command(argv: list[str], stdout_path: Path, stderr_path: Path, timeout_s: float) -> dict[str, Any]:
     start = time.monotonic()
     try:
@@ -657,7 +669,7 @@ def _run_command(argv: list[str], stdout_path: Path, stderr_path: Path, timeout_
             "argv": argv,
             "returncode": completed.returncode,
             "duration_s": time.monotonic() - start,
-            "failure_reason": None if completed.returncode == 0 else f"command exited with status {completed.returncode}",
+            "failure_reason": _subprocess_failure_reason(completed.returncode),
         }
     except subprocess.TimeoutExpired:
         return {
@@ -694,6 +706,31 @@ def _resolve_evaluation_array(value: str, evaluation_path: Path) -> Path:
         if candidate.is_file():
             return candidate.resolve()
     raise ValueError(f"Cannot resolve evaluator array {value!r} from {evaluation_path}")
+
+
+def load_invalid_state_diagnostic(path: Path) -> dict[str, Any]:
+    diagnostic = _load_json(path, "simulator invalid-state diagnostic")
+    if diagnostic.get("schema") != "taichidough/mpm-invalid-state/v1":
+        raise ValueError("Simulator invalid-state diagnostic has an unsupported schema")
+    required = ("failure_kind", "particle_index", "substep", "sim_time_s", "grid_size")
+    missing = [key for key in required if key not in diagnostic]
+    if missing:
+        raise ValueError("Simulator invalid-state diagnostic is missing " + ", ".join(missing))
+    if not isinstance(diagnostic["failure_kind"], str) or not diagnostic["failure_kind"]:
+        raise ValueError("Simulator invalid-state diagnostic failure_kind must be nonempty")
+    for key in ("particle_index", "substep", "grid_size"):
+        if not isinstance(diagnostic[key], int) or diagnostic[key] < 0:
+            raise ValueError(f"Simulator invalid-state diagnostic {key} must be a non-negative integer")
+    if not isinstance(diagnostic["sim_time_s"], (int, float)) or not math.isfinite(diagnostic["sim_time_s"]):
+        raise ValueError("Simulator invalid-state diagnostic sim_time_s must be finite")
+    return diagnostic
+
+
+def invalid_state_failure_reason(diagnostic: Mapping[str, Any], fallback: str) -> str:
+    return (
+        f"numerical failure {diagnostic['failure_kind']} for particle {diagnostic['particle_index']} "
+        f"at substep {diagnostic['substep']} (t={float(diagnostic['sim_time_s']):.6g}s); {fallback}"
+    )
 
 
 def _loss_kwargs(loss_settings: Mapping[str, Any]) -> dict[str, Any]:
@@ -952,6 +989,7 @@ def execute_candidate_window(
             "cache_dir": str(cache_dir),
             "loss": None,
             "failure_reason": previous_metadata.get("failure_reason", "previous cached execution failed"),
+            "invalid_state": previous_metadata.get("simulator_invalid_state"),
         }
     if cache_dir.exists():
         shutil.rmtree(cache_dir)
@@ -985,6 +1023,16 @@ def execute_candidate_window(
     simulator_run = _run_command(simulator_argv, cache_dir / "simulator.stdout.log", cache_dir / "simulator.stderr.log", timeout)
     metadata["commands"]["simulator"] = simulator_run
     failure = simulator_run["failure_reason"]
+    invalid_state = None
+    if failure is not None:
+        invalid_state_path = simulation_dir / "invalid_state.json"
+        if invalid_state_path.is_file():
+            try:
+                invalid_state = load_invalid_state_diagnostic(invalid_state_path)
+                metadata["simulator_invalid_state"] = invalid_state
+                failure = invalid_state_failure_reason(invalid_state, failure)
+            except ValueError as exc:
+                metadata["simulator_invalid_state_error"] = str(exc)
     if failure is None:
         try:
             _verify_simulation_metadata(
@@ -1033,6 +1081,7 @@ def execute_candidate_window(
         "cache_dir": str(cache_dir),
         "loss": loss if failure is None else None,
         "failure_reason": failure,
+        "invalid_state": invalid_state,
     }
 
 

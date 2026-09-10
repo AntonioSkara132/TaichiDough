@@ -15,12 +15,12 @@ import importlib.util
 import numpy as np
 
 try:
-    from deformpath_dynamics import ObservationSequence, ToolReplay, depth_comparison, filter_scene_points, load_scene_point_filter, load_tool_geometry, paired_frame_indices, tool_geometry_from_metadata, tool_geometry_metadata, quaternion_matrix, matrix_quaternion, slerp, surface_summary
+    from deformpath_dynamics import ObservationSequence, ToolReplay, depth_comparison, filter_scene_points, load_scene_point_filter, load_tool_geometry, paired_frame_indices, resolve_episode_calibration, tool_geometry_from_metadata, tool_geometry_metadata, quaternion_matrix, matrix_quaternion, slerp, surface_summary
     from deformpath_topview import apply_calibration, load_calibration
     from evaluate_dynamic_topview_match import boundary_distance, replay_marker_transforms, replay_target_frame, validate_frames
     from visualize_dynamic_topview_benchmark import depth_colors, residual_colors, create_report, normalize_report_context
 except ImportError:
-    from .deformpath_dynamics import ObservationSequence, ToolReplay, depth_comparison, filter_scene_points, load_scene_point_filter, load_tool_geometry, paired_frame_indices, tool_geometry_from_metadata, tool_geometry_metadata, quaternion_matrix, matrix_quaternion, slerp, surface_summary
+    from .deformpath_dynamics import ObservationSequence, ToolReplay, depth_comparison, filter_scene_points, load_scene_point_filter, load_tool_geometry, paired_frame_indices, resolve_episode_calibration, tool_geometry_from_metadata, tool_geometry_metadata, quaternion_matrix, matrix_quaternion, slerp, surface_summary
     from .deformpath_topview import load_calibration
     from .evaluate_dynamic_topview_match import validate_frames, boundary_distance
     from .visualize_dynamic_topview_benchmark import depth_colors, residual_colors, create_report, normalize_report_context
@@ -41,6 +41,37 @@ class DynamicsTests(unittest.TestCase):
         poses[:, :, 0] = (times - times[0])[:, None]
         return ObservationSequence([np.ones((4, 3))] * 3, poses, np.ones((3, 2), bool), times,
                                    ["one", "two"], [2, 3, 5], Path("."), "fixture")
+
+    def test_resolve_episode_calibration_verifies_attached_mocap_artifact(self):
+        document = {
+            "schema": "taichidough/scene-calibration/v2",
+            "name": "fixture",
+            "source_frame": "mocap",
+            "scene_frame": "mocap",
+            "scene_from_source": np.eye(4).tolist(),
+            "scene_from_camera": np.eye(4).tolist(),
+            "floor_plane_scene": [0, 1, 0, 0],
+            "camera": {"width": 8, "height": 6, "fx": 4.0, "fy": 4.0, "cx": 3.5, "cy": 2.5, "zNear": 0.01, "zFar": 2.0},
+        }
+        payload = json.dumps(document, sort_keys=True, separators=(",", ":"))
+        fingerprint = hashlib.sha256(payload.encode()).hexdigest()
+        with tempfile.TemporaryDirectory() as directory:
+            episode = Path(directory)
+            artifact = episode / "scene_calibration_v2.json"
+            artifact.write_text(payload)
+            sha256 = hashlib.sha256(artifact.read_bytes()).hexdigest()
+            (episode / "sequence_metadata.json").write_text(json.dumps({"calibration": {
+                "status": "available", "path": str(artifact), "sha256": sha256, "fingerprint": fingerprint,
+            }}))
+            calibration, provenance = resolve_episode_calibration(episode)
+            self.assertTrue(calibration.is_metric)
+            self.assertEqual(calibration.source_frame, "mocap")
+            self.assertEqual(provenance["artifact_path"], str(artifact))
+            (episode / "sequence_metadata.json").write_text(json.dumps({"calibration": {
+                "status": "available", "path": str(artifact), "sha256": "wrong", "fingerprint": fingerprint,
+            }}))
+            with self.assertRaisesRegex(ValueError, "SHA-256"):
+                resolve_episode_calibration(episode)
 
     def test_real_gaps_are_preserved(self):
         replay = ToolReplay(self.sequence(), self.calibration, 0, 2)
@@ -328,6 +359,25 @@ class DynamicsTests(unittest.TestCase):
     def test_camera_and_step_validation(self):
         metadata = self.metadata()
         validate_frames(metadata, self.calibration, "deformpath_top")
+
+        metric_camera = {
+            "width": 4, "height": 3, "fx": 5.0, "fy": 5.0, "cx": 1.5, "cy": 1.0,
+            "zNear": 0.01, "zFar": 2.0, "frame_id": "camera_color_optical_frame",
+            "distortion_model": "plumb_bob", "d": [0.0, 0.0, 0.0, 0.0, 0.0],
+            "scene_from_camera": np.eye(4).tolist(),
+        }
+        metric_calibration = SimpleNamespace(fingerprint="metric", camera=metric_camera)
+        metric_metadata = {
+            "calibration": {"fingerprint": "metric"}, "parameters": {"dt": .001},
+            "frames": [{"sim_time_s": 0, "completed_substeps": 0, "initial_state": True,
+                        "views": [dict(metric_camera, name="deformpath_top", splat_radius=0)]}],
+        }
+        validate_frames(metric_metadata, metric_calibration, "deformpath_top")
+        metric_metadata["frames"][0]["views"][0]["frame_id"] = "wrong_frame"
+        with self.assertRaisesRegex(ValueError, "frame_id"):
+            validate_frames(metric_metadata, metric_calibration, "deformpath_top")
+
+        metadata = self.metadata()
         metadata["frames"][0]["views"][0]["fieldOfView"] += 1
         with self.assertRaises(ValueError):
             validate_frames(metadata, self.calibration, "deformpath_top")

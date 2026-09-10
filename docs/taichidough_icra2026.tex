@@ -1,0 +1,105 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{cite}
+\usepackage{url}
+
+\title{Simulation and Parameter Identification of Deformable Dough Using Depth Observations}
+
+\author{Antonio~\v{S}kara, Bruno~Mari\'c, and Matko~Orsag}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+TaichiDough is a research prototype for reconstructing, simulating, and evaluating deformable dough from recorded point clouds and the motion of two tools. It combines a Taichi Moving Least Squares Material Point Method (MLS-MPM) simulator with a calibration and evaluation workflow that compares predicted deformation with recorded depth observations in metric scene coordinates. The repository demonstrates a strong legacy static initialization match and timestamped tool replay. Its longer proxy-tool rollout also identifies the measurements and model improvements required before physical fidelity can be claimed.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Deformable object simulation, material point method, dough, system identification, depth sensing, calibration.
+\end{IEEEkeywords}
+
+\section{Introduction}
+\IEEEPARstart{D}{eformable} object manipulation is difficult because deformation depends on geometry, material response, contact, and the history of applied motion. Simulation can support model-based planning and generate training data for robot learning, but it must be connected to measured geometry and tool trajectories. This paper describes TaichiDough, a workflow that reconstructs dough from a recorded point cloud, initializes a mass-preserving MPM model, replays two captured tool trajectories, and evaluates predicted visible geometry against depth observations.
+
+The intended workflow is metric: an AprilTag and calibrated camera intrinsics define a rigid camera-to-scene transform, reconstruction fills the visible dough down to a known floor, and a candidate material parameter is assessed with no post-hoc translation, scale, rigid registration, or time warping. The present checkout contains a legacy bootstrap calibration and diagnostic dynamic replay results. It also contains the method and software needed for metric calibration and effective Young's-modulus identification.
+
+\section{System Overview}
+The input is a DeformPath point-cloud sequence and recorded poses for two tools. A version-2 scene calibration records camera intrinsics, a rigid camera-to-scene transform, a floor plane, provenance, and file fingerprints. Floor-aware voxel reconstruction removes points at or below a configured clearance, groups remaining points by occupied columns, and fills each column to the calibrated floor. The reconstructed volume determines particle volume; with measured dough mass $M$, density and particle mass are
+\begin{equation}
+\rho=\frac{M}{V},\qquad m_p=\rho\frac{V}{N},
+\end{equation}
+where $V$ is voxel volume and $N$ is the number of sampled particles. Thus total volume and mass remain constant when particle count or grid resolution changes.
+
+Captured tool positions are linearly interpolated and tool orientations use shortest-path spherical interpolation. The simulator can use calibrated oriented boxes or signed-distance fields constructed from UR and Kinova spatula meshes. It produces GUI and video output, rendered depth maps, virtual point clouds, UDP observations, and Gymnasium-compatible environments.
+
+\section{MPM Simulator}
+The simulator uses three-dimensional MLS-MPM with Affine Particle-In-Cell (APIC) transfer. A material particle stores position $x_p$, velocity $v_p$, deformation gradient $F_p$, and affine velocity matrix $C_p$. Particle mass and momentum transfer to a regular background grid, grid velocities are updated with gravity and contact, and the resulting grid state is interpolated back to particles.
+
+\subsection{Constitutive Model and Transfer}
+For timestep $\Delta t$, the deformation update is
+\begin{equation}
+F_p^{n+1}=(I+\Delta t\,C_p)F_p^n.
+\end{equation}
+Young's modulus $E$ and Poisson ratio $\nu$ determine the Lam\'e parameters:
+\begin{equation}
+\mu=\frac{E}{2(1+\nu)},\qquad
+\lambda=\frac{E\nu}{(1+\nu)(1-2\nu)}.
+\end{equation}
+With polar decomposition $F_p=RS$, determinant $J=\det(F_p)$, and viscosity $\eta$, the model uses a corotated elastic term and a simple viscous term,
+\begin{equation}
+P=2\mu(F_p-R)F_p^T+\lambda J(J-1)I+\eta(C_p+C_p^T).
+\end{equation}
+For quadratic B-spline particle--grid weight $w_{pi}$, particle mass $m_p$, particle volume $V_p$, grid spacing $\Delta x$, and particle-to-node offset $d_{pi}$, the particle-to-grid update is
+\begin{align}
+m_i &\mathrel{+}= w_{pi}m_p,\\
+m_iv_i &\mathrel{+}=w_{pi}\left[m_pv_p+\left(-\Delta t\,V_p\,4\Delta x^{-2}P+m_pC_p\right)d_{pi}\right].
+\end{align}
+If plasticity is enabled, the code decomposes $F_p=U\Sigma V^T$, clamps each singular value to $[\sigma_{\min},\sigma_{\max}]$, and rebuilds $F_p$ from the clamped matrix. This is a simplified dough-like constitutive model rather than a completed food-dough rheology model.
+
+\subsection{Contact and Replay}
+The tool velocity at a particle position $x$ includes linear and angular terms,
+\begin{equation}
+v_{\mathrm{tool}}(x)=v_{\mathrm{linear}}+\omega\times(x-c),
+\end{equation}
+where $c$ is tool centre and $\omega$ is angular velocity. The relative velocity is $u=v_p-v_{\mathrm{tool}}(x)$. When $u\cdot n<0$, the inward normal component is removed before configured friction, absorption, and stickiness are applied. A post-advection projection moves particles out of a floor or tool volume if penetration remains.
+
+\section{Metric Calibration}
+AprilTag detection estimates a rigid pose $T_{C\leftarrow A}$ from tag frame $A$ to camera frame $C$ using the physical tag edge length and camera intrinsics. The collector accepts multiple valid detections of the fixed tag and represents each pose as a homogeneous transform,
+\begin{equation}
+T=\begin{bmatrix}R&t\\0&1\end{bmatrix},
+\end{equation}
+where $R\in SO(3)$ and $t\in\mathbb{R}^3$. It takes the coordinate-wise median of observed translations and uses Euclidean translation residuals. Rotation residuals are geodesic angles on $SO(3)$, measured against the rotation with the smallest median pairwise angular distance.
+
+For translation and rotation separately, the acceptance threshold is the smaller of a fixed safety limit and a median-absolute-deviation threshold,
+\begin{equation}
+\tau=\min\left(\tau_{\max},\operatorname{median}(r)+3.5\times1.4826\times\operatorname{MAD}(r)\right).
+\end{equation}
+Detections must pass both tests. Accepted translations are averaged arithmetically. Accepted rotations are averaged with the Markley quaternion method: normalized quaternions $q_i$ form $A=\sum_iq_iq_i^T$, and the unit eigenvector of $A$ with the largest eigenvalue gives the mean rotation. A final fixed residual check removes remaining outliers before recomputing the pose.
+
+Given a measured scene-to-tag transform $T_{S\leftarrow A}$, the camera transform is
+\begin{equation}
+T_{S\leftarrow C}=T_{S\leftarrow A}T_{C\leftarrow A}^{-1}.
+\end{equation}
+If a point cloud uses source frame $P$, TF provides $T_{C\leftarrow P}$ and the scene transform is $T_{S\leftarrow P}=T_{S\leftarrow C}T_{C\leftarrow P}$. The resulting calibration is rigid: no axis permutation, scale fit, or post-hoc registration is included.
+
+\section{Related Work}
+TaichiDough builds on the Material Point Method (MPM), a hybrid particle--grid method suited to large deformation and changing topology. The MPM formulation and transfer methods summarized by Jiang \emph{et al.}~\cite{jiang2016mpm} provide the numerical basis for the MLS-MPM/APIC update used here. Stomakhin \emph{et al.}~\cite{stomakhin2013snow} established a practical computer-graphics treatment of elasto-plastic yield behaviour through singular-value projection. Taichi~\cite{hu2019taichi} provides the data-oriented parallel programming system used for the simulator's CPU and GPU implementation.
+
+EMPM (Embodied MPM)~\cite{chen2026empm} more recently combines differentiable MPM with multi-view RGB-D observations to estimate geometry and physical properties of deformable objects. TaichiDough instead uses recorded point clouds and measured tool trajectories with visible-geometry losses, and currently searches non-differentiably for an effective Young's modulus. In food engineering, Fabbri and Cevoli~\cite{fabbri2015dough} estimated semolina-dough rheological parameters by minimizing disagreement between finite-element simulations and measured data with Levenberg--Marquardt optimization. This motivates observation-based identification, while the present project evaluates a trajectory-conditioned MPM model with held-out deformation windows and does not treat one fitted modulus as a universal dough property.
+
+\section{Evaluation and Current Status}
+The static Episode 18 benchmark evaluates reconstructed initial geometry under a legacy bootstrap calibration. It contains 10,463 filtered observed points and compares simulated and observed visible geometry without translation, scaling, or registration. The footprint intersection-over-union is 0.8808; simulated-to-reference extent ratios are 1.058 and 1.052; the area ratio is 1.113; centroid offsets are below 0.5 mm; and the 95th-percentile depth error is 2.0 mm. These values support static initialization alignment, but do not validate the material model.
+
+A longer dynamic replay pairs 66 observations using identical 5 cm half-extent proxy boxes, 3,000 particles, a $24^3$ grid, a 0.2 ms timestep, and $E=2000$ Pa. Over 65 post-initial frames, its mean pixel intersection-over-union is 0.4240, mean depth mean-absolute error is 95.95 mm, mean 95th-percentile depth error is 119.40 mm, and mean depth-change error is 83.83 mm. The result explicitly records that physical fidelity is not validated: tool geometry is unmeasured, the camera calibration is unverified, tool occlusion is absent from the depth export, hidden volume and material parameters are assumed, and the comparison only measures visible geometry.
+
+The repository includes a material-identification driver that replays the same trajectory from the same reconstructed state while varying only Young's modulus. It uses a logarithmic coarse search, local refinement, boundary expansion, cached candidate evaluations, and bootstrap intervals over deformation windows. Training windows select a candidate and held-out windows assess prediction without refitting. No completed metric version-2 calibration or material-calibration result is committed in this checkout.
+
+\section{Conclusion}
+TaichiDough provides an end-to-end basis for data-conditioned dough simulation: metric calibration, floor-aware reconstruction, mass-preserving MPM initialization, timestamped two-tool replay, visible-geometry evaluation, and material-parameter search. The static benchmark and replay implementation are established. The dynamic proxy results identify the remaining measurements and validations needed before claiming physical agreement.
+
+\bibliographystyle{IEEEtran}
+\bibliography{taichidough_project_article}
+
+\end{document}

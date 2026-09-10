@@ -3,7 +3,8 @@
 #
 # Required environment variables:
 #   EPISODE             Directory containing pointclouds_interpolated.pt and paths_interpolated.pt
-#   CALIBRATION         Existing taichidough/scene-calibration/v2 JSON from the AprilTag collector
+#   CALIBRATION         Optional explicit taichidough/scene-calibration/v2 JSON. When unset,
+#                       use and verify the metric calibration attached to EPISODE.
 #   TOOL_GEOMETRY       Measured taichidough/tool-geometry/v1 JSON
 #   DOUGH_MASS_KG       Measured dough mass in kilograms
 #
@@ -31,14 +32,70 @@ require_value() {
     fi
 }
 
-for name in EPISODE CALIBRATION TOOL_GEOMETRY DOUGH_MASS_KG; do
+for name in EPISODE TOOL_GEOMETRY DOUGH_MASS_KG; do
     require_value "$name"
 done
 
 PYTHON=${PYTHON:-python3}
 EPISODE=$(realpath -e "$EPISODE")
-CALIBRATION=$(realpath -e "$CALIBRATION")
 TOOL_GEOMETRY=$(realpath -e "$TOOL_GEOMETRY")
+EXPLICIT_CALIBRATION=${CALIBRATION:-}
+if [[ -n $EXPLICIT_CALIBRATION ]]; then
+    CALIBRATION=$(realpath -e "$EXPLICIT_CALIBRATION")
+else
+    CALIBRATION=$(EPISODE="$EPISODE" REPO_ROOT="$REPO_ROOT" "$PYTHON" - <<'PY'
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(os.environ["REPO_ROOT"]) / "scripts"))
+from deformpath_dynamics import resolve_episode_calibration
+
+_, provenance = resolve_episode_calibration(Path(os.environ["EPISODE"]))
+print(provenance["artifact_path"])
+PY
+)
+fi
+
+# An explicit calibration may be used only when it is the recorded calibration,
+# unless ALLOW_CALIBRATION_OVERRIDE=1 was deliberately set for an investigation.
+if [[ -n $EXPLICIT_CALIBRATION && ${ALLOW_CALIBRATION_OVERRIDE:-0} != 1 ]]; then
+    EPISODE="$EPISODE" CALIBRATION="$CALIBRATION" REPO_ROOT="$REPO_ROOT" "$PYTHON" - <<'PY'
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(os.environ["REPO_ROOT"]) / "scripts"))
+from deformpath_dynamics import resolve_episode_calibration
+from deformpath_topview import load_calibration
+
+attached, _ = resolve_episode_calibration(Path(os.environ["EPISODE"]))
+override = load_calibration(Path(os.environ["CALIBRATION"]))
+if attached.fingerprint != override.fingerprint:
+    raise SystemExit("CALIBRATION does not match the episode-attached calibration; set ALLOW_CALIBRATION_OVERRIDE=1 only for an explicit investigation")
+PY
+fi
+
+EPISODE="$EPISODE" CALIBRATION="$CALIBRATION" EXPLICIT_CALIBRATION="$EXPLICIT_CALIBRATION" REPO_ROOT="$REPO_ROOT" "$PYTHON" - <<'PY'
+import hashlib
+import json
+import os
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(os.environ["REPO_ROOT"]) / "scripts"))
+from deformpath_topview import load_calibration
+
+path = Path(os.environ["CALIBRATION"])
+calibration = load_calibration(path)
+digest = hashlib.sha256(path.read_bytes()).hexdigest()
+print(f"Calibration: {path}")
+print(f"Source: {'episode attachment' if not os.environ.get('EXPLICIT_CALIBRATION') else 'explicit override'}")
+print(f"Frames: source={calibration.source_frame}, scene={calibration.scene_frame}")
+print(f"Floor plane: {calibration.floor_plane_scene.tolist() if calibration.floor_plane_scene is not None else None}")
+print(f"SHA-256: {digest}")
+print(f"Fingerprint: {calibration.fingerprint}")
+PY
 
 FRAME=${FRAME:-0}
 PARTICLES=${PARTICLES:-24000}
@@ -93,10 +150,10 @@ SUBPROCESS_TIMEOUT_S=${SUBPROCESS_TIMEOUT_S:-3600}
 
 # box uses marker_from_collider. sdf uses marker_from_mesh and requires both
 # explicit STL paths so their content hashes become part of the cache input.
-TOOL_COLLISION=${TOOL_COLLISION:-box}
+TOOL_COLLISION=${TOOL_COLLISION:-sdf}
 TOOL_SDF_RESOLUTION=${TOOL_SDF_RESOLUTION:-64}
-UR_TOOL_MESH=${UR_TOOL_MESH:-}
-KINOVA_TOOL_MESH=${KINOVA_TOOL_MESH:-}
+UR_TOOL_MESH=${UR_TOOL_MESH:-"$REPO_ROOT/meshes/ur_spathla.stl"}
+KINOVA_TOOL_MESH=${KINOVA_TOOL_MESH:-"$REPO_ROOT/meshes/gen3_spathla.stl"}
 TOOL_MESH_SCALE=${TOOL_MESH_SCALE:-0.001}
 if [[ $TOOL_COLLISION != box && $TOOL_COLLISION != sdf && $TOOL_COLLISION != none ]]; then
     printf 'TOOL_COLLISION must be box, sdf, or none; got %q\n' "$TOOL_COLLISION" >&2

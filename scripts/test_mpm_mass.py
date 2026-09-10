@@ -1,4 +1,5 @@
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -152,6 +153,95 @@ class MpmMassTests(unittest.TestCase):
             mpm.resolve_sim_tool_half_extents(
                 SimpleNamespace(tool_half_extents_by_tool=[[0.1, 0.1, 0.1]])
             )
+
+    def test_mpm_grid_stencil_safety_bounds(self):
+        grid = 16
+        self.assertTrue(mpm.mpm_grid_stencil_is_safe([0.5 / grid, 0.5 / grid, 0.5 / grid], grid))
+        self.assertTrue(mpm.mpm_grid_stencil_is_safe([(0.5 - 1e-6) / grid] * 3, grid))
+        self.assertTrue(mpm.mpm_grid_stencil_is_safe([(grid - 1.5001) / grid] * 3, grid))
+        self.assertFalse(mpm.mpm_grid_stencil_is_safe([(-0.6) / grid] * 3, grid))
+        self.assertFalse(mpm.mpm_grid_stencil_is_safe([(grid - 1.5) / grid] * 3, grid))
+        self.assertFalse(mpm.mpm_grid_stencil_is_safe([float("nan"), 0.5, 0.5], grid))
+
+    def test_unsafe_particle_exits_with_diagnostic_instead_of_signal(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            particle_path = root / "unsafe.npy"
+            output_dir = root / "output"
+            np.save(particle_path, np.array([[0.999, 0.5, 0.5]], dtype=np.float32))
+            command = [
+                sys.executable,
+                str(Path(mpm.__file__).resolve()),
+                "--cpu",
+                "--particles", "1",
+                "--grid", "16",
+                "--steps", "1",
+                "--dt", "0.001",
+                "--substeps-per-frame", "1",
+                "--initial-particles", str(particle_path),
+                "--initial-particles-raw-scene-coordinates",
+                "--initial-particles-axis-map", "xyz",
+                "--initial-particles-fit", "none",
+                "--tool-collision", "none",
+                "--no-publish-dough-center",
+                "--output-dir", str(output_dir),
+            ]
+            completed = subprocess.run(command, capture_output=True, text=True, check=False, timeout=120)
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertGreaterEqual(completed.returncode, 0)
+            diagnostic_path = output_dir / "invalid_state.json"
+            self.assertTrue(diagnostic_path.is_file(), completed.stderr)
+            diagnostic = json.loads(diagnostic_path.read_text(encoding="utf-8"))
+            self.assertEqual(diagnostic["schema"], "taichidough/mpm-invalid-state/v1")
+            self.assertEqual(diagnostic["failure_kind"], "pre_p2g_stencil_out_of_bounds")
+            self.assertEqual(diagnostic["particle_index"], 0)
+            self.assertEqual(diagnostic["substep"], 0)
+            self.assertFalse((output_dir / "camera_parameters.json").exists())
+
+    def test_floor_contact_keeps_soft_particles_at_metric_zero(self):
+        simulator = Path(mpm.__file__).resolve()
+        initial_particles = np.array([[0.5, 0.001, 0.5]], dtype=np.float32)
+        for youngs_modulus in (1000.0, 2000.0):
+            with self.subTest(youngs_modulus=youngs_modulus), tempfile.TemporaryDirectory() as temp_dir:
+                output_dir = Path(temp_dir) / "output"
+                particle_path = Path(temp_dir) / "initial_particles.npy"
+                np.save(particle_path, initial_particles)
+                process = subprocess.run(
+                    [
+                        sys.executable,
+                        str(simulator),
+                        "--cpu",
+                        "--particles", "1",
+                        "--grid", "16",
+                        "--steps", "100",
+                        "--substeps-per-frame", "1",
+                        "--save-every", "100",
+                        "--dt", "0.0002",
+                        "--youngs-modulus", str(youngs_modulus),
+                        "--viscosity", "0",
+                        "--floor-y", "0",
+                        "--floor-friction", "0.7",
+                        "--floor-absorption", "0",
+                        "--floor-stickiness", "0",
+                        "--floor-plastic-damping-band", "0",
+                        "--velocity-damping", "1",
+                        "--plastic-velocity-damping", "1",
+                        "--plastic-affine-damping", "1",
+                        "--tool-collision", "none",
+                        "--initial-particles", str(particle_path),
+                        "--initial-particles-raw-scene-coordinates",
+                        "--initial-particles-axis-map", "xyz",
+                        "--initial-particles-fit", "none",
+                        "--no-publish-dough-center",
+                        "--output-dir", str(output_dir),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=90,
+                )
+                self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
+                final_particles = np.load(output_dir / "particles_000000.npy")
+                self.assertGreaterEqual(float(final_particles[:, 1].min()), 0.0)
 
     def test_reconstructed_volume_and_mass_survive_resize_and_grid_change(self):
         first = mpm.compute_mass_properties(100, 32, 1100.0, object_volume_m3=0.002)

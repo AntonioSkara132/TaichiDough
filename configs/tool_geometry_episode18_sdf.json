@@ -1,0 +1,37 @@
+{
+  "schema": "taichidough/tool-geometry/v1",
+  "tools": [
+    {
+      "name": "UR5e_spathla",
+      "half_extents_m": [0.045005, 0.066590, 0.079017],
+      "marker_from_collider": [
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+      ],
+      "marker_from_mesh": [
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+      ]
+    },
+    {
+      "name": "gen3_spathla",
+      "half_extents_m": [0.048942, 0.069208, 0.078965],
+      "marker_from_collider": [
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+      ],
+      "marker_from_mesh": [
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+      ]
+    }
+  ]
+}

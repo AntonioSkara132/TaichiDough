@@ -215,6 +215,28 @@ scene_from_source = scene_from_camera @ camera_from_source
 
 It also records exact color-camera intrinsics, the floor plane, tag provenance, TF records, diagnostics, and SHA-256 fingerprints. There is no fitted axis map, scale, translation, registration, or approximate field of view in a v2 calibrated run.
 
+### Offline moving-tag mocap-world export
+
+`collect_apriltag_scene_calibration.py` is for a fixed tag observed during ROS replay. The DeformPath recordings instead provide a moving `apriltag3` pose in `/poses` while the camera is fixed in `mocap`. Export those recordings with the offline exporter:
+
+```bash
+cd /home/antonio/diplomski_antonio/diplomski/data/deformpath_training
+python3 export_deformpath2_offline.py \
+  --bag-dir DeformPath2/snimanje_23_10/episode18_kugla \
+  --output-dir DeformPath3/snimanje_23_10/episode18_kugla \
+  --camera-tag-parent-frame tag16h5:3 \
+  --camera-tag-frame tag3_real \
+  --mocap-tag-frame apriltag3 \
+  --output-frame mocap
+python3 interpolate_deformpath_sequence.py \
+  --input-dir DeformPath3/snimanje_23_10/episode18_kugla \
+  --output-dir DeformPath3/snimanje_23_10/episode18_kugla
+```
+
+For each synchronized frame, it estimates `mocap_from_camera = mocap_from_apriltag3 @ inverse(camera_from_tag3_real)`, rejects stale samples and outliers, then stores one robust camera pose in `scene_calibration_v2.json`. It transforms every point cloud into `mocap`, keeps both tool paths in `mocap`, and records `source_frame = scene_frame = mocap`, `scene_from_source = identity`, and the confirmed floor `[0, 1, 0, 0]`. Interpolation verifies and copies that artifact into the processed episode and writes its SHA-256 and canonical fingerprint to `sequence_metadata.json`.
+
+A processed episode with no attached calibration remains a legacy/non-metric episode: supply an explicit calibration file, or re-export the tagged recording. Do not use a synthetic calibration for a real recording.
+
 ## Reconstruct dough down to the calibrated floor
 
 Floor mode transforms the selected DeformPath frame into scene metres exactly once, removes points at or below the floor clearance, groups the visible dough by occupied columns, and intersects each column with the calibrated floor:
@@ -419,6 +441,20 @@ Replay uses recorded timestamps, linear interpolation for collider position, and
 The dynamic evaluator pairs frames by timestamp. Its default tolerance is one integration timestep. Observations outside the tolerance remain unpaired, and frames without enough common visible support remain unavailable rather than receiving zero error. The comparison uses the reconstruction's floor clearance and scene bounds to remove floor and tag points consistently.
 
 Errors are simulation minus observation on common visible support. The report includes depth, silhouette, coverage, one-sided visible-point distance, change relative to the initial frame, timing, and tool-motion diagnostics. It also reports a frozen-initial-state baseline. It does not fit translation, scale, rigid registration, or time warping.
+
+## Single-episode material launcher
+
+For a mocap-world processed episode, the launcher resolves and verifies the calibration attached to `sequence_metadata.json`; do not set `CALIBRATION`:
+
+```bash
+EPISODE=/data/DeformPath3/snimanje_23_10/episode18_kugla \
+TOOL_GEOMETRY=configs/tool_geometry_measured.json \
+DOUGH_MASS_KG=<measured_kg> \
+TRAIN_END_FRAME=60 VALIDATION_END_FRAME=120 \
+bash scripts/run_single_episode_material_calibration.sh
+```
+
+It uses the bundled UR and Gen3 STL meshes with SDF collision at millimetre-to-metre scale `0.001` unless overridden. The recorded `UR5e_spathla` and `gen3_spathla` frames match the mesh tool-link frames, so both `marker_from_mesh` matrices are identity. An explicit `CALIBRATION` is accepted only if its fingerprint matches the episode attachment; `ALLOW_CALIBRATION_OVERRIDE=1` documents an intentional mismatch.
 
 ## Identify an effective Young's modulus
 

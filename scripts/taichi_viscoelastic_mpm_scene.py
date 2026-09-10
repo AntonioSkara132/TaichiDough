@@ -40,6 +40,19 @@ TOOL_Z_OFFSET = 0.24
 TOOL_TRAVEL = 0.28
 DOUGH_RADIUS = [0.14, 0.055, 0.12]
 
+
+class MpmInvalidStateError(RuntimeError):
+    """Raised when a particle cannot safely use the quadratic MPM grid stencil."""
+
+    def __init__(self, diagnostic):
+        self.diagnostic = diagnostic
+        super().__init__(
+            "MPM invalid state: "
+            f"{diagnostic['failure_kind']} for particle {diagnostic['particle_index']} "
+            f"at substep {diagnostic['substep']}"
+        )
+
+
 UR_TOOL_VISUAL_ORIGIN = np.array([-0.002395874, -0.017992075, -0.019913439], dtype=np.float32)
 UR_TOOL_VISUAL_RPY = np.array([4.5910, 1.379415965, -1.740698498], dtype=np.float32)
 KINOVA_TOOL_VISUAL_ORIGIN = np.array([-0.02345833, -0.02261066, -0.01297941], dtype=np.float32)
@@ -759,6 +772,15 @@ def fit_initial_particles_to_scene(points, args, calibration=None):
     return (scene_center + centered * scale * args.initial_particles_scale).astype(np.float32)
 
 
+def mpm_grid_stencil_is_safe(position, grid_size):
+    """Return whether the existing Taichi integer stencil base stays in the grid."""
+    values = np.asarray(position, dtype=np.float64)
+    if values.shape != (3,) or not np.isfinite(values).all() or int(grid_size) < 3:
+        return False
+    base = np.trunc(values * int(grid_size) - 0.5).astype(np.int64)
+    return bool(np.all(base >= 0) and np.all(base + 2 < int(grid_size)))
+
+
 def resize_initial_particles(points, count, seed):
     if count == len(points):
         return points.astype(np.float32, copy=False)
@@ -847,6 +869,10 @@ def build_sim(args, mesh_collision=None):
     tool_quat = ti.Vector.field(4, dtype=ti.f32, shape=2)
     tool_velocity = ti.Vector.field(dim, dtype=ti.f32, shape=2)
     tool_angular_velocity = ti.Vector.field(dim, dtype=ti.f32, shape=2)
+    invalid_pre_p2g_state = ti.field(dtype=ti.i32, shape=())
+    invalid_pre_p2g_stencil = ti.field(dtype=ti.i32, shape=())
+    invalid_post_g2p_state = ti.field(dtype=ti.i32, shape=())
+    invalid_post_g2p_stencil = ti.field(dtype=ti.i32, shape=())
 
     @ti.func
     def quat_to_matrix(q):
@@ -1130,54 +1156,93 @@ def build_sim(args, mesh_collision=None):
 
             tool_x[p] = center + quat_to_matrix(tool_quat[tool_id]) @ local
 
+    @ti.func
+    def scalar_is_finite(value):
+        return not ti.math.isnan(value) and not ti.math.isinf(value)
+
+    @ti.func
+    def particle_state_is_finite(p):
+        finite = scalar_is_finite(Jp[p])
+        for axis in ti.static(range(dim)):
+            finite = finite and scalar_is_finite(x[p][axis]) and scalar_is_finite(v[p][axis])
+            for column in ti.static(range(dim)):
+                finite = finite and scalar_is_finite(C[p][axis, column]) and scalar_is_finite(F[p][axis, column])
+        return finite
+
+    @ti.func
+    def position_has_safe_grid_stencil(position):
+        # This exactly matches the base conversion used by P2G and G2P below.
+        # Taichi's float-to-int conversion truncates toward zero, so checking a
+        # continuous lower bound would reject valid floor-adjacent particles.
+        base = (position * inv_dx - 0.5).cast(int)
+        return (
+            base.x >= 0 and base.x + 2 < n_grid
+            and base.y >= 0 and base.y + 2 < n_grid
+            and base.z >= 0 and base.z + 2 < n_grid
+        )
+
     @ti.kernel
-    def substep(time: ti.f32):
+    def reset_invalid_state():
+        invalid_pre_p2g_state[None] = n_particles
+        invalid_pre_p2g_stencil[None] = n_particles
+        invalid_post_g2p_state[None] = n_particles
+        invalid_post_g2p_stencil[None] = n_particles
+
+    @ti.kernel
+    def substep_kernel(time: ti.f32):
         for I in ti.grouped(grid_m):
             grid_v[I] = ti.Vector.zero(ti.f32, dim)
             grid_m[I] = 0.0
 
         for p in x:
-            base = (x[p] * inv_dx - 0.5).cast(int)
-            fx = x[p] * inv_dx - base.cast(float)
-            w = [
-                0.5 * (1.5 - fx) ** 2,
-                0.75 - (fx - 1.0) ** 2,
-                0.5 * (fx - 0.5) ** 2,
-            ]
+            if not particle_state_is_finite(p):
+                ti.atomic_min(invalid_pre_p2g_state[None], p)
+            elif not position_has_safe_grid_stencil(x[p]):
+                ti.atomic_min(invalid_pre_p2g_stencil[None], p)
+            else:
+                F[p] = (ti.Matrix.identity(ti.f32, dim) + dt * C[p]) @ F[p]
+                old_J = F[p].determinant()
+                yielded[p] = 0
+                if pure_viscoelastic == 0:
+                    U, sig, V = ti.svd(F[p])
+                    for d in ti.static(range(dim)):
+                        unclamped = sig[d, d]
+                        clamped = ti.min(ti.max(unclamped, plastic_min), plastic_max)
+                        if ti.abs(unclamped - clamped) > 1e-6:
+                            yielded[p] = 1
+                        sig[d, d] = clamped
+                    F[p] = U @ sig @ V.transpose()
+                    if use_jp == 1:
+                        new_J = F[p].determinant()
+                        Jp[p] = ti.min(ti.max(Jp[p] * old_J / new_J, jp_min), jp_max)
 
-            F[p] = (ti.Matrix.identity(ti.f32, dim) + dt * C[p]) @ F[p]
-            old_J = F[p].determinant()
-            yielded[p] = 0
-            if pure_viscoelastic == 0:
-                U, sig, V = ti.svd(F[p])
-                for d in ti.static(range(dim)):
-                    unclamped = sig[d, d]
-                    clamped = ti.min(ti.max(unclamped, plastic_min), plastic_max)
-                    if ti.abs(unclamped - clamped) > 1e-6:
-                        yielded[p] = 1
-                    sig[d, d] = clamped
-                F[p] = U @ sig @ V.transpose()
-                if use_jp == 1:
-                    new_J = F[p].determinant()
-                    Jp[p] = ti.min(ti.max(Jp[p] * old_J / new_J, jp_min), jp_max)
+                if not particle_state_is_finite(p):
+                    ti.atomic_min(invalid_pre_p2g_state[None], p)
+                else:
+                    base = (x[p] * inv_dx - 0.5).cast(int)
+                    fx = x[p] * inv_dx - base.cast(float)
+                    w = [
+                        0.5 * (1.5 - fx) ** 2,
+                        0.75 - (fx - 1.0) ** 2,
+                        0.5 * (fx - 0.5) ** 2,
+                    ]
+                    J = F[p].determinant()
+                    hardening = ti.exp(jp_hardening * (1.0 - Jp[p]))
+                    mu = mu_0 * hardening
+                    la = lambda_0 * hardening
+                    r, _ = ti.polar_decompose(F[p])
+                    elastic_stress = 2 * mu * (F[p] - r) @ F[p].transpose()
+                    elastic_stress += ti.Matrix.identity(ti.f32, dim) * la * J * (J - 1)
+                    viscous_stress = viscosity * (C[p] + C[p].transpose())
+                    stress = -dt * p_vol * 4 * inv_dx * inv_dx * (elastic_stress + viscous_stress)
+                    affine = stress + p_mass * C[p]
 
-            J = F[p].determinant()
-            hardening = ti.exp(jp_hardening * (1.0 - Jp[p]))
-            mu = mu_0 * hardening
-            la = lambda_0 * hardening
-            r, _ = ti.polar_decompose(F[p])
-            elastic_stress = 2 * mu * (F[p] - r) @ F[p].transpose()
-            elastic_stress += ti.Matrix.identity(ti.f32, dim) * la * J * (J - 1)
-            viscous_stress = viscosity * (C[p] + C[p].transpose())
-            stress = -dt * p_vol * 4 * inv_dx * inv_dx * (elastic_stress + viscous_stress)
-            affine = stress + p_mass * C[p]
-
-            for i, j, k in ti.static(ti.ndrange(3, 3, 3)):
-                offset = ti.Vector([i, j, k])
-                dpos = (offset.cast(float) - fx) * dx
-                weight = w[i].x * w[j].y * w[k].z
-                grid_v[base + offset] += weight * (p_mass * v[p] + affine @ dpos)
-                grid_m[base + offset] += weight * p_mass
+                    for i, j, k in ti.static(ti.ndrange(3, 3, 3)):
+                        offset = ti.Vector([i, j, k])
+                        dpos = (offset.cast(float) - fx) * dx
+                        weight = w[i].x * w[j].y * w[k].z
+                        grid_v[base + offset] += weight * (p_mass * v[p] + affine @ dpos)
+                        grid_m[base + offset] += weight * p_mass
 
         for I in ti.grouped(grid_m):
             if grid_m[I] > 0:
@@ -1186,7 +1251,7 @@ def build_sim(args, mesh_collision=None):
 
                 pos = I.cast(float) * dx
 
-                if pos.y < floor_y and grid_v[I].y < 0.0:
+                if pos.y <= floor_y and grid_v[I].y < 0.0:
                     grid_v[I].y *= -floor_absorption
                     grid_v[I].x *= floor_friction * (1.0 - floor_stickiness)
                     grid_v[I].z *= floor_friction * (1.0 - floor_stickiness)
@@ -1220,42 +1285,127 @@ def build_sim(args, mesh_collision=None):
                     grid_v[I].z = 0
 
         for p in x:
-            base = (x[p] * inv_dx - 0.5).cast(int)
-            fx = x[p] * inv_dx - base.cast(float)
-            w = [
-                0.5 * (1.5 - fx) ** 2,
-                0.75 - (fx - 1.0) ** 2,
-                0.5 * (fx - 0.5) ** 2,
-            ]
-            new_v = ti.Vector.zero(ti.f32, dim)
-            new_C = ti.Matrix.zero(ti.f32, dim, dim)
-            for i, j, k in ti.static(ti.ndrange(3, 3, 3)):
-                offset = ti.Vector([i, j, k])
-                dpos = (offset.cast(float) - fx) * dx
-                g_v = grid_v[base + offset]
-                weight = w[i].x * w[j].y * w[k].z
-                new_v += weight * g_v
-                new_C += 4 * inv_dx * weight * g_v.outer_product(dpos)
-            v[p] = new_v * velocity_damping
-            x[p] += dt * v[p]
-            projected_x = x[p]
-            projected_v = v[p]
-            if ti.static(use_mesh_collision):
-                projected_x, projected_v = project_particle_out_of_meshes(x[p], v[p], time)
-            elif ti.static(use_box_collision):
-                projected_x, projected_v = project_particle_out_of_tools(x[p], v[p], time)
-            x[p] = projected_x
-            v[p] = projected_v
-            if x[p].y < floor_y + floor_plastic_damping_band:
-                if v[p].y < 0.0:
-                    v[p].y *= -floor_absorption
-                v[p].x *= floor_friction * (1.0 - floor_stickiness)
-                v[p].z *= floor_friction * (1.0 - floor_stickiness)
-                new_C *= plastic_affine_damping
-            if yielded[p] == 1:
-                v[p] *= plastic_velocity_damping
-                new_C *= plastic_affine_damping
-            C[p] = new_C
+            if not particle_state_is_finite(p):
+                ti.atomic_min(invalid_post_g2p_state[None], p)
+            elif not position_has_safe_grid_stencil(x[p]):
+                ti.atomic_min(invalid_post_g2p_stencil[None], p)
+            else:
+                base = (x[p] * inv_dx - 0.5).cast(int)
+                fx = x[p] * inv_dx - base.cast(float)
+                w = [
+                    0.5 * (1.5 - fx) ** 2,
+                    0.75 - (fx - 1.0) ** 2,
+                    0.5 * (fx - 0.5) ** 2,
+                ]
+                new_v = ti.Vector.zero(ti.f32, dim)
+                new_C = ti.Matrix.zero(ti.f32, dim, dim)
+                for i, j, k in ti.static(ti.ndrange(3, 3, 3)):
+                    offset = ti.Vector([i, j, k])
+                    dpos = (offset.cast(float) - fx) * dx
+                    g_v = grid_v[base + offset]
+                    weight = w[i].x * w[j].y * w[k].z
+                    new_v += weight * g_v
+                    new_C += 4 * inv_dx * weight * g_v.outer_product(dpos)
+                v[p] = new_v * velocity_damping
+                x[p] += dt * v[p]
+                projected_x = x[p]
+                projected_v = v[p]
+                if ti.static(use_mesh_collision):
+                    projected_x, projected_v = project_particle_out_of_meshes(x[p], v[p], time)
+                elif ti.static(use_box_collision):
+                    projected_x, projected_v = project_particle_out_of_tools(x[p], v[p], time)
+                floor_contact = 0
+                if projected_x.y < floor_y:
+                    projected_x.y = floor_y
+                    if projected_v.y < 0.0:
+                        projected_v.y *= -floor_absorption
+                    projected_v.x *= floor_friction * (1.0 - floor_stickiness)
+                    projected_v.z *= floor_friction * (1.0 - floor_stickiness)
+                    floor_contact = 1
+                x[p] = projected_x
+                v[p] = projected_v
+                if x[p].y < floor_y + floor_plastic_damping_band:
+                    if floor_contact == 0:
+                        if v[p].y < 0.0:
+                            v[p].y *= -floor_absorption
+                        v[p].x *= floor_friction * (1.0 - floor_stickiness)
+                        v[p].z *= floor_friction * (1.0 - floor_stickiness)
+                    new_C *= plastic_affine_damping
+                if yielded[p] == 1:
+                    v[p] *= plastic_velocity_damping
+                    new_C *= plastic_affine_damping
+                C[p] = new_C
+                if not particle_state_is_finite(p):
+                    ti.atomic_min(invalid_post_g2p_state[None], p)
+                elif not position_has_safe_grid_stencil(x[p]):
+                    ti.atomic_min(invalid_post_g2p_stencil[None], p)
+
+    invalid_kind_fields = (
+        ("pre_p2g_nonfinite", invalid_pre_p2g_state),
+        ("pre_p2g_stencil_out_of_bounds", invalid_pre_p2g_stencil),
+        ("post_g2p_nonfinite", invalid_post_g2p_state),
+        ("post_g2p_stencil_out_of_bounds", invalid_post_g2p_stencil),
+    )
+    substep_ordinal = 0
+
+    def json_safe(value):
+        if isinstance(value, np.ndarray):
+            return json_safe(value.tolist())
+        if isinstance(value, (list, tuple)):
+            return [json_safe(item) for item in value]
+        if isinstance(value, np.integer):
+            return int(value)
+        if isinstance(value, (float, np.floating)):
+            numeric = float(value)
+            if not np.isfinite(numeric):
+                return "nan" if np.isnan(numeric) else ("inf" if numeric > 0 else "-inf")
+            return numeric
+        return value
+
+    def substep(time):
+        nonlocal substep_ordinal
+        reset_invalid_state()
+        substep_kernel(time)
+        failure_kind = None
+        particle_index = n_particles
+        for kind, field in invalid_kind_fields:
+            index = int(field[None])
+            if index < n_particles:
+                failure_kind = kind
+                particle_index = index
+                break
+        if failure_kind is not None:
+            positions = x.to_numpy()
+            velocities = v.to_numpy()
+            affine = C.to_numpy()
+            deformation = F.to_numpy()
+            plastic_volume = Jp.to_numpy()
+            position = positions[particle_index]
+            grid_coordinate = position * inv_dx
+            stencil_base = None
+            if np.isfinite(grid_coordinate).all():
+                stencil_base = np.trunc(grid_coordinate - 0.5).astype(np.int64)
+            diagnostic = {
+                "schema": "taichidough/mpm-invalid-state/v1",
+                "failure_kind": failure_kind,
+                "particle_index": particle_index,
+                "substep": substep_ordinal,
+                "sim_time_s": float(time),
+                "grid_size": n_grid,
+                "grid_coordinate": json_safe(grid_coordinate),
+                "stencil_base": json_safe(stencil_base),
+                "safe_stencil_base_interval": [0, n_grid - 3],
+                "position_scene": json_safe(position),
+                "velocity_scene": json_safe(velocities[particle_index]),
+                "affine_velocity": json_safe(affine[particle_index]),
+                "deformation_gradient": json_safe(deformation[particle_index]),
+                "plastic_volume_ratio": json_safe(float(plastic_volume[particle_index])),
+                "youngs_modulus_pa": float(E),
+                "tool_collision": collision_mode,
+            }
+            substep_ordinal += 1
+            raise MpmInvalidStateError(diagnostic)
+        substep_ordinal += 1
 
     return x, tool_x, initialize, substep, update_tool_visuals, set_tool_state
 
@@ -2039,6 +2189,16 @@ def main():
     else:
         set_tool_state(TOOL_INITIAL_POSES, np.zeros((2, 3), dtype=np.float32))
     update_tool_visuals(0.0)
+
+    def run_substep(current_time):
+        try:
+            substep(current_time)
+        except MpmInvalidStateError as exc:
+            invalid_state_path = run_dir / "invalid_state.json"
+            invalid_state_path.write_text(json.dumps(exc.diagnostic, indent=2, allow_nan=False))
+            print(f"{exc}; wrote {invalid_state_path}", flush=True)
+            raise
+
     ros_control = UdpRigidBoxControl(max_vel=args.ros_tool_max_vel) if args.ros_control else None
     dough_center_tx = DoughCenterTransmitter(port=args.dough_center_port) if args.publish_dough_center else None
 
@@ -2138,7 +2298,7 @@ def main():
             while completed < target_substeps:
                 current_time = completed * args.dt
                 set_tool_state(*replay.at(min(current_time, replay.times[-1])))
-                substep(current_time)
+                run_substep(current_time)
                 completed += 1
             set_tool_state(*replay.at(min(completed * args.dt, replay.times[-1])))
             update_tool_visuals(completed * args.dt)
@@ -2226,7 +2386,7 @@ def main():
                     ros_control.transmit_poses()
                 time = step * args.dt * args.substeps_per_frame
                 for _ in range(args.substeps_per_frame):
-                    substep(time)
+                    run_substep(time)
                     time += args.dt
                 step += 1
 
@@ -2276,7 +2436,7 @@ def main():
                 ros_control.transmit_poses()
             time = (step - 1) * args.dt * args.substeps_per_frame
             for _ in range(args.substeps_per_frame):
-                substep(time)
+                run_substep(time)
                 time += args.dt
             update_tool_visuals(time)
             if dough_center_tx is not None:

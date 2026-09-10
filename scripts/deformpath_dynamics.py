@@ -11,9 +11,9 @@ from typing import Any
 import numpy as np
 
 try:
-    from deformpath_topview import TopViewCalibration, apply_calibration, parse_axis_map
+    from deformpath_topview import TopViewCalibration, apply_calibration, load_calibration, parse_axis_map
 except ImportError:
-    from .deformpath_topview import TopViewCalibration, apply_calibration, parse_axis_map
+    from .deformpath_topview import TopViewCalibration, apply_calibration, load_calibration, parse_axis_map
 
 
 def file_fingerprint(path: Path) -> str:
@@ -30,6 +30,32 @@ def resolve_artifact(value: str, metadata_path: Path) -> Path:
         if candidate.is_file():
             return candidate.resolve()
     raise FileNotFoundError(f"Cannot resolve {value!r} from {metadata_path}")
+
+
+def resolve_episode_calibration(episode_dir: Path) -> tuple[TopViewCalibration, dict[str, Any]]:
+    """Load and verify the metric calibration copied into a processed episode."""
+    episode_dir = Path(episode_dir).resolve()
+    metadata_path = episode_dir / "sequence_metadata.json"
+    if not metadata_path.is_file():
+        raise FileNotFoundError(f"Processed episode metadata is missing: {metadata_path}")
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    record = metadata.get("calibration")
+    if not isinstance(record, dict) or record.get("status") != "available":
+        reason = record.get("reason", "no attached calibration") if isinstance(record, dict) else "no calibration record"
+        raise ValueError(f"Processed episode has no usable metric calibration: {reason}")
+    artifact = resolve_artifact(str(record.get("path", "")), metadata_path)
+    if record.get("sha256") != file_fingerprint(artifact):
+        raise ValueError("Episode calibration SHA-256 does not match sequence metadata")
+    calibration = load_calibration(artifact)
+    if not calibration.is_metric or calibration.schema != "taichidough/scene-calibration/v2":
+        raise ValueError("Episode calibration must use metric taichidough/scene-calibration/v2")
+    if record.get("fingerprint") != calibration.fingerprint:
+        raise ValueError("Episode calibration fingerprint does not match sequence metadata")
+    if calibration.source_frame != "mocap" or calibration.scene_frame != "mocap":
+        raise ValueError("Episode calibration must use mocap as both source and scene frames")
+    if calibration.floor_plane_scene is None:
+        raise ValueError("Episode calibration must include floor_plane_scene")
+    return calibration, {"metadata_path": str(metadata_path), "artifact_path": str(artifact), **record}
 
 
 def _normalized_plane(value: Any, label: str) -> np.ndarray:

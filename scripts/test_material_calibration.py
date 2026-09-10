@@ -32,7 +32,11 @@ try:
     )
     from calibrate_youngs_modulus import (
         MANIFEST_SCHEMA,
+        _subprocess_failure_reason,
         _validate_tool_geometry_document,
+        execute_candidate_window,
+        invalid_state_failure_reason,
+        load_invalid_state_diagnostic,
         render_command,
         score_evaluation_artifact,
         validate_manifest,
@@ -59,7 +63,11 @@ except ImportError:
     )
     from .calibrate_youngs_modulus import (
         MANIFEST_SCHEMA,
+        _subprocess_failure_reason,
         _validate_tool_geometry_document,
+        execute_candidate_window,
+        invalid_state_failure_reason,
+        load_invalid_state_diagnostic,
         render_command,
         score_evaluation_artifact,
         validate_manifest,
@@ -285,6 +293,35 @@ class CacheAndBootstrapTests(unittest.TestCase):
         self.assertEqual(sum(first["selection_counts"].values()), 250)
 
 
+class CrashDiagnosticTests(unittest.TestCase):
+    def test_subprocess_failure_uses_signal_name(self):
+        self.assertIsNone(_subprocess_failure_reason(0))
+        self.assertEqual(_subprocess_failure_reason(-11), "command terminated by signal SIGSEGV")
+        self.assertEqual(_subprocess_failure_reason(7), "command exited with status 7")
+
+    def test_invalid_state_diagnostic_requires_expected_fields(self):
+        diagnostic = {
+            "schema": "taichidough/mpm-invalid-state/v1",
+            "failure_kind": "pre_p2g_stencil_out_of_bounds",
+            "particle_index": 12,
+            "substep": 34,
+            "sim_time_s": 0.0068,
+            "grid_size": 48,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "invalid_state.json"
+            path.write_text(json.dumps(diagnostic), encoding="utf-8")
+            self.assertEqual(load_invalid_state_diagnostic(path), diagnostic)
+            self.assertEqual(
+                invalid_state_failure_reason(diagnostic, "command exited with status 1"),
+                "numerical failure pre_p2g_stencil_out_of_bounds for particle 12 "
+                "at substep 34 (t=0.0068s); command exited with status 1",
+            )
+            path.write_text(json.dumps({"schema": diagnostic["schema"]}), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "missing"):
+                load_invalid_state_diagnostic(path)
+
+
 class ManifestValidationTests(unittest.TestCase):
     def test_tool_geometry_accepts_optional_mesh_transform(self):
         identity = np.eye(4).tolist()
@@ -490,6 +527,54 @@ class ManifestValidationTests(unittest.TestCase):
                 },
             )
             self.assertEqual(rendered, ["python", "--grid", "16", "0"])
+
+    def test_failed_simulator_diagnostic_is_cached_without_evaluation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest, path = self.make_manifest(root)
+            simulator = Path(manifest["inputs"]["simulator"]["path"])
+            evaluator = Path(manifest["inputs"]["evaluator"]["path"])
+            simulator.write_text(
+                "import json\n"
+                "import sys\n"
+                "from pathlib import Path\n"
+                "output = Path(sys.argv[sys.argv.index('--output-dir') + 1])\n"
+                "output.mkdir(parents=True, exist_ok=True)\n"
+                "(output / 'invalid_state.json').write_text(json.dumps({\n"
+                "    'schema': 'taichidough/mpm-invalid-state/v1',\n"
+                "    'failure_kind': 'post_g2p_nonfinite',\n"
+                "    'particle_index': 3,\n"
+                "    'substep': 17,\n"
+                "    'sim_time_s': 0.0034,\n"
+                "    'grid_size': 16,\n"
+                "}))\n"
+                "raise SystemExit(17)\n",
+                encoding="utf-8",
+            )
+            evaluator.write_text(
+                "from pathlib import Path\n"
+                "Path(__file__).with_name('evaluator_was_run').write_text('yes')\n",
+                encoding="utf-8",
+            )
+            manifest["inputs"]["simulator"]["sha256"] = file_sha256(simulator)
+            manifest["inputs"]["evaluator"]["sha256"] = file_sha256(evaluator)
+            path.write_text(json.dumps(manifest), encoding="utf-8")
+            normalized = validate_manifest(manifest, path)
+            execution = execute_candidate_window(
+                normalized,
+                {"synthetic": "fingerprint"},
+                normalized["windows"][0],
+                2000.0,
+            )
+            self.assertEqual(execution["status"], "failed")
+            self.assertIsNone(execution["loss"])
+            self.assertIn("post_g2p_nonfinite", execution["failure_reason"])
+            self.assertEqual(execution["invalid_state"]["particle_index"], 3)
+            self.assertFalse((root / "evaluator_was_run").exists())
+            cache_metadata = json.loads((Path(execution["cache_dir"]) / "cache_metadata.json").read_text())
+            self.assertEqual(cache_metadata["status"], "failed")
+            self.assertEqual(cache_metadata["simulator_invalid_state"], execution["invalid_state"])
+            self.assertNotIn("evaluator", cache_metadata["commands"])
 
     def test_held_out_scoring_excludes_earlier_replay_frames(self):
         with tempfile.TemporaryDirectory() as directory:

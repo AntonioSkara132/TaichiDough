@@ -59,7 +59,15 @@ def validate_frames(metadata: dict, calibration, view_name: str) -> tuple[list[d
             raise ValueError(f"Expected exactly one {view_name!r} view in every simulation frame")
         view = matches[0]
         for key, value in calibration.camera.items():
-            if key not in view or not np.allclose(view[key], value, atol=1e-7, rtol=0):
+            if key not in view:
+                raise ValueError(f"Exported camera is missing calibration field {key}")
+            expected = np.asarray(value)
+            actual = np.asarray(view[key])
+            if np.issubdtype(expected.dtype, np.number) and np.issubdtype(actual.dtype, np.number):
+                matches = expected.shape == actual.shape and np.allclose(actual, expected, atol=1e-7, rtol=0)
+            else:
+                matches = view[key] == value
+            if not matches:
                 raise ValueError(f"Exported camera {key} does not match calibration")
         settings = (view["width"], view["height"], view.get("splat_radius", 0))
         if raster_settings is not None and raster_settings != settings:
