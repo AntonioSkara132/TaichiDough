@@ -32,6 +32,27 @@ def urdf_matrix(xyz, rpy):
 
 
 class ToolCameraMappingTest(unittest.TestCase):
+    def test_mesh_sdf_is_signed_and_has_outward_gradients(self):
+        corners = np.array([
+            [-.05, -.05, -.05], [.05, -.05, -.05], [.05, .05, -.05], [-.05, .05, -.05],
+            [-.05, -.05, .05], [.05, -.05, .05], [.05, .05, .05], [-.05, .05, .05],
+        ], dtype=np.float32)
+        faces = np.array([
+            [0, 2, 1], [0, 3, 2], [4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4],
+            [1, 2, 6], [1, 6, 5], [2, 3, 7], [2, 7, 6], [3, 0, 4], [3, 4, 7],
+        ])
+        distance, gradients, lower, spacing = scene.build_mesh_sdf(corners[faces].reshape(-1, 3), 40, .01)
+
+        def sample(point):
+            index = np.rint((np.asarray(point) - lower) / spacing).astype(int)
+            return distance[tuple(index)], gradients[tuple(index)]
+
+        inside, _ = sample([0, 0, 0])
+        outside, gradient = sample([.058, 0, 0])
+        self.assertLess(inside, 0.0)
+        self.assertGreater(outside, 0.0)
+        self.assertGreater(gradient[0], 0.8)
+
     def test_top_view_landmarks(self):
         rotation, origin = scene.resolve_tool_mapping(
             scene.CAMERA_VIEWS["top_dough"], ["auto"] * 9, ["auto"] * 3, [1, 1, 1]

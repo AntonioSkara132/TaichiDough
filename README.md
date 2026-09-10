@@ -58,9 +58,12 @@ origins and millimetre-to-metre scale. Meshes are loaded from the sourced
 `meshes/` directory. Override them with `--ur-tool-mesh PATH` and
 `--kinova-tool-mesh PATH`.
 
-The STL files provide visual geometry. Dough contact still uses the existing box
-proxies. The fixed robot-to-tool joints are already included in `/tool_poses`;
-only the link's visual origin is applied to each mesh.
+By default, `--tool-collision sdf` rasterizes the same transformed STL geometry
+into a local 64³ distance field at startup and uses it for dough contact.
+`--tool-contact-padding` sets clearance around the mesh surface. Use
+`--tool-collision box` for the former 10 cm box proxy or `--tool-collision none`
+to disable tool contacts. The fixed robot-to-tool joints are already included in
+`/tool_poses`; only the link's visual origin is applied to each mesh.
 
 Scene defaults match the ROS simulation:
 
