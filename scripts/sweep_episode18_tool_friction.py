@@ -12,7 +12,7 @@ import subprocess
 import time
 from typing import Any, Mapping, Sequence
 
-from calibrate_youngs_modulus import score_evaluation_artifact
+from calibrate_youngs_modulus import compile_cli_arguments, score_evaluation_artifact
 # pyright: reportMissingImports=false
 from sweep_replay_sdf_contact_padding import replace_option, required_option
 
@@ -48,6 +48,32 @@ def load_command(path: Path) -> list[str]:
     if not isinstance(value, list) or not value or not all(isinstance(item, str) for item in value):
         raise ValueError("Source command must be a nonempty JSON string array")
     return value
+
+
+def command_from_material_manifest(path: Path) -> list[str]:
+    manifest = json.loads(path.read_text())
+    if manifest.get("schema") != "taichidough/material-calibration-manifest/v1":
+        raise ValueError("--material-manifest must be a material calibration manifest")
+    inputs = manifest.get("inputs", {})
+    simulator_arguments = manifest.get("fixed_parameters", {}).get("simulator_arguments")
+    commands = manifest.get("commands", {})
+    required_inputs = ("simulator", "sequence", "initial_particles", "reconstruction_metadata", "calibration", "geometry")
+    if not isinstance(simulator_arguments, dict) or not all(isinstance(inputs.get(name), dict) for name in required_inputs):
+        raise ValueError("Material manifest has incomplete simulator inputs")
+    return [
+        str(commands.get("python", "python3")),
+        str(inputs["simulator"].get("path", "")),
+        *compile_cli_arguments(simulator_arguments),
+        "--output-dir", "/unused",
+        "--youngs-modulus", "2000",
+        "--replay-episode", str(inputs["sequence"].get("episode_dir", "")),
+        "--replay-start-frame", str(manifest.get("reconstruction_frame", 0)),
+        "--replay-end-frame", "60",
+        "--initial-particles", str(inputs["initial_particles"].get("path", "")),
+        "--initial-particles-metadata", str(inputs["reconstruction_metadata"].get("path", "")),
+        "--initial-particles-calibration", str(inputs["calibration"].get("path", "")),
+        "--tool-geometry", str(inputs["geometry"].get("path", "")),
+    ]
 
 
 def rebase_workspace_paths(argv: Sequence[str], target_repo: Path | None = None) -> list[str]:
@@ -207,6 +233,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-command", type=Path, default=root / "output" / "episode18_e2000_full_replay_command.json")
+    parser.add_argument("--material-manifest", type=Path, help="Use the fixed simulator inputs recorded by a prior material calibration")
     parser.add_argument("--output-dir", type=Path, default=root / "output" / "episode18_e130579_dx8_tool_friction_sweep")
     parser.add_argument("--timeout-s", type=float, default=7200.0)
     parser.add_argument("--resume", action="store_true")
@@ -219,7 +246,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     if not math.isfinite(args.timeout_s) or args.timeout_s <= 0:
         raise ValueError("--timeout-s must be positive and finite")
-    baseline = rebase_workspace_paths(load_command(args.source_command))
+    baseline = command_from_material_manifest(args.material_manifest) if args.material_manifest else load_command(args.source_command)
+    baseline = rebase_workspace_paths(baseline)
     validate_baseline(baseline)
     if args.validate_only:
         print(json.dumps({"status": "validated", "friction_values": FRICTION_VALUES}, indent=2))

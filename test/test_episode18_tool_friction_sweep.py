@@ -1,6 +1,8 @@
 # pyright: reportMissingImports=false
 
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -12,6 +14,7 @@ from sweep_episode18_tool_friction import (
     FRICTION_VALUES,
     REPLAY_END_FRAME,
     build_case_argv,
+    command_from_material_manifest,
     friction_cases,
     rebase_workspace_paths,
     validate_baseline,
@@ -39,6 +42,32 @@ class Episode18ToolFrictionSweepTests(unittest.TestCase):
         self.assertEqual(argv[argv.index("--replay-end-frame") + 1], str(REPLAY_END_FRAME))
         self.assertEqual(argv[argv.index("--output-dir") + 1], "/simulation")
         self.assertEqual(argv[argv.index("--unrelated") + 1], "keep-me")
+
+    def test_material_manifest_builds_the_recorded_simulator_command(self):
+        manifest = {
+            "schema": "taichidough/material-calibration-manifest/v1",
+            "commands": {"python": "python3"},
+            "inputs": {
+                "simulator": {"path": "/repo/scripts/sim.py"},
+                "sequence": {"episode_dir": "/data/episode"},
+                "initial_particles": {"path": "/data/particles.npy"},
+                "reconstruction_metadata": {"path": "/data/metadata.json"},
+                "calibration": {"path": "/data/calibration.json"},
+                "geometry": {"path": "/repo/geometry.json"},
+            },
+            "fixed_parameters": {"simulator_arguments": {
+                "--grid": 48, "--tool-collision": "sdf", "--tool-sdf-resolution": 64,
+                "--tool-contact-padding": 1 / 384, "--tool-contact-friction": 0.2,
+                "--replay-stride": 1, "--dt": 0.0002,
+            }},
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "manifest.json"
+            path.write_text(json.dumps(manifest))
+            argv = command_from_material_manifest(path)
+        self.assertEqual(argv[:2], ["python3", "/repo/scripts/sim.py"])
+        self.assertEqual(argv[argv.index("--replay-episode") + 1], "/data/episode")
+        self.assertEqual(argv[argv.index("--initial-particles-calibration") + 1], "/data/calibration.json")
 
     def test_rebases_saved_workspace_paths_to_current_checkout(self):
         saved = [
