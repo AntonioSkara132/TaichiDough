@@ -1,0 +1,14 @@
+[Taichi] version 1.7.4, llvm 15.0.4, commit b4b956fd, linux, python 3.10.12
+Loaded 24000 initial particles from /home/antonio/diplomski_antonio/diplomski/TaichiDough/data/single_episode_calibration/episode18_kugla/reconstruction/episode18_kugla/frame_0000/sampled_particles_xyz.npy; using 24000 particles in the simulation.
+[Taichi] Starting on arch=vulkan
+UR solid collision mesh: /home/antonio/diplomski_antonio/diplomski/TaichiDough/meshes/ur_spathla_collision_solid.stl
+Kinova solid collision mesh: /home/antonio/diplomski_antonio/diplomski/TaichiDough/meshes/gen3_spathla_collision_solid.stl
+Building solid STL collision SDFs at 64^3 voxels per tool...
+Tool SDF 0: 64^3, bounds=[-0.04673696681857109, -0.0353032723069191, -0.10533609986305237] to [0.12559069693088531, 0.1057753786444664, 0.023968473076820374], range=-0.0041 to 0.1158 m, negative_voxels=817
+Tool SDF 1: 64^3, bounds=[-0.09673450142145157, -0.03250953555107117, -0.1442379653453827] to [0.021015971899032593, 0.12139886617660522, 0.03050146996974945], range=-0.0045 to 0.1089 m, negative_voxels=1815
+Replay: source=1 sim=0.033400s lag=0.000049s
+Replay: source=2 sim=0.066800s lag=0.000098s
+Replay: source=3 sim=0.100200s lag=0.000148s
+Replay: source=4 sim=0.133600s lag=0.000197s
+Replay: source=5 sim=0.166800s lag=0.000046s
+Wrote 6 timestamped SDF mesh-frame replay frames to /home/antonio/diplomski_antonio/diplomski/TaichiDough/output/episode18_affine_corrected/benchmark_gpu_verified/candidate_cache/d4553416f07b01376afe0b68e0e29f4b418aecd1a494c0f52eb0f8b9ea055755/simulation

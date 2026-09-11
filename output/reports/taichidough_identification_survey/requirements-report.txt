@@ -1,0 +1,5 @@
+# Document tooling only; do not install into the simulator environment.
+beautifulsoup4>=4.10,<5
+pymupdf==1.26.3
+# Optional bundled Pandoc executable if no system Pandoc is available:
+pypandoc_binary==1.15

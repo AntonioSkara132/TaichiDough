@@ -1,0 +1,117 @@
+:root {
+  color-scheme: light;
+  --paper: #f7fafc;
+  --panel: #ffffff;
+  --ink: #192e3d;
+  --muted: #4d6675;
+  --accent: #216b86;
+  --line: #cddce4;
+  --tint: #eaf2f6;
+  --row: #f0f5f8;
+  --focus: #87551b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #12232d;
+    --panel: #172d39;
+    --ink: #e2edf2;
+    --muted: #afc4d0;
+    --accent: #89c9e0;
+    --line: #36525f;
+    --tint: #203b49;
+    --row: #1b333f;
+    --focus: #edbd80;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #12232d;
+  --panel: #172d39;
+  --ink: #e2edf2;
+  --muted: #afc4d0;
+  --accent: #89c9e0;
+  --line: #36525f;
+  --tint: #203b49;
+  --row: #1b333f;
+  --focus: #edbd80;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+a { color: var(--accent); text-underline-offset: .2em; overflow-wrap: anywhere; }
+a:hover { text-decoration-thickness: .12em; }
+:focus-visible { outline: .18rem solid var(--focus); outline-offset: .25rem; }
+.page-shell { max-width: 87rem; margin-inline: auto; padding-inline: clamp(1rem, 4vw, 3rem); padding-block: 2.5rem 4rem; }
+.report-cover { display: grid; gap: 1rem; max-width: 68rem; padding-block-end: 2.5rem; }
+.report-cover p, .report-cover h1 { margin: 0; }
+.eyebrow, .nav-label { color: var(--muted); font-size: .77rem; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+.report-cover h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(2.1rem, 4.5vw, 3.5rem); line-height: 1.13; font-weight: 500; text-wrap: balance; max-width: 20ch; }
+.subtitle { font-size: 1.12rem; max-width: 63ch; color: var(--muted); }
+.cover-question { max-width: 63ch; font-family: Georgia, "Times New Roman", serif; font-size: 1.22rem; line-height: 1.55; }
+.cover-meta { display: flex; gap: .5rem 1.4rem; flex-wrap: wrap; color: var(--muted); font-size: .8rem; }
+.reading-layout { display: grid; grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr); gap: clamp(1.5rem, 4vw, 4rem); align-items: start; border-top: 1px solid var(--line); padding-block-start: 2rem; }
+.desktop-contents { position: sticky; top: 1.25rem; max-height: calc(100vh - 2.5rem); overflow-y: auto; font-size: .79rem; padding-inline-end: .7rem; }
+.nav-label { margin: 0 0 .8rem; }
+.toc-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .7rem; }
+.toc-list a { display: block; text-decoration: none; line-height: 1.5; }
+.toc-list a:hover { text-decoration: underline; }
+.mobile-contents { display: none; }
+.report-text { min-width: 0; max-width: 77ch; }
+.report-text > section { margin-block-end: 3.5rem; }
+.report-text h1, .report-text h2, .report-text h3 { text-wrap: balance; scroll-margin-top: 1.5rem; }
+.report-text h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; font-size: 1.9rem; line-height: 1.25; color: var(--accent); margin-block: 0 1.25rem; }
+.report-text h2 { font-size: 1.2rem; line-height: 1.4; font-weight: 650; margin-block: 2.1rem .7rem; }
+.report-text h3 { font-size: 1.03rem; margin-block: 1.7rem .7rem; }
+.header-section-number { color: var(--muted); font-variant-numeric: tabular-nums; }
+.report-text p { margin-block: .9rem; }
+.report-text li { padding-inline-start: .1rem; margin-block: .35rem; }
+.report-text ul, .report-text ol { padding-inline-start: 1.5rem; }
+.report-text blockquote { margin-inline: 0; margin-block: 1.5rem; padding: .65rem 1.15rem; background: var(--tint); font-family: Georgia, "Times New Roman", serif; font-size: 1.1rem; }
+.report-text blockquote p { margin-block: .4rem; }
+code { font-family: "DejaVu Sans Mono", Consolas, ui-monospace, monospace; font-size: .82em; overflow-wrap: anywhere; color: var(--ink); }
+pre { overflow-x: auto; max-width: 100%; background: var(--tint); padding: 1rem; }
+pre code { overflow-wrap: normal; }
+.math.display { display: block; max-width: 100%; overflow-x: auto; padding-block: .75rem; text-align: center; }
+math { font-size: 1.05em; }
+.table-scroll { overflow-x: auto; max-width: 100%; margin-block: 1.5rem; border: 1px solid var(--line); background: var(--panel); }
+table { border-collapse: collapse; width: 100%; min-width: 37rem; font-size: .85rem; line-height: 1.55; font-variant-numeric: tabular-nums; }
+th, td { padding: .8rem .9rem; vertical-align: top; text-align: left; border-bottom: 1px solid var(--line); }
+th { font-weight: 650; background: var(--tint); }
+tr:nth-child(even) td { background: var(--row); }
+tr:last-child td { border-bottom: 0; }
+.citation { white-space: normal; font-size: .9em; }
+.csl-bib-body { font-size: .88rem; line-height: 1.6; }
+.csl-entry { display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: .45rem; margin-block: 1rem; scroll-margin-top: 1rem; }
+.csl-left-margin { color: var(--muted); font-variant-numeric: tabular-nums; }
+.csl-right-inline { overflow-wrap: anywhere; }
+.report-footer { margin-block-start: 3rem; padding-block-start: 1.5rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; max-width: 80ch; }
+.skip-link { position: absolute; top: .5rem; left: 1rem; background: var(--panel); padding: .5rem 1rem; transform: translateY(-200%); z-index: 2; }
+.skip-link:focus { transform: translateY(0); }
+@media (max-width: 58rem) {
+  .reading-layout { grid-template-columns: minmax(0, 1fr); }
+  .desktop-contents { display: none; }
+  .mobile-contents { display: block; max-width: 77ch; padding-block: 1rem 1.5rem; }
+  .mobile-contents summary { color: var(--accent); font-weight: 650; cursor: pointer; }
+  .mobile-contents nav { padding-block-start: 1rem; font-size: .9rem; }
+  .report-cover { padding-block-end: 1rem; }
+  .report-text h1 { font-size: 1.65rem; }
+  .report-text { max-width: 100%; }
+}
+@media print {
+  body { background: #ffffff; color: #192e3d; font-size: 10pt; }
+  .page-shell { max-width: none; padding-inline: 0; padding-block: 0; }
+  .reading-layout { display: block; }
+  .desktop-contents, .mobile-contents, .skip-link { display: none; }
+  .report-text { max-width: none; }
+  .table-scroll { overflow: visible; }
+  table { min-width: 0; font-size: 8pt; }
+  h1, h2, h3 { break-after: avoid; }
+  tr { break-inside: avoid; }
+}

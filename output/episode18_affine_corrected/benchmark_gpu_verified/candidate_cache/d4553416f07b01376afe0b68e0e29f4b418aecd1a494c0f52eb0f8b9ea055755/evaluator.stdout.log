@@ -1,0 +1,7 @@
+Evaluate source=0 t=0.000000s status=paired
+Evaluate source=1 t=0.033351s status=paired
+Evaluate source=2 t=0.066702s status=paired
+Evaluate source=3 t=0.100052s status=paired
+Evaluate source=4 t=0.133403s status=paired
+Evaluate source=5 t=0.166754s status=paired
+Wrote /home/antonio/diplomski_antonio/diplomski/TaichiDough/output/episode18_affine_corrected/benchmark_gpu_verified/candidate_cache/d4553416f07b01376afe0b68e0e29f4b418aecd1a494c0f52eb0f8b9ea055755/evaluation/dynamic_topview_metrics.json

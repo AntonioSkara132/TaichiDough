@@ -1,0 +1,1456 @@
+[
+  {
+    "id": "mls2018",
+    "type": "article-journal",
+    "title": "A Moving Least Squares Material Point Method with Displacement Discontinuity and Two-Way Rigid Body Coupling",
+    "author": [
+      {
+        "family": "Hu",
+        "given": "Yuanming"
+      },
+      {
+        "family": "Fang",
+        "given": "Yu"
+      },
+      {
+        "family": "Ge",
+        "given": "Ziheng"
+      },
+      {
+        "family": "Qu",
+        "given": "Ziyin"
+      },
+      {
+        "family": "Zhu",
+        "given": "Yixin"
+      },
+      {
+        "family": "Pradhana",
+        "given": "Andre"
+      },
+      {
+        "family": "Jiang",
+        "given": "Chenfanfu"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2018
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1145/3197517.3201293",
+    "volume": "37",
+    "issue": "4",
+    "number": "150",
+    "container-title": "ACM Transactions on Graphics",
+    "DOI": "10.1145/3197517.3201293"
+  },
+  {
+    "id": "apic2015",
+    "type": "article-journal",
+    "title": "The Affine Particle-In-Cell Method",
+    "author": [
+      {
+        "family": "Jiang",
+        "given": "Chenfanfu"
+      },
+      {
+        "family": "Schroeder",
+        "given": "Craig"
+      },
+      {
+        "family": "Selle",
+        "given": "Andrew"
+      },
+      {
+        "family": "Teran",
+        "given": "Joseph"
+      },
+      {
+        "family": "Stomakhin",
+        "given": "Alexey"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2015
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1145/2766996",
+    "volume": "34",
+    "issue": "4",
+    "number": "51",
+    "container-title": "ACM Transactions on Graphics",
+    "DOI": "10.1145/2766996"
+  },
+  {
+    "id": "snow2013",
+    "type": "article-journal",
+    "title": "A Material Point Method for Snow Simulation",
+    "author": [
+      {
+        "family": "Stomakhin",
+        "given": "Alexey"
+      },
+      {
+        "family": "Schroeder",
+        "given": "Craig"
+      },
+      {
+        "family": "Chai",
+        "given": "Lawrence"
+      },
+      {
+        "family": "Teran",
+        "given": "Joseph"
+      },
+      {
+        "family": "Selle",
+        "given": "Andrew"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2013
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1145/2461912.2461948",
+    "volume": "32",
+    "issue": "4",
+    "number": "102",
+    "container-title": "ACM Transactions on Graphics",
+    "DOI": "10.1145/2461912.2461948"
+  },
+  {
+    "id": "ils2020",
+    "type": "article-journal",
+    "title": "ILS-MPM: An implicit level-set-based material point method for frictional particulate contact mechanics of deformable particles",
+    "author": [
+      {
+        "family": "Liu",
+        "given": "Chuanqi"
+      },
+      {
+        "family": "Sun",
+        "given": "WaiChing"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2020
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1016/j.cma.2020.113168",
+    "volume": "369",
+    "number": "113168",
+    "container-title": "Computer Methods in Applied Mechanics and Engineering",
+    "DOI": "10.1016/j.cma.2020.113168"
+  },
+  {
+    "id": "raue2009",
+    "type": "article-journal",
+    "title": "Structural and practical identifiability analysis of partially observed dynamical models by exploiting the profile likelihood",
+    "author": [
+      {
+        "family": "Raue",
+        "given": "Andreas"
+      },
+      {
+        "family": "Kreutz",
+        "given": "Clemens"
+      },
+      {
+        "family": "Maiwald",
+        "given": "Thomas"
+      },
+      {
+        "family": "Bachmann",
+        "given": "Julie"
+      },
+      {
+        "family": "Schilling",
+        "given": "Marcel"
+      },
+      {
+        "family": "Klingmüller",
+        "given": "Ursula"
+      },
+      {
+        "family": "Timmer",
+        "given": "Jens"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2009
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1093/bioinformatics/btp358",
+    "volume": "25",
+    "issue": "15",
+    "page": "1923–1929",
+    "container-title": "Bioinformatics",
+    "DOI": "10.1093/bioinformatics/btp358"
+  },
+  {
+    "id": "raue2011",
+    "type": "article-journal",
+    "title": "Addressing parameter identifiability by model-based experimentation",
+    "author": [
+      {
+        "family": "Raue",
+        "given": "Andreas"
+      },
+      {
+        "family": "Kreutz",
+        "given": "Clemens"
+      },
+      {
+        "family": "Maiwald",
+        "given": "Thomas"
+      },
+      {
+        "family": "Klingmüller",
+        "given": "Ursula"
+      },
+      {
+        "family": "Timmer",
+        "given": "Jens"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2011
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1049/iet-syb.2010.0061",
+    "volume": "5",
+    "issue": "2",
+    "page": "120–130",
+    "container-title": "IET Systems Biology",
+    "DOI": "10.1049/iet-syb.2010.0061"
+  },
+  {
+    "id": "kennedy2001",
+    "type": "article-journal",
+    "title": "Bayesian calibration of computer models",
+    "author": [
+      {
+        "family": "Kennedy",
+        "given": "Marc C."
+      },
+      {
+        "family": "O'Hagan",
+        "given": "Anthony"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2001
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1111/1467-9868.00294",
+    "volume": "63",
+    "issue": "3",
+    "page": "425–464",
+    "container-title": "Journal of the Royal Statistical Society: Series B (Statistical Methodology)",
+    "DOI": "10.1111/1467-9868.00294"
+  },
+  {
+    "id": "discrepancy2014",
+    "type": "article-journal",
+    "title": "Learning about physical parameters: the importance of model discrepancy",
+    "author": [
+      {
+        "family": "Brynjarsdóttir",
+        "given": "Jenný"
+      },
+      {
+        "family": "O'Hagan",
+        "given": "Anthony"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2014
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1088/0266-5611/30/11/114007",
+    "volume": "30",
+    "issue": "11",
+    "number": "114007",
+    "container-title": "Inverse Problems",
+    "DOI": "10.1088/0266-5611/30/11/114007"
+  },
+  {
+    "id": "matl2020",
+    "type": "paper-conference",
+    "title": "Inferring the Material Properties of Granular Media for Robotic Tasks",
+    "author": [
+      {
+        "family": "Matl",
+        "given": "Carolyn"
+      },
+      {
+        "family": "Narang",
+        "given": "Yashraj"
+      },
+      {
+        "family": "Bajcsy",
+        "given": "Ruzena"
+      },
+      {
+        "family": "Ramos",
+        "given": "Fabio"
+      },
+      {
+        "family": "Fox",
+        "given": "Dieter"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2020
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1109/ICRA40945.2020.9197063",
+    "container-title": "IEEE International Conference on Robotics and Automation (ICRA)",
+    "DOI": "10.1109/ICRA40945.2020.9197063"
+  },
+  {
+    "id": "robocraft2022",
+    "type": "paper-conference",
+    "title": "RoboCraft: Learning to See, Simulate, and Shape Elasto-Plastic Objects with Graph Networks",
+    "author": [
+      {
+        "family": "Shi",
+        "given": "Haochen"
+      },
+      {
+        "family": "Xu",
+        "given": "Huazhe"
+      },
+      {
+        "family": "Huang",
+        "given": "Zhiao"
+      },
+      {
+        "family": "Li",
+        "given": "Yunzhu"
+      },
+      {
+        "family": "Wu",
+        "given": "Jiajun"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2022
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.15607/RSS.2022.XVIII.008",
+    "container-title": "Robotics: Science and Systems XVIII",
+    "DOI": "10.15607/RSS.2022.XVIII.008"
+  },
+  {
+    "id": "robocook2023",
+    "type": "paper-conference",
+    "title": "RoboCook: Long-Horizon Elasto-Plastic Object Manipulation with Diverse Tools",
+    "author": [
+      {
+        "family": "Shi",
+        "given": "Haochen"
+      },
+      {
+        "family": "Xu",
+        "given": "Huazhe"
+      },
+      {
+        "family": "Clarke",
+        "given": "Samuel"
+      },
+      {
+        "family": "Li",
+        "given": "Yunzhu"
+      },
+      {
+        "family": "Wu",
+        "given": "Jiajun"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2023
+        ]
+      ]
+    },
+    "URL": "https://proceedings.mlr.press/v229/shi23a.html",
+    "volume": "229",
+    "page": "642–660",
+    "container-title": "Proceedings of the 7th Conference on Robot Learning"
+  },
+  {
+    "id": "plasticinelab2021",
+    "type": "paper-conference",
+    "title": "PlasticineLab: A Soft-Body Manipulation Benchmark with Differentiable Physics",
+    "author": [
+      {
+        "family": "Huang",
+        "given": "Zhiao"
+      },
+      {
+        "family": "Hu",
+        "given": "Yuanming"
+      },
+      {
+        "family": "Du",
+        "given": "Tao"
+      },
+      {
+        "family": "Zhou",
+        "given": "Siyuan"
+      },
+      {
+        "family": "Su",
+        "given": "Hao"
+      },
+      {
+        "family": "Tenenbaum",
+        "given": "Joshua B."
+      },
+      {
+        "family": "Gan",
+        "given": "Chuang"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2021
+        ]
+      ]
+    },
+    "URL": "https://openreview.net/forum?id=xCcdBRQEDW",
+    "container-title": "International Conference on Learning Representations (ICLR)"
+  },
+  {
+    "id": "doughnet2024",
+    "type": "paper-conference",
+    "title": "DoughNet: A Visual Predictive Model for Topological Manipulation of Deformable Objects",
+    "author": [
+      {
+        "family": "Bauer",
+        "given": "Dominik"
+      },
+      {
+        "family": "Xu",
+        "given": "Zhenjia"
+      },
+      {
+        "family": "Song",
+        "given": "Shuran"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2024
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1007/978-3-031-72940-9_6",
+    "page": "92–108",
+    "container-title": "Computer Vision – ECCV 2024",
+    "DOI": "10.1007/978-3-031-72940-9_6"
+  },
+  {
+    "id": "review2020",
+    "type": "article-journal",
+    "title": "Modeling of Deformable Objects for Robotic Manipulation: A Tutorial and Review",
+    "author": [
+      {
+        "family": "Arriola-Rios",
+        "given": "Veronica E."
+      },
+      {
+        "family": "Guler",
+        "given": "Puren"
+      },
+      {
+        "family": "Ficuciello",
+        "given": "Fanny"
+      },
+      {
+        "family": "Kragic",
+        "given": "Danica"
+      },
+      {
+        "family": "Siciliano",
+        "given": "Bruno"
+      },
+      {
+        "family": "Wyatt",
+        "given": "Jeremy L."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2020
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.3389/frobt.2020.00082",
+    "volume": "7",
+    "number": "82",
+    "container-title": "Frontiers in Robotics and AI",
+    "DOI": "10.3389/frobt.2020.00082"
+  },
+  {
+    "id": "chainqueen2019",
+    "type": "paper-conference",
+    "title": "ChainQueen: A Real-Time Differentiable Physical Simulator for Soft Robotics",
+    "author": [
+      {
+        "family": "Hu",
+        "given": "Yuanming"
+      },
+      {
+        "family": "Liu",
+        "given": "Jiancheng"
+      },
+      {
+        "family": "Spielberg",
+        "given": "Andrew"
+      },
+      {
+        "family": "Tenenbaum",
+        "given": "Joshua B."
+      },
+      {
+        "family": "Freeman",
+        "given": "William T."
+      },
+      {
+        "family": "Wu",
+        "given": "Jiajun"
+      },
+      {
+        "family": "Rus",
+        "given": "Daniela"
+      },
+      {
+        "family": "Matusik",
+        "given": "Wojciech"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2019
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1109/ICRA.2019.8794333",
+    "page": "6265–6271",
+    "container-title": "IEEE International Conference on Robotics and Automation (ICRA)",
+    "DOI": "10.1109/ICRA.2019.8794333"
+  },
+  {
+    "id": "difftaichi2020",
+    "type": "paper-conference",
+    "title": "DiffTaichi: Differentiable Programming for Physical Simulation",
+    "author": [
+      {
+        "family": "Hu",
+        "given": "Yuanming"
+      },
+      {
+        "family": "Anderson",
+        "given": "Luke"
+      },
+      {
+        "family": "Li",
+        "given": "Tzu-Mao"
+      },
+      {
+        "family": "Sun",
+        "given": "Qi"
+      },
+      {
+        "family": "Carr",
+        "given": "Nathan"
+      },
+      {
+        "family": "Ragan-Kelley",
+        "given": "Jonathan"
+      },
+      {
+        "family": "Durand",
+        "given": "Frédo"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2020
+        ]
+      ]
+    },
+    "URL": "https://openreview.net/forum?id=B1eB5xSFvr",
+    "container-title": "International Conference on Learning Representations (ICLR)"
+  },
+  {
+    "id": "fabbri2015",
+    "type": "article-journal",
+    "title": "Estimation of semolina dough rheological parameters by inversion of a finite elements model",
+    "author": [
+      {
+        "family": "Fabbri",
+        "given": "Angelo"
+      },
+      {
+        "family": "Cevoli",
+        "given": "Chiara"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2015
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.4081/jae.2015.469",
+    "volume": "46",
+    "issue": "3",
+    "page": "95–99",
+    "container-title": "Journal of Agricultural Engineering",
+    "DOI": "10.4081/jae.2015.469"
+  },
+  {
+    "id": "miranda2025",
+    "type": "article-journal",
+    "title": "Advancing Viscoelastic Material Characterization Through Computer Vision and Robotics: MIRANDA and RELAPP",
+    "author": [
+      {
+        "family": "Monleón-Getino",
+        "given": "Antonio"
+      },
+      {
+        "family": "Madarnás-Gómez",
+        "given": "Víctor"
+      },
+      {
+        "family": "Cobos-Soler",
+        "given": "Mario"
+      },
+      {
+        "family": "Almacellas",
+        "given": "Eduard"
+      },
+      {
+        "family": "Ramos-Castro",
+        "given": "Juan"
+      },
+      {
+        "family": "Bielsa",
+        "given": "Xavier"
+      },
+      {
+        "family": "López-Brosa",
+        "given": "Pere"
+      },
+      {
+        "family": "Sahuquillo-Estrugo",
+        "given": "Àngels"
+      },
+      {
+        "family": "Marsà-González",
+        "given": "Inés"
+      },
+      {
+        "family": "Rodríguez-Mena",
+        "given": "Alejandro"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2025
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.3390/ma18214827",
+    "volume": "18",
+    "issue": "21",
+    "number": "4827",
+    "container-title": "Materials",
+    "DOI": "10.3390/ma18214827"
+  },
+  {
+    "id": "yazar2023",
+    "type": "article-journal",
+    "title": "Wheat Flour Quality Assessment by Fundamental Non-Linear Rheological Methods: A Critical Review",
+    "author": [
+      {
+        "family": "Yazar",
+        "given": "Gamze"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2023
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.3390/foods12183353",
+    "volume": "12",
+    "issue": "18",
+    "number": "3353",
+    "container-title": "Foods",
+    "DOI": "10.3390/foods12183353"
+  },
+  {
+    "id": "ng2006",
+    "type": "article-journal",
+    "title": "Linear to Non-linear Rheology of Wheat Flour Dough",
+    "author": [
+      {
+        "family": "Ng",
+        "given": "Trevor S. K."
+      },
+      {
+        "family": "McKinley",
+        "given": "Gareth H."
+      },
+      {
+        "family": "Padmanabhan",
+        "given": "Mahesh"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2006
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1515/arh-2006-0019",
+    "volume": "16",
+    "issue": "5",
+    "page": "265–274",
+    "container-title": "Applied Rheology",
+    "DOI": "10.1515/arh-2006-0019"
+  },
+  {
+    "id": "sun2020",
+    "type": "article-journal",
+    "title": "Modeling the viscoelastic behavior of wheat flour dough prepared from a wide range of formulations",
+    "author": [
+      {
+        "family": "Sun",
+        "given": "Xinyang"
+      },
+      {
+        "family": "Koksel",
+        "given": "Filiz"
+      },
+      {
+        "family": "Nickerson",
+        "given": "Michael T."
+      },
+      {
+        "family": "Scanlon",
+        "given": "Martin G."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2020
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1016/j.foodhyd.2019.05.030",
+    "volume": "98",
+    "number": "105129",
+    "container-title": "Food Hydrocolloids",
+    "DOI": "10.1016/j.foodhyd.2019.05.030"
+  },
+  {
+    "id": "anderssen2013",
+    "type": "article-journal",
+    "title": "Modelling of wheat-flour dough mixing as an open-loop hysteretic process",
+    "author": [
+      {
+        "family": "Anderssen",
+        "given": "Robert S."
+      },
+      {
+        "family": "Kružík",
+        "given": "Martin"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2013
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.3934/dcdsb.2013.18.283",
+    "volume": "18",
+    "issue": "2",
+    "page": "283–293",
+    "container-title": "Discrete and Continuous Dynamical Systems – B",
+    "DOI": "10.3934/dcdsb.2013.18.283"
+  },
+  {
+    "id": "rolling2009",
+    "type": "article-journal",
+    "title": "Rolling of bread dough: Experiments and simulations",
+    "author": [
+      {
+        "family": "Mitsoulis",
+        "given": "Evan"
+      },
+      {
+        "family": "Hatzikiriakos",
+        "given": "Savvas G."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2009
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1016/j.fbp.2008.07.001",
+    "volume": "87",
+    "issue": "2",
+    "page": "124–138",
+    "container-title": "Food and Bioproducts Processing",
+    "DOI": "10.1016/j.fbp.2008.07.001"
+  },
+  {
+    "id": "adhesion2014",
+    "type": "article-journal",
+    "title": "An investigation into the nature of wheat flour dough adhesive behaviour",
+    "author": [
+      {
+        "family": "Ghorbel",
+        "given": "Dorra"
+      },
+      {
+        "family": "Launay",
+        "given": "Bernard"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2014
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1016/j.foodres.2014.06.045",
+    "volume": "64",
+    "page": "305–313",
+    "container-title": "Food Research International",
+    "DOI": "10.1016/j.foodres.2014.06.045"
+  },
+  {
+    "id": "cocuzza2018",
+    "type": "article-journal",
+    "title": "First engineering framework for the out-of-plane robotic shaping of thin rheological objects",
+    "author": [
+      {
+        "family": "Cocuzza",
+        "given": "Silvio"
+      },
+      {
+        "family": "Yan",
+        "given": "X.-T."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2018
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1016/j.rcim.2018.02.005",
+    "volume": "53",
+    "page": "108–121",
+    "container-title": "Robotics and Computer-Integrated Manufacturing",
+    "DOI": "10.1016/j.rcim.2018.02.005"
+  },
+  {
+    "id": "pizza2017",
+    "type": "article-journal",
+    "title": "Tracking elastic deformable objects with an RGB-D sensor for a pizza chef robot",
+    "author": [
+      {
+        "family": "Petit",
+        "given": "Antoine"
+      },
+      {
+        "family": "Lippiello",
+        "given": "Vincenzo"
+      },
+      {
+        "family": "Fontanelli",
+        "given": "Giuseppe Andrea"
+      },
+      {
+        "family": "Siciliano",
+        "given": "Bruno"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2017
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1016/j.robot.2016.08.023",
+    "volume": "88",
+    "page": "187–201",
+    "container-title": "Robotics and Autonomous Systems",
+    "DOI": "10.1016/j.robot.2016.08.023"
+  },
+  {
+    "id": "ral-scope",
+    "type": "webpage",
+    "title": "IEEE Robotics and Automation Letters: Information for Authors",
+    "author": [
+      {
+        "literal": "IEEE Robotics and Automation Society"
+      }
+    ],
+    "URL": "https://www.ieee-ras.org/publications/ra-l/ra-l-information-for-authors/",
+    "accessed": {
+      "date-parts": [
+        [
+          2026,
+          9,
+          11
+        ]
+      ]
+    }
+  },
+  {
+    "id": "rap-scope",
+    "type": "webpage",
+    "title": "IEEE Robotics and Automation Practice",
+    "author": [
+      {
+        "literal": "IEEE Robotics and Automation Society"
+      }
+    ],
+    "URL": "https://www.ieee-ras.org/publications/ra-p/",
+    "accessed": {
+      "date-parts": [
+        [
+          2026,
+          9,
+          11
+        ]
+      ]
+    }
+  },
+  {
+    "id": "joss-scope",
+    "type": "webpage",
+    "title": "Submitting a paper to JOSS",
+    "author": [
+      {
+        "literal": "Journal of Open Source Software"
+      }
+    ],
+    "URL": "https://joss.readthedocs.io/en/latest/submitting.html",
+    "accessed": {
+      "date-parts": [
+        [
+          2026,
+          9,
+          11
+        ]
+      ]
+    }
+  },
+  {
+    "id": "dpsi2025",
+    "type": "article-journal",
+    "title": "Differentiable physics-based system identification for robotic manipulation of elastoplastic materials",
+    "author": [
+      {
+        "family": "Yang",
+        "given": "Xintong"
+      },
+      {
+        "family": "Ji",
+        "given": "Ze"
+      },
+      {
+        "family": "Lai",
+        "given": "Yu-Kun"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2025
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1177/02783649251334661",
+    "volume": "44",
+    "issue": "13",
+    "page": "2126–2155",
+    "container-title": "The International Journal of Robotics Research",
+    "DOI": "10.1177/02783649251334661"
+  },
+  {
+    "id": "empm2026",
+    "type": "article-journal",
+    "title": "EMPM: Embodied MPM for Modeling and Simulation of Deformable Objects",
+    "author": [
+      {
+        "family": "Chen",
+        "given": "Yunuo"
+      },
+      {
+        "family": "Hu",
+        "given": "Yafei"
+      },
+      {
+        "family": "Sun",
+        "given": "Lingfeng"
+      },
+      {
+        "family": "Kusnur",
+        "given": "Tushar"
+      },
+      {
+        "family": "Herlant",
+        "given": "Laura"
+      },
+      {
+        "family": "Jiang",
+        "given": "Chenfanfu"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2026
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1109/LRA.2026.3664610",
+    "volume": "11",
+    "issue": "4",
+    "page": "4179–4186",
+    "container-title": "IEEE Robotics and Automation Letters",
+    "DOI": "10.1109/LRA.2026.3664610"
+  },
+  {
+    "id": "diffcal2023",
+    "type": "article-journal",
+    "title": "Differentiable Depth for Real2Sim Calibration of Soft Body Simulations",
+    "author": [
+      {
+        "family": "Arnavaz",
+        "given": "K."
+      },
+      {
+        "family": "Nielsen",
+        "given": "M. Kragballe"
+      },
+      {
+        "family": "Kry",
+        "given": "P. G."
+      },
+      {
+        "family": "Macklin",
+        "given": "M."
+      },
+      {
+        "family": "Erleben",
+        "given": "K."
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2023
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1111/cgf.14720",
+    "volume": "42",
+    "issue": "1",
+    "page": "277–289",
+    "container-title": "Computer Graphics Forum",
+    "DOI": "10.1111/cgf.14720"
+  },
+  {
+    "id": "diffcloud2022",
+    "type": "paper-conference",
+    "title": "DiffCloud: Real-to-Sim from Point Clouds with Differentiable Simulation and Rendering of Deformable Objects",
+    "author": [
+      {
+        "family": "Sundaresan",
+        "given": "Priya"
+      },
+      {
+        "family": "Antonova",
+        "given": "Rika"
+      },
+      {
+        "family": "Bohg",
+        "given": "Jeannette"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2022
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1109/IROS47612.2022.9981101",
+    "page": "10828–10835",
+    "container-title": "IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)",
+    "DOI": "10.1109/IROS47612.2022.9981101"
+  },
+  {
+    "id": "pacnerf2023",
+    "type": "paper-conference",
+    "title": "PAC-NeRF: Physics Augmented Continuum Neural Radiance Fields for Geometry-Agnostic System Identification",
+    "author": [
+      {
+        "family": "Li",
+        "given": "Xuan"
+      },
+      {
+        "family": "Qiao",
+        "given": "Yi-Ling"
+      },
+      {
+        "family": "Chen",
+        "given": "Peter Yichen"
+      },
+      {
+        "family": "Jatavallabhula",
+        "given": "Krishna Murthy"
+      },
+      {
+        "family": "Lin",
+        "given": "Ming"
+      },
+      {
+        "family": "Jiang",
+        "given": "Chenfanfu"
+      },
+      {
+        "family": "Gan",
+        "given": "Chuang"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2023
+        ]
+      ]
+    },
+    "URL": "https://openreview.net/forum?id=tVkrbkz42vc",
+    "container-title": "International Conference on Learning Representations (ICLR)"
+  },
+  {
+    "id": "gic2024",
+    "type": "paper-conference",
+    "title": "GIC: Gaussian-Informed Continuum for Physical Property Identification and Simulation",
+    "author": [
+      {
+        "family": "Cai",
+        "given": "Junhao"
+      },
+      {
+        "family": "Yang",
+        "given": "Yuji"
+      },
+      {
+        "family": "Yuan",
+        "given": "Weihao"
+      },
+      {
+        "family": "He",
+        "given": "Yisheng"
+      },
+      {
+        "family": "Dong",
+        "given": "Zilong"
+      },
+      {
+        "family": "Bo",
+        "given": "Liefeng"
+      },
+      {
+        "family": "Cheng",
+        "given": "Hui"
+      },
+      {
+        "family": "Chen",
+        "given": "Qifeng"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2024
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.52202/079017-2388",
+    "volume": "37",
+    "page": "75035–75063",
+    "container-title": "Advances in Neural Information Processing Systems",
+    "DOI": "10.52202/079017-2388"
+  },
+  {
+    "id": "wang2015",
+    "type": "article-journal",
+    "title": "Deformation Capture and Modeling of Soft Objects",
+    "author": [
+      {
+        "family": "Wang",
+        "given": "Bin"
+      },
+      {
+        "family": "Wu",
+        "given": "Longhua"
+      },
+      {
+        "family": "Yin",
+        "given": "KangKang"
+      },
+      {
+        "family": "Ascher",
+        "given": "Uri"
+      },
+      {
+        "family": "Liu",
+        "given": "Libin"
+      },
+      {
+        "family": "Huang",
+        "given": "Hui"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2015
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1145/2766911",
+    "volume": "34",
+    "issue": "4",
+    "number": "94",
+    "container-title": "ACM Transactions on Graphics",
+    "DOI": "10.1145/2766911"
+  },
+  {
+    "id": "hahn2019",
+    "type": "article-journal",
+    "title": "Real2Sim: Visco-elastic parameter estimation from dynamic motion",
+    "author": [
+      {
+        "family": "Hahn",
+        "given": "David"
+      },
+      {
+        "family": "Banzet",
+        "given": "Pol"
+      },
+      {
+        "family": "Bern",
+        "given": "James M."
+      },
+      {
+        "family": "Coros",
+        "given": "Stelian"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2019
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1145/3355089.3356548",
+    "volume": "38",
+    "issue": "6",
+    "number": "236",
+    "container-title": "ACM Transactions on Graphics",
+    "DOI": "10.1145/3355089.3356548"
+  },
+  {
+    "id": "phystwin2025",
+    "type": "paper-conference",
+    "title": "PhysTwin: Physics-Informed Reconstruction and Simulation of Deformable Objects from Videos",
+    "author": [
+      {
+        "family": "Jiang",
+        "given": "Hanxiao"
+      },
+      {
+        "family": "Hsu",
+        "given": "Hao-Yu"
+      },
+      {
+        "family": "Zhang",
+        "given": "Kaifeng"
+      },
+      {
+        "family": "Yu",
+        "given": "Hsin-Ni"
+      },
+      {
+        "family": "Wang",
+        "given": "Shenlong"
+      },
+      {
+        "family": "Li",
+        "given": "Yunzhu"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2025
+        ]
+      ]
+    },
+    "URL": "https://openaccess.thecvf.com/content/ICCV2025/papers/Jiang_PhysTwin_Physics-Informed_Reconstruction_and_Simulation_of_Deformable_Objects_from_Videos_ICCV_2025_paper.pdf",
+    "page": "7219–7230",
+    "container-title": "Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)"
+  },
+  {
+    "id": "masiv2025",
+    "type": "paper-conference",
+    "title": "Toward Material-Agnostic System Identification from Videos",
+    "author": [
+      {
+        "family": "Zhao",
+        "given": "Yizhou"
+      },
+      {
+        "family": "Chen",
+        "given": "Haoyu"
+      },
+      {
+        "family": "Liu",
+        "given": "Chunjiang"
+      },
+      {
+        "family": "Li",
+        "given": "Zhenyang"
+      },
+      {
+        "family": "Herrmann",
+        "given": "Charles"
+      },
+      {
+        "family": "Hur",
+        "given": "Junhwa"
+      },
+      {
+        "family": "Li",
+        "given": "Yinxiao"
+      },
+      {
+        "family": "Yang",
+        "given": "Ming-Hsuan"
+      },
+      {
+        "family": "Raj",
+        "given": "Bhiksha"
+      },
+      {
+        "family": "Xu",
+        "given": "Min"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2025
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1109/ICCV51701.2025.00562",
+    "page": "5944–5956",
+    "container-title": "Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)",
+    "DOI": "10.1109/ICCV51701.2025.00562"
+  },
+  {
+    "id": "yoon2025",
+    "type": "article-journal",
+    "title": "Real-to-sim high-resolution cloth modeling: Physical parameter optimization using particle-based simulation with robot manipulation data",
+    "author": [
+      {
+        "family": "Yoon",
+        "given": "Kang-il"
+      },
+      {
+        "family": "Lim",
+        "given": "Soo-Chul"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2025
+        ]
+      ]
+    },
+    "URL": "https://doi.org/10.1093/jcde/qwaf065",
+    "volume": "12",
+    "issue": "8",
+    "page": "29–44",
+    "container-title": "Journal of Computational Design and Engineering",
+    "DOI": "10.1093/jcde/qwaf065"
+  }
+]

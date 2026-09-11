@@ -1,0 +1,877 @@
+                            This ICCV paper is the Open Access version, provided by the Computer Vision Foundation.
+                                          Except for this watermark, it is identical to the accepted version;
+                                    the final published version of the proceedings is available on IEEE Xplore.
+
+
+
+
+                 Toward Material-Agnostic System Identiﬁcation from Videos
+
+        Yizhou Zhao1 Haoyu Chen1 Chunjiang Liu1 Zhenyang Li2 Charles Herrmann3
+             Junhwa Hur3 Yinxiao Li3 Ming-Hsuan Yang3,4 Bhiksha Raj1 Min Xu1 *
+   1
+     Carnegie Mellon University 2 University of Alabama at Birmingham 3 Google 4 UC Merced
+                           https://github.com/Skaldak/MASIV
+
+
+                           Material Types
+                                                  Expert-designed Elasticity Models                     Expert-designed Plasticity Models
+                              Elastic
+                                                                                                                               ௘
+                                                    ‫ = ۾‬2ߤ ۴ െ ‫ ܀‬+ ߣ‫ ܬ ܬ‬െ 1 ۴ ିୃ                                     ۴ ௘ = ۴୲୰୧ୟ୪
+                                                          Fixed Corotated Elasticity                               Identity Plasticity
+                              Plastic
+                                                ‫ ߤ = ۾‬۴ ௘ െ ۴ ௘ ିୃ ) + ߣ log ‫ ܬ‬۴ ௘ ିୃ                            ۴ ௘ = ‫ ࣴ܃‬઱ ‫ୃି ܄‬
+                                                           Neo-Hookean Elasticity                               Drucker-Prager Plasticity
+                             Granular
+                                                ‫ ܃ = ۾‬2ߤ઱ ିଵ log ઱ + ߣtr log ઱ ઱ିଵ ‫ୃ ܄‬                               ۴ ௘ = ‫ܬ‬ଵ/ଷ ۷
+                                                               StVK Elasticity                                       Fluid Plasticity
+                            Viscoelastic
+
+                                                                   …                                                     …
+                               Fluid
+
+                                            (a) Prior Work: System Identification with Known Material Types
+
+
+
+
+                                                     Learnable                                          Learnable
+                                                  Elasticity Model                                   Plasticity Model
+
+
+
+
+       Observations                     (b) Ours: Material-Agnostic System Identification from Videos (MASIV)                               Predictions
+
+Figure 1. System identiﬁcation from video observations seeks to understand the intrinsic dynamics of a given scene. (a) Existing methods
+rely on scene-speciﬁc material priors. (b) Our MASIV removes this requirement, grounding object motion in a material-agnostic manner.
+
+                             Abstract                                                         ries, providing temporally rich motion constraints beyond
+                                                                                              sparse visual cues. Comprehensive experiments show that
+System identiﬁcation from videos aims to recover object ge-                                   MASIV achieves state-of-the-art performance in geometric
+ometry and governing physical laws. Existing methods in-                                      accuracy, rendering quality, and generalization ability.
+tegrate differentiable rendering with simulation but rely on
+predeﬁned material priors, limiting their ability to handle                                   1. Introduction
+unknown ones. We introduce MASIV, the ﬁrst vision-based
+framework for material-agnostic system identiﬁcation. Un-                                     From the ﬂow of water down a stream to the deformation of
+like existing approaches that depend on hand-crafted con-                                     a rubber ball upon impact, the physical world operates with
+stitutive laws, MASIV employs learnable neural constitu-                                      a set of underlying principles that govern motion and inter-
+tive models, inferring object dynamics without assuming                                       action. Humans intuitively grasp these principles through
+a scene-speciﬁc material prior. However, the absence of                                       observation, allowing us to see a scene and instinctively
+full particle state information imposes unique challenges,                                    predict its outcome or re-imagine it with different initial dy-
+leading to unstable optimization and physically implausi-                                     namics. Material identiﬁcation forms the basis of this abil-
+ble behaviors. To address this, we introduce dense geomet-                                    ity, requiring us to determine an object’s composition and
+ric guidance by reconstructing continuum particle trajecto-                                   understand how that inﬂuences its response to forces. This
+                                                                                              capability is fundamental to world modeling, the process of
+  * Corresponding author                                                                      constructing internal representations that help us understand
+
+
+
+                                                                                       5944
+and anticipate the evolution of the environment. However,               internal deformations can be inferred by propagating sur-
+replicating the ability to generalize physical laws to diverse          face motions inward. Our intuition is that nearby particles
+scenarios remains a challenge for artiﬁcial intelligence.               inside an object should be deformed similarly, akin to the
+    To bridge this gap, researchers have explored vision-               As-Rigid-As-Possible (ARAP) prior.
+based system identiﬁcation [6, 8, 9, 20, 23, 30, 38], which                We use these insights to guide the design of our frame-
+aims to infer governing physical laws from visual obser-                work. Concretely, we reconstruct dynamic Gaussians from
+vations. Typically, they optimize a parameterized physi-                multi-view video inputs, simultaneously establishing geom-
+cal model, by end-to-end integrating differentiable render-             etry and deformation models of the scene. The geometry
+ers, such as Neural Radiance Fields (NeRF) [60] and 3D                  model is then transformed into a solid continuum, where
+Gaussian Splatting (3DGS) [34], with differentiable simu-               the deformation model is ﬁne-tuned to encode both the exte-
+lators [26, 27, 31, 78, 91]. To enforce physically mean-                rior and the interior motion. To identify intrinsic dynamics,
+ingful constraints on the simulation, existing approaches [6,           we guide the learning of the neural constitutive model us-
+38, 100] often rely on material-speciﬁc constitutive laws,              ing two complementary cues: appearance cues from video
+such as elasticity, plasticity, or viscosity models. These              frames and geometric constraints from the ﬁne-tuned de-
+laws deﬁne how an object’s material properties inﬂuence its             formation model. In this way, MASIV distills dense parti-
+response to external forces, allowing system identiﬁcation              cle motion from sparse visual observations and guides the
+methods to estimate parameters such as stiffness, damping,              learning of neural constitutive models for stable, material-
+or friction. While effective in controlled settings, this de-           agnostic system identiﬁcation.
+pendence on hand-crafted material models limits adaptabil-                 Our contributions can be summed up as follows:
+ity. Moreover, these methods assume knowing the material                • We present a novel framework, MASIV, that determines
+type for a given scene, making it difﬁcult for them to gener-             the intrinsic dynamics of an object from videos in a
+alize across in-the-wild scenarios where material properties              material-agnostic manner. In contrast, all other current
+are unknown.                                                              vision-based system identiﬁcation methods [6, 8, 38] ne-
+    Directly targeting these limitations, we introduce                    cessitate predeﬁned material priors.
+Material-Agnostic System Identiﬁcation from Videos                      • We introduce temporally dense geometry guidance to
+(MASIV), a vision-based approach that infers object dy-                   constrain object behaviors with neural constitutive mod-
+namics free of predeﬁned material priors. As illustrated                  els, facilitating smoother convergence and improved per-
+in Fig. 1, rather than relying on expert-designed elasticity              formance for material-agnostic system identiﬁcation.
+and plasticity models, MASIV employs fully learnable neu-               • Through extensive qualitative and quantitative experi-
+ral constitutive models inspired by NCLaw [59]. However,                  ments, we demonstrate that MASIV achieves superior
+directly applying neural constitutive models to vision-based              performance in both observable state recovery and future
+system identiﬁcation poses signiﬁcant challenges. Similar                 state prediction, even without explicit material priors.
+to the learning process of neural PDE solvers [5, 22, 44, 50],
+the original formulation of NCLaw assumes access to com-                2. Related Work
+plete state observations of simulated particles, including po-
+sition, velocity, deformation gradient, and afﬁne momen-                Dynamic reconstruction is a fundamental task in com-
+tum. Since visual observation fails to provide such complete            puter vision, aimed at reconstructing high-ﬁdelity repre-
+information, simply relying on frame-wise pixel supervi-                sentations of complex dynamic scenes from diverse inputs
+sion provides insufﬁcient constraints. This leads to unstable           such as monocular and multi-view videos [1, 7, 19, 41,
+optimization and poor convergence [48].                                 53, 76, 83, 88, 92, 95, 96]. Earlier research primarily
+    We combine two main insights to enable this optimiza-               focused on augmenting canonical Neural Radiance Fields
+tion. First, despite the lack of ground truth full particle             (NeRF) [60] with a deformation ﬁeld [64], which were later
+state, frame-wise observations still allow reasonable esti-             enhanced by incorporating volume-preserving regulariza-
+mates for some of them, such as position and velocity. Ex-              tion techniques [62, 63]. While primarily focused on the
+isting dynamic reconstruction methods [42, 55, 56] factor-              novel view synthesis task, their neural implicit representa-
+ize moving objects with their canonical representation and              tions often introduce noisy deformations, limiting the accu-
+corresponding deformations, which enables per-frame po-                 racy of recovered geometries required for reliable physics-
+sition tracking. Further, the commonly adopted motion                   based property estimation [38]. With the explicit represen-
+basis [61, 94, 101] provides a low-rank encoding of ob-                 tation of the scene using Gaussian ellipsoids, 3D Gaussian
+ject motion, facilitating state interpolation between frames.           Splatting (3DGS) [34] achieves efﬁcient dynamic scene re-
+This formulation allows us to reconstruct particle trajecto-            construction. Building on the principles of 3DGS, several
+ries over dense time steps. Second, although trajectory es-             studies have extended its application to 4D dynamic recon-
+timations are inherently limited to visible object regions,             struction by handling each frame separately [56] or mod-
+
+
+
+                                                                 5945
+eling the entire scene with a canonical 3D Gaussian point               Algorithm 1 MPM state transfer M
+cloud coupled with a robust deformation framework that ac-              Input: sn = {xn , vn , Fen }
+curately maps it to the target scene [36, 86, 93].                      Output: sn+1 = {xn+1 , vn+1 , Fen+1 }
+Dynamic simulation integrates physics principles into 3D                 1: for i = 1 . . . Q, Pn (i) = E(Fen (i))
+                                                                                             e,trial
+representations to generate realistic motion and interac-                2: xn+1 , vn+1 , Fn+1 = I(xn , vn , Fen , Pn )
+                                                                                                                e,trial
+tions. A typical approach to synthesizing dynamic 3D                     3: for i = 1 . . . Q, Fen+1 (i) = P(Fn+1 (i))
+scenes involves integrating a 3D generation pipeline with
+a video generation model [3, 49, 69, 75]. Recent research
+incorporates 3D Gaussian kernels as both visual and phys-               and 3D Gaussian-based representations to enhance geome-
+ical representations, embedding Newtonian dynamics into                 try reconstruction and material property estimation [6, 38,
+the Gaussian framework to enable seamless rendering and                 71, 100]. Building upon GIC [6], our method presents a
+simulation while introducing physical constraints to ensure             material-agnostic approach that eliminates reliance on pre-
+plausible dynamics [4, 16, 38, 48, 51, 67, 89, 100]. Build-             deﬁned material priors. Rather than assuming material
+ing on this, Gaussian Splashing [14] introduces a position-             properties, our model infers object dynamics directly from
+based dynamics framework within 3D Gaussian Splatting,                  visual observations, making it adapt better to a wide range
+enabling interactions among solids, ﬂuids, and deformable               of unknown or heterogeneous materials.
+objects. Additionally, motion-conditioned simulation meth-
+ods [18, 43, 74, 85, 87] use trajectory-based guidance to               3. Method
+predict object motion, showcasing how generative mod-
+els can enhance dynamic scene synthesis. However, these                 Given visual observations I = {I0 , I1 , . . . , IT } over T
+methods primarily rely on pre-trained generative models,                frames capturing a dynamic object, our goal is to recover
+which often lack a fundamental understanding of physics.                its explicit geometric representation and the governing evo-
+More recent works leverage neural physics modeling, incor-              lution rules of the underlying dynamical system. Formally,
+porating video priors and generative models to infer object             we represent the object’s geometry using a set of Gaussian
+dynamics, allowing physics-driven motion synthesis with-                kernels [34] and integrate neural constitutive laws [59] with
+out explicit solvers [15, 28, 54, 81, 98]. However, these               the material point method (MPM) [26, 31, 78] to roll out
+methods are constrained to speciﬁc material types, limit-               their motion over time. Unlike [6, 8, 38, 100], we do not
+ing their generalization across diverse objects. To address             assume a known material type of the object, while explor-
+this, we introduce a material-agnostic approach that uniﬁes             ing Material-Agnostic System Identiﬁcation from Videos
+system identiﬁcation across different object types, ensuring            (MASIV). Fig. 2 shows an overview of our pipeline.
+broader applicability beyond predeﬁned materials.                       3.1. Preliminaries
+System identiﬁcation aims to understand the physical laws
+governing the 3D world and is an essential task for sim-                Material Point Method (MPM) discretizes the object of
+ulation [37, 40, 45, 68, 79, 100] and robotic manipula-                 interest into Q material points and models their evolution
+tion [46, 66, 72, 73, 99]. However, accurately recov-                   over time via a state transfer equation
+ering both object geometries and physical properties re-                            sn+1 = M(sn ), ∀n = 0, 1, . . . , N.           (1)
+mains a signiﬁcant challenge. Existing methods often as-
+sume known geometries and rely on ﬁnite element meth-                   sn denotes the particle state at time step n. N is the total
+ods (FEM) or mass-spring systems for dynamic simula-                    number of simulation steps with the simulation interval τ
+tion [80, 82], limiting their ability to handle complex, real-          and observed T frames, where N = T /τ  T .
+world materials. Neural network-based methods [39, 70,                      The transition process M follows a time-stepping
+90] offer greater ﬂexibility by leveraging data-driven mod-             scheme, as outlined in Algorithm 1. The state of particle
+els for system identiﬁcation, but they struggle to generalize           i at time step n is described by its position xn (i), veloc-
+across diverse material properties and environmental con-               ity vn (i), and the elastic component Fen (i) of its deforma-
+ditions. More recently, differentiable physics-based simu-              tion gradient Fn (i). At each time step, the elastic constitu-
+lations have emerged as a promising direction [11, 12, 17,              tive law E computes the ﬁrst Piola-Kirchhoff stress Pn (i)
+21, 27, 29, 30, 32, 58, 65]. However, these methods of-                 from the elastic deformation gradient Fen (i). Subsequently,
+ten require intricate modeling to bridge the gap between                the time integration scheme I updates all particle states.
+simulated and real-world behavior. To improve adaptabil-                The updated trial elastic deformation gradient, denoted as
+ity, some approaches focus on neural constitutive model-                Fe,trial
+                                                                          n+1 (i), needs to be further corrected by the plastic consti-
+ing, embedding learned material properties within physi-                tutive law P, which applies plasticity constraints and yields
+cal simulations to reﬁne expert-designed models [8, 59].                the ﬁnal elastic deformation gradient Fen+1 (i). More details
+Other methods leverage the Material Point Method (MPM)                  of MPM can be found in Sec. A.2 of Supp. Mat.
+
+
+
+                                                                 5946
+        Multi-view Observations                       Dynamic Gaussians                    Continuums                     Particle Trajectories
+
+                                                               ‫=ݐ‬0                             ‫=ݐ‬0                                ݊=0
+
+                                                                                                            Fin
+                                                                                                            Fine
+                                                                                                              ne-
+                                                                                                              nee-tuned
+                                                                                                                  tuned
+                                                                                                                   u
+                                           Deformation
+                                           D                                  Internal
+
+
+
+
+                                                                                                …
+                                                               …
+                                                                                                           Deformation
+                                                                                                           D
+                                             Network                           Filling
+                                                                                                             Network
+                                                               ‫ܶ=ݐ‬                             ‫ܶ=ݐ‬                               ݊ = ܶ/߬
+
+
+                                                          I. Geometrical Reconstruction
+
+         Forward        Backward                                                                                          ‫ܞ‬
+                                     ݊=0                 ‫=ݐ‬0                                   ݊=0        ‫=ݐ‬0
+
+               Material
+                                                                           Loss
+
+
+
+
+                                                         …
+
+
+
+
+                                                                                                           …
+             Point
+             Point Metho
+                   Methodd                                                                                                    Novel Velocity
+                                                                        ࣦ୥ୣ୭୭ + ࣦୱ୧୪
+                (MPM)                                                                                                                      ۴
+   ‫ܘ‬଴
+                                    ݊ = ܶ/߬              ‫ܶ=ݐ‬                                  ݊ = ܶ/߬     ‫ܶ=ݐ‬
+
+                ࣟఏ೐ , ࣪ఏ೛          Simulated        Simulated                                      T
+                                                                                                   Target
+        Neural Constitutive Laws Trajectories       Silhouettes                          Trajectories & Silhouettes            Novel Force
+                                II. Material-Agnostic System Identification                                               III. Generalization
+
+Figure 2. The overview of MASIV. Our pipeline comprises three phases. Phase I, Geometrical Reconstruction, infers geometrical
+representations (Sec. 3.2) and dense trajectories (Sec. 3.3) for the captured object. Phase II, Material-Agnostic System Identiﬁcation
+(Sec. 3.4), grounds dynamic characteristics by exploiting visual observations with reconstructed motion clues. From this, we obtain a
+generalizable digital twin in Phase III, which can simulate novel interactions, such as new velocities or forces.
+
+   Existing efforts [6, 8, 38, 100] for video-based system                   sure (SSIM) losses between rendered frames Ît and cor-
+identiﬁcation commonly assume known constitutive laws E                      responding ground-truth observations It . We also regard
+and P, with a particular backbone form, e.g., neo-Hookean                    all Gaussian kernels as isotropic and apply L1 regular-
+elasticity with identity plasticity return function. This sim-               ization on scales for simplicity and reconstruction qual-
+pliﬁes the problem by estimating a small number of physical                  ity [10, 97, 100]. The overall objective function is formu-
+properties, such as Young’s modulus, ﬂuid viscosity, fric-                   lated as
+tion angles, etc., at the cost of sacriﬁcing ﬂexibility. In con-                                                                        
+trast, we explore the same problem without this material-                       min
+                                                                                 ∗
+                                                                                       L  ( Î
+                                                                                         1 t t , I ) + λ     L    ( Î
+                                                                                                         SSIM SSIM t t , I ) + λ s s t 1 , (4)
+                                                                                                                                       
+                                                                               G ,D
+speciﬁc assumption.
+                                                                             with hyperparameters λSSIM and λs .
+3.2. Dynamic Gaussian Reconstruction
+                                                                             3.3. Continuum Trajectory Estimation
+We start by reconstructing dynamic Gaussians over T
+frames. We consider this reconstruction as temporally                        To bridge the gap between unevenly distributed Gaussian
+sparse because the number of simulation steps is hundreds                    particles and the corresponding solid continuum, we fol-
+of times more than the number of observed video frames T ,                   low [6] to ﬁll internal volumes, forming continuum par-
+i.e., N = T /τ  T . Following [6, 36, 86, 93], we main-                     ticles {pt } with uniform scale s and density σ. Exist-
+tain a set of canonical Gaussians G ∗ = {μ∗ , Σ∗ , c∗ , σ ∗ }                ing methods for material-speciﬁc system identiﬁcation of-
+and use a neural network D to warp them over time to rep-                    ten rely on sparse visual [6, 8, 38] or geometrical [6] cues
+resent observed frames. Speciﬁcally, a basis network maps                    along T frames to optimize a small set of parameters. How-
+a given time step t to B bases, producing deformation basis                  ever, since we do not assume a known constitutive back-
+for position Bμ (t) ∈ RB×3 and scale Bs (t) ∈ RB×1 . A                       bone or material types, these sparse signals may lead to
+coefﬁcient network then estimates the weight of each basis,                  unconstrained behaviors at unobserved time steps or even
+w(μ∗ , t) ∈ RB , from the center coordinates of canonical                    cause training instability. Inspired by system identiﬁca-
+Gaussian kernels μ∗ and the time step t. This results in                     tion [22, 33, 59] using state data per simulation step, we
+deformed Gaussian kernels at each time step t:                               propose leveraging particle trajectories over N simulation
+                                                                             steps as dense geometrical supervision to better constrain
+                   μt = μ∗ + w(μ∗ , t)Bμ (t),                   (2)          the simulated behaviors of continuum particles.
+                   st = s∗ + w(μ∗ , t)Bs (t).                   (3)              Given that the deformation network trained in Sec. 3.2
+                                                                             can produce rough trajectories for dynamic Gaussians, we
+We employ the same optimization strategy in [6, 93] to                       ﬁne-tune it to establish trajectories for continuum particles.
+minimize the L1 and Structural Similarity Index Mea-                         Speciﬁcally, we initialize the canonical space of particles
+
+
+
+                                                                      5947
+x0 with the ﬁlled continuum p1 at t = 1 and apply defor-                      While not assuming known material types in our prob-
+mations similar to Eq. (2),                                                lem setting, we note that MASIV still requires a pre-trained
+                                                                           constitutive model from [59] as a stable initialization.
+       xt = x∗ + w(x∗ , t)Bx (t), ∀t = 0, 1, . . . , T,      (5)
+
+resulting in per-frame deformed particles {xt }. Then we                   4. Experiments
+optimize this deformation with all ﬁlled continuums {pt }
+using the Chamfer Distance [13, 57]                                        4.1. Experimental Settings
+                                                 
+              min
+               ∗  
+                      LCD ({xt }Tt=0 , {pt }Tt=0 ) ,  (6)                  Datasets. We conduct our experiments on the PAC-NeRF
+              x ,D                                                         dataset [38] and the Spring-Gaus dataset [100]. The PAC-
+                                                                           NeRF dataset consists of synthetic objects simulated using
+where D denotes the ﬁne-tuned deformation network. Un-
+                                                                           the Material Point Method (MPM) and includes a variety of
+like the deformation network D trained in Sec. 3.2, this ﬁne-
+                                                                           material types such as elastic bodies, plasticine, sand, and
+tuned version D is aware of the internal particles absence in
+                                                                           Newtonian and non-Newtonian ﬂuids. This dataset provides
+Gaussians. Further, the learned motion basis with temporal
+                                                                           45 multi-view RGB video sequences that allow for the esti-
+positional embeddings enables it for temporal interpolation,
+                                                                           mation of both object geometry and physical properties and
+allowing us to probe the motion between observed discrete
+                                                                           approximately 14 frames per viewpoint. The Spring-Gaus
+time steps t = 0, 1, . . . , T . Formally, we have particle posi-
+                                                                           dataset contains two subsets, namely, Synthetic and Real.
+tions at each simulation time step
+                                                                           The Synthetic subset focuses on the reconstruction and sim-
+      xt = x∗ + w(x∗ , t)Bx (t), ∀t = 0, τ, . . . , N τ,     (7)           ulation of elastic objects, containing 30 frames in each of
+                                                                           10 viewpoints. The Real subset provides both dense-view
+where τ is the time interval between two simulation steps.                 static and sparse-view dynamic captures of elastic objects.
+We then consider these temporally dense particle trajecto-                 We evaluate the performance of observable state simulation
+ries as pseudo ground truth for later optimization.                        using both datasets, while the Spring-Gaus dataset is addi-
+                                                                           tionally utilized for future state prediction. To obtain object
+3.4. Material-Agnostic System Identiﬁcation
+                                                                           masks, we apply off-the-shelf matting with [35, 47].
+Inspired by NCLaw [59], we parameterize the elastic and
+                                                                           Baselines. To assess the performance of our approach, we
+plastic constitutive laws using neural networks, denoted as
+                                                                           compare it against four state-of-the-art methods for system
+Eθe and Pθp , where θe and θp are their respective network
+                                                                           identiﬁcation. PAC-NeRF [38] combines neural radiance
+parameters. Both networks share the same multi-layer per-
+                                                                           ﬁelds with differentiable physics to jointly infer geome-
+ceptron (MLP) architecture with a single hidden layer. Fur-
+                                                                           try and material properties. Spring-Gaus [100] integrates
+ther, they incorporate two physical priors, frame indiffer-
+                                                                           a spring-mass system into Gaussian representations for ef-
+ence and undeformed state equilibrium, enforced by using
+                                                                           ﬁcient elastic object simulation. NeuMA [8] ﬁne-tunes a
+rotation-invariant input representations and eliminating bias
+                                                                           neural adapter on expert-designed physical models to bet-
+terms, respectively. While we adopt the same parameteriza-
+                                                                           ter align reconstructed dynamics with visual observations.
+tion for material-agnostic modeling, we introduce a more
+                                                                           GIC [6] leverages a two-stage pipeline to obtain the ge-
+challenging setting by relaxing the input requirements from
+                                                                           ometry representation and physical properties sequentially.
+dense, complete state sequences {st }N  n=0 to sparse visual               These baselines represent the most relevant prior work and
+observations {It }Tt=0 . To this end, we follow an analysis-
+                                                                           provide a strong comparison for evaluating our method. We
+by-synthesis scheme. For the initial particle state s0 , we
+                                                                           note that they all necessitate material priors. To be concrete,
+use positions x0 derived from Eq. (7), an optimizable ve-
+                                                                           PAC-NeRF and GIC roughly categorize materials into ﬁve
+locity v0 , and identity deformation gradients F0 . After we
+                                                                           groups and adopt a certain set of physical models for each
+evolve particle positions {x̂t }N τ
+                                t=τ through time integration               group. Spring-Gaus generally focuses on elastic objects,
+as described in Eq. (1), we optimize θe and θp with
+                                                                           thereby being material-speciﬁc. And NeuMA leverages a
+                      min (Lgeo + Lsil ) ,                   (8)           scene-speciﬁc constitutive model as the material prior.
+                      θ e ,θ p
+                                                                           Metrics. We evaluate our method using several standard
+where Lgeo supervises particle positions x̂t with estimated                metrics to assess both geometric reconstruction quality and
+trajectories xt and Lsil compares rendered masks M̂t with                  physical property estimation accuracy. Metrics including
+object silhouettes Mt extracted from frame It                              1) Chamfer Distance (CD) [13, 57] with units expressed in
+                                                                         103 mm2 ; 2) Peak Signal-to-Noise Ratio (PSNR) [24]; 3)
+           Lgeo = Ltraj = L1 {x̂t }N τ        Nτ
+                                   t=0 , {xt }t=0 ,     (9)                Structural Similarity Index Measure (SSIM) [84]. The CD
+                      
+                            Nτ           Nτ                                quantiﬁes the similarity between two point distributions,
+            Lsil = L1 {M̂t }t=0 , {Mt }t=0 .           (10)
+                                                                           while PSNR and SSIM assess the visual quality.
+
+
+
+                                                                    5948
+                                                   PAC-NeRF                                             Spring-Gaus
+         Method              Newtonian Non-Newtonian Elasticity Plasticine Sand Mean Torus Cross Cream Apple Paste Chess Banana Mean
+         PAC-NeRF [38]         0.277            0.236         0.238   0.429     0.212 0.278            4.92       1.10     0.77      1.11     3.14      0.96        2.77    2.11
+         Spring-Gaus [100]       -                -             -       -         -     -              0.17       0.48     0.36      0.38     0.19      1.80        2.60    0.85
+CD ↓
+
+
+
+
+         NeuMA [8]               -                -             -       -         -     -              4.59       0.06     0.08      0.04     0.71      0.05        0.03    0.79
+         GIC [6]               0.243            0.195         0.178   0.196     0.250 0.212            0.13       0.13     0.14      0.15     0.17      0.41        0.03    0.17
+         MASIV (Ours)          0.233            0.198         0.192   0.201     0.229 0.210            0.08       0.10     0.19      0.16     0.13      0.19        0.08    0.13
+
+Table 1. Observable state simulation on PAC-NeRF and Spring-Gaus Synthetic datasets. Despite being the only technique that does
+not use expert-designed physical models (noted by the gray row), MASIV performs better than or on par with existing baselines.
+
+         Method               Bun      Burger    Dog    Pig    Potato Mean                    Method               Torus Cross Cream Apple Paste Chess Banana               Mean
+                                                                                              PAC-NeRF [38]        2.47    3.87     2.21    4.69    37.70   8.20    66.43   17.94
+         Spring-Gaus [100]    30.69    34.01    32.10   34.97 32.72 32.90
+PSNR ↑
+
+
+
+
+                                                                                              Spring-Gaus [100]    2.38    1.57     2.22    1.87    7.03    2.59    18.48    5.16
+
+
+
+
+                                                                                     CD ↓
+         NeuMA [8]            31.27    23.78    25.61   25.40   -   26.51                     NeuMA [8]            1.17    0.40    1147.4   0.05    44.26   0.33     0.30   170.56
+         GIC [6]              34.68    40.45    37.17   38.32 39.95 38.11                     GIC [6]              0.75    1.09     0.94    0.22     2.79   0.77     0.12    0.95
+         Ours                 40.26    42.12    38.97   40.84 43.40 41.12                     MASIV (Ours)         0.16    0.38     1.51    2.64     1.75   1.70     0.24    1.20
+                                                                                              PAC-NeRF [38]        17.46   14.15   15.37    19.94   12.32   15.08   16.04   15.77
+         Spring-Gaus          0.992    0.994    0.994   0.996 0.992 0.994
+
+
+
+
+                                                                                     PSNR ↑
+                                                                                              Spring-Gaus [100]    16.83   16.93   15.42    21.55   14.71   16.08   17.89   17.06
+SSIM ↑
+
+
+
+
+         NeuMA                0.994    0.993    0.995   0.995   -   0.994                     NeuMA [8]            16.61   19.67    2.32    26.25   13.42   20.85   23.16   17.47
+         GIC                  0.995    0.997    0.997   0.997 0.996 0.996                     GIC [6]              20.24   30.51   19.15    26.89   16.31   18.44   29.29   22.98
+                                                                                              MASIV (Ours)         22.42   33.73   16.45    21.19   15.73   17.28   26.56   21.91
+         Ours                 0.998    0.997    0.997   0.998 0.998 0.997
+                                                                                              PAC-NeRF [38]        0.919   0.906   0.858    0.878   0.819   0.848   0.886   0.870
+
+
+
+                                                                                     SSIM ↑
+                                                                                              Spring-Gaus [100]    0.919   0.940   0.862    0.902   0.872   0.881   0.904   0.897
+Table 2. Observable state simulation on Spring-Gaus Real                                      NeuMA [8]            0.942   0.948   0.889    0.964   0.889   0.933   0.964   0.933
+                                                                                              GIC [6]              0.942   0.939   0.909    0.948   0.894   0.912   0.964   0.930
+dataset. MASIV achieves state-of-the-art performance.                                         MASIV (Ours)         0.955   0.967   0.852    0.898   0.891   0.878   0.965   0.915
+
+
+Implementation details. In dynamic reconstruction, we                                Table 3. Future state simulation on Spring-Gaus Synthetic
+follow [6] to optimize canonical Gaussians G ∗ and the de-                           dataset. MASIV outperforms all baselines except for GIC.
+formation network D for 40K iterations. Then the deforma-
+tion network is ﬁne-tuned to estimate particle trajectories                          inal implementation. However, we observe unstable opti-
+from ﬁlled continuum sequences for 10K iterations. In sys-                           mization processes for most categories. This is probably
+tem identiﬁcation, we set the simulation time interval τ to                          rooted in its sparse pixel supervision, which only operates
+1/200 the frame duration. We adopt the RAdam [52] opti-                              once per frame. With dense geometrical constraints su-
+mizer to optimize the initial velocity v0 for 100 steps and                          pervising hundreds of times per frame, MASIV achieves
+constitutive model parameters θe , θp for 1000 steps. All ex-                        signiﬁcantly better results on both geometrical accuracy
+periments are conducted on a single NVIDIA A100 GPU.                                 and rendering quality. This suggests that MASIV effec-
+4.2. Comparison Results                                                              tively captures the underlying dynamics governing future
+                                                                                     states, allowing it to generate predictions that remain struc-
+Observable state simulation. In Tab. 1, we compare                                   turally and visually consistent over time. Unlike baseline
+MASIV with existing vision-based system identiﬁcation                                approaches that rely on predeﬁned material priors, MASIV
+methods for observable state simulation. The results indi-                           demonstrates the ability to infer relevant properties directly
+cate that MASIV outperforms all other methods in terms of                            from visual observations, making it more adaptable to a
+CD, highlighting its effectiveness in reconstructing object                          wide range of scenarios. On the other hand, while dense
+dynamics across diverse materials. Further, Tab. 2 evaluates                         trajectory guidance enables overﬁtting to observations, the
+on real data. Thanks to the more ﬂexible constitutive rep-                           lack of category-level regularization, unlike hand-crafted
+resentation, MASIV achieves state-of-the-art results. This                           constitutive models, limits its generalization under scarce
+demonstrates the potential of MASIV as an adaptive and                               data. This leads to inferior performance than GIC, which
+generalizable approach for system identiﬁcation.                                     can beneﬁt from its pre-known constitutive model as an or-
+Future state simulation. In Tab. 3, we provide a detailed                            acle. More analysis on the enhanced generalization ability
+evaluation of future state simulation performance. The                               of MASIV with more data is in Sec. C of Supp. Mat.
+results indicate that MASIV consistently outperforms all
+                                                                                     4.3. Ablation Study
+other methods while slightly underperforming GIC. Since
+NeuMA [8] does not originally experiment on the syn-                                 We investigate the impact of geometrical objectives here,
+thetic subset of Spring-Gaus, we report our reproduction re-                         while referring the readers to more ablation studies in Sec. B
+sults. To be concrete, we use the closest pre-trained model,                         of Supp. Mat. Fig. 3 validates the effectiveness of dense tra-
+Jelly, from NCLaw [59] as the material prior and conduct                             jectory supervision. As shown in Fig. 4, we evaluate three
+LoRA [25] ﬁne-tuning with hyperparameters from its orig-                             geometrical objectives by replacing the Lgeo term in opti-
+
+
+
+                                                                              5949
+Figure 3. Ablation study of geometrical objectives Lgeo on PAC-NeRF dataset. We compare three types of geometrical objectives
+against a baseline without geometrical guidance and plot their simulation errors using Chamfer Distance (CD). Overall, dense trajectory
+guidance achieves the lowest and most stable errors. The ﬁgure is best viewed in color.
+
+                                                                            Ground
+                                                                            Grou
+                                                                               und Trut
+                                                                                   Truth
+                                                                                      th     Surface    ୰୰୤ Continuum ࣦ ୡ୭୬୲ Tra
+                                                                                                 ace ࣦୱ୳୰
+                                                                                                      ୱ୳୰୤                   Trajectory
+                                                                                                                               aajectory ࣦ୲୰ୟ୨
+
+
+
+                                                                            ‫ݐ‬
+          (a) Surfaces                     (b) Continuums
+
+
+
+
+       (c) Gaussian Splats                  (d) Trajectories
+Figure 4. Visualization of geometrical objectives Lgeo on
+PAC-NeRF Bird. The ﬁne-tuned deformation network D cap-
+tures smooth and accurate motion for continuums, including low-
+frequency translation of the body and high-frequency swing of the
+tail. We space adjacent frames in the horizontal axis for clarity.
+
+
+mizing the neural constitutive model objective, Eq. (8). We
+deﬁne them formally as follows. (1) Surface: per-frame
+surface alignment between the simulated continuum and the
+ﬁlled continuum,                                                            Figure 5. Qualitative comparison of geometrical objectives Lgeo
+                                                                           on PAC-NeRF Cream. Using sparse surfaces or solid continuum
+                             T             T
+      Lsurf = LCD {S (x̂t )}t=0 , {S (pt )}t=0 ,        (11)                as geometrical cues can lead to physically implausible deforma-
+                                                                            tions, while trajectory guidance mitigates these issues by introduc-
+where S denotes the surface extraction by thresholding                      ing temporally denser constraints. Better viewed when zoomed in.
+Gaussian opacities [6]. (2) Continuum: similar to Surface
+while between solid continuums instead of surfaces,                         are probably due to supervising relatively complex neural
+                                                                           constitutive models with sparse signals, which might lead to
+                               T        T
+           Lcont = LCD {x̂t }t=0 , {pt }t=0 .        (12)                   overﬁtting since the simulated behaviors between observed
+                                                                            discrete time steps are not well constrained. Finally, by en-
+(3) Trajectory: per-simulation-step trajectory alignment                    forcing dense alignment across simulation steps, trajectory-
+between the simulated continuum {x̂t }N    τ
+                                         t=0 and the contin-                based supervision (green curve) achieves the lowest and
+uum predicted by the deformation network {xt }N     τ
+                                                  t=0 , as de-              most stable errors across all materials.
+ﬁned in Eq. (9). By analyzing per-frame errors, we ﬁrst con-
+ﬁrm the necessity of geometrical guidance, as the baseline                  4.4. Qualitative Analysis
+(red curve) exhibits signiﬁcantly higher CD errors across all
+material types. Surface-based supervision (yellow curve)                    Dynamics reconstruction. We visualize the reconstructed
+shows moderate error reduction but remains less stable over                 Cream object by using the alternative objectives in Fig. 5.
+time, especially in Plasticine and Sand. Continuum-based                    Here, we observe physically implausible deformations in
+supervision (blue curve) further reduces errors but struggles               results for surface and continuum supervision. Under uni-
+with certain materials, e.g., Sand. These error overshoots                  form force, the object exhibits inconsistent distortion, espe-
+
+
+
+                                                                     5950
+Soften       reference   Reconstruction
+                                     on   reference     Harden            Elastic        Plastic       Sandy       Newtonian Non-Newtonian
+
+
+
+
+Figure 6. Intra-class generalization. We ﬁrst optimize the ge-            Figure 7. Inter-class generalization. We train multiple neural
+ometry for PAC-NeRF Bird and then use the constitutive models             constitutive models with different materials and apply them to the
+optimized for reference elastic objects to predict novel dynamic          PAC-NeRF Trophy. While sharing the same initial state, the Tro-
+behaviors, thereby softening or hardening the Bird respectively.          phies with different materials exhibit distinct behaviors over time.
+
+
+cially in the boundary between blue stripes and red stripes.              observations conﬁrm that MASIV effectively captures gen-
+We attribute this to two main reasons. 1) Chamfer Distance                eralizable intrinsic dynamics. More qualitative results can
+based geometrical constraint focuses mainly on the over-                  be found in Sec. D of Supp. Mat.
+all structure. While it encourages alignment between simu-                4.5. Discussion
+lated and reference shapes, they do not enforce point-wise
+correspondence. A single particle can thus be matched with                While MASIV excels in material-agnostic system identiﬁ-
+different ground truth particles in different time steps. As a            cation, several limitations remain. First, it relies on multi-
+result, local mismatches can accumulate, leading to inaccu-               view video input, restricting applicability to single-view or
+rate deformations. 2) Sparse supervision fails to constrain               sparse observations. Second, our approach assumes that
+intermediate motion dynamics. Surface and continuum ob-                   internal geometries and deformations can be inferred from
+jectives provide alignment only at discrete time steps, leav-             surface motion, following a spatially coherent model. This
+ing large gaps in supervision. Without explicit constraints               assumption may break down in materials with complex in-
+on how the object deforms over time, the neural constitu-                 ternal ﬂows, such as granular media or multiphase ﬂuids.
+tive model may interpolate arbitrarily, leading to unstable               Finally, MASIV does not explicitly disentangle material
+and unrealistic motion patterns.                                          properties from external forces in system identiﬁcation, as-
+                                                                          suming a uniform gravity ﬁeld for all objects. Future works
+Dynamics generalization. We further study the generaliza-
+                                                                          aim to relax these assumptions for broader applicability.
+tion ability for MASIV. Fig. 6 examines how MASIV can
+be used to modify the dynamic characteristics of a single                 5. Conclusion
+object (PAC-NeRF Bird). Speciﬁcally, we ﬁrst reconstruct
+the geometrical representation of the Bird and optimize neu-              We present MASIV, a material-agnostic system identiﬁca-
+ral constitutive models for two elastic cross-shaped objects.             tion framework. By integrating neural constitutive models
+These optimized constitutive models are then used as ref-                 with dense geometry guidance, MASIV effectively captures
+erences to drive the simulation of the Bird, which deforms                object dynamics across diverse materials. Our approach re-
+accordingly, exhibiting ﬂuid-like softness on the left and in-            constructs dynamic Gaussians from multi-view videos and
+creased rigidity and bounce on the right. Additionally, we                ﬁne-tunes a deformation model within a solid continuum.
+see continuous transitions between soft and rigid behaviors               This enables us to extract dense motion cues, which, com-
+when interpolating the neural constitutive model weights.                 bined with visual observations, guide the learning of neu-
+In Fig. 7, we extend this study to inter-class generalization             ral constitutive models. Through this formulation, MASIV
+by applying neural constitutive models trained on different               generalizes beyond traditional system identiﬁcation meth-
+materials to a novel object, the PAC-NeRF Trophy. The                     ods that rely on pre-deﬁned material priors. Extensive ex-
+results show that despite sharing the same initial state, each            periments highlight its ability to reconstruct observable dy-
+material model induces distinct deformation patterns. These               namics and to generalize for novel interactions.
+
+
+
+                                                                   5951
+Acknowledgment                                                                   Conference on Computer Vision and Pattern Recognition,
+                                                                                 pages 15827–15837, 2022. 3
+This work was supported in part by U.S. NSF grant                           [12] Tao Du, Kui Wu, Pingchuan Ma, Sebastien Wah, Andrew
+DBI-2238093, and in part by the Institute of Information &                       Spielberg, Daniela Rus, and Wojciech Matusik. Diffpd:
+Communications Technology Planning & Evaluation (IITP)                           Differentiable projective dynamics. ACM Transactions on
+grant funded by the Korean Government (MSIT) (No.                                Graphics (TOG), 41(2):1–21, 2021. 3
+RS-2024-00457882, National AI Research Lab Project).                        [13] Philipp Erler, Paul Guerrero, Stefan Ohrhallinger, Niloy J
+                                                                                 Mitra, and Michael Wimmer. Points2surf learning implicit
+                                                                                 surfaces from point clouds. In European Conference on
+References                                                                       Computer Vision, pages 108–124. Springer, 2020. 5
+  [1] Benjamin Attal, Jia-Bin Huang, Christian Richardt,                    [14] Yutao Feng, Xiang Feng, Yintong Shang, Ying Jiang,
+      Michael Zollhoefer, Johannes Kopf, Matthew O’Toole, and                    Chang Yu, Zeshun Zong, Tianjia Shao, Hongzhi Wu, Kun
+      Changil Kim. Hyperreel: High-ﬁdelity 6-dof video with                      Zhou, Chenfanfu Jiang, et al. Gaussian splashing: Uniﬁed
+      ray-conditioned sampling. In Proceedings of the IEEE/CVF                   particles for versatile motion synthesis and rendering. arXiv
+      Conference on Computer Vision and Pattern Recognition,                     preprint arXiv:2401.15318, 3, 2024. 3
+      pages 16610–16620, 2023. 2                                            [15] Yutao Feng, Yintong Shang, Xuan Li, Tianjia Shao, Chen-
+                                                                                 fanfu Jiang, and Yin Yang. Pie-nerf: Physics-based in-
+  [2] Genesis Authors. Genesis: A universal and generative
+                                                                                 teractive elastodynamics with nerf. In Proceedings of the
+      physics engine for robotics and beyond, 2024. 3
+                                                                                 IEEE/CVF Conference on Computer Vision and Pattern
+  [3] Sherwin Bahmani, Ivan Skorokhodov, Victor Rong, Gor-
+                                                                                 Recognition, pages 4450–4461, 2024. 3
+      don Wetzstein, Leonidas Guibas, Peter Wonka, Sergey
+                                                                            [16] Zhoujie Fu, Jiacheng Wei, Wenhao Shen, Chaoyue Song,
+      Tulyakov, Jeong Joon Park, Andrea Tagliasacchi, and
+                                                                                 Xiaofeng Yang, Fayao Liu, Xulei Yang, and Guosheng Lin.
+      David B Lindell. 4d-fy: Text-to-4d generation using hy-
+                                                                                 Sync4d: Video guided controllable dynamics for physics-
+      brid score distillation sampling. In Proceedings of the
+                                                                                 based 4d generation. arXiv preprint arXiv:2405.16849,
+      IEEE/CVF Conference on Computer Vision and Pattern
+                                                                                 2024. 3
+      Recognition, pages 7996–8006, 2024. 3
+                                                                            [17] Moritz Geilinger, David Hahn, Jonas Zehnder, Moritz
+  [4] Piotr Borycki, Weronika Smolak, Joanna Waczyńska,
+                                                                                 Bächer, Bernhard Thomaszewski, and Stelian Coros. Add:
+      Marcin Mazur, Sławomir Tadeja, and Przemysław Spurek.
+                                                                                 Analytically differentiable dynamics for multi-body sys-
+      Gasp: Gaussian splatting for physic-based simulations.
+                                                                                 tems with frictional contact. ACM Transactions on Graph-
+      arXiv preprint arXiv:2409.05819, 2024. 3
+                                                                                 ics (TOG), 39(6):1–15, 2020. 3
+  [5] Johannes Brandstetter, Daniel Worrall, and Max Welling.               [18] Daniel Geng, Charles Herrmann, Junhwa Hur, Forrester
+      Message passing neural pde solvers.           arXiv preprint               Cole, Serena Zhang, Tobias Pfaff, Tatiana Lopez-Guevara,
+      arXiv:2202.03376, 2022. 2                                                  Carl Doersch, Yusuf Aytar, Michael Rubinstein, et al. Mo-
+  [6] Junhao Cai, Yuji Yang, Weihao Yuan, Yisheng He, Zilong                     tion prompting: Controlling video generation with motion
+      Dong, Liefeng Bo, Hui Cheng, and Qifeng Chen. Gic:                         trajectories. arXiv preprint arXiv:2412.02700, 2024. 3
+      Gaussian-informed continuum for physical property identi-             [19] Sharath Girish, Tianye Li, Amrita Mazumdar, Abhi-
+      ﬁcation and simulation. arXiv preprint arXiv:2406.14927,                   nav Shrivastava, David Luebke, and Shalini De Mello.
+      2024. 2, 3, 4, 5, 6, 7                                                     Queen: Quantized efﬁcient encoding of dynamic gaus-
+  [7] Yuanhao Cai, Jiahao Wang, Alan Yuille, Zongwei Zhou,                       sians for streaming free-viewpoint videos. arXiv preprint
+      and Angtian Wang. Structure-aware sparse-view x-ray 3d                     arXiv:2412.04469, 2024. 2
+      reconstruction. In Proceedings of the IEEE/CVF Confer-                [20] Shanyan Guan, Huayu Deng, Yunbo Wang, and Xiaokang
+      ence on Computer Vision and Pattern Recognition, pages                     Yang. Neuroﬂuid: Fluid dynamics grounding with particle-
+      11174–11183, 2024. 2                                                       driven neural radiance ﬁelds. In International conference
+  [8] Junyi Cao, Shanyan Guan, Yanhao Ge, Wei Li, Xiaokang                       on machine learning, pages 7919–7929. PMLR, 2022. 2
+      Yang, and Chao Ma. Neuma: Neural material adaptor for                 [21] Eric Heiden, Miles Macklin, Yashraj Narang, Dieter Fox,
+      visual grounding of intrinsic dynamics. Advances in Neural                 Animesh Garg, and Fabio Ramos. Disect: A differentiable
+      Information Processing Systems, 37:65643–65669, 2025.                      simulation engine for autonomous robotic cutting. arXiv
+      2, 3, 4, 5, 6                                                              preprint arXiv:2105.12244, 2021. 3
+  [9] Pradyumna Chari, Chinmay Talegaonkar, Yunhao Ba, and                  [22] Maximilian Herde, Bogdan Raonic, Tobias Rohner, Roger
+      Achuta Kadambi. Visual physics: Discovering physical                       Käppeli, Roberto Molinaro, Emmanuel de Bézenac, and
+      laws from videos. arXiv preprint arXiv:1911.11893, 2019.                   Siddhartha Mishra. Poseidon: Efﬁcient foundation mod-
+      2                                                                          els for pdes. Advances in Neural Information Processing
+ [10] Hanlin Chen, Chen Li, and Gim Hee Lee. Neusg: Neural                       Systems, 37:72525–72624, 2025. 2, 4
+      implicit surface reconstruction with 3d gaussian splatting            [23] Florian Hofherr, Lukas Koestler, Florian Bernard, and
+      guidance. arXiv preprint arXiv:2312.00846, 2023. 4                         Daniel Cremers. Neural implicit representations for phys-
+ [11] Hsiao-yu Chen, Edith Tretschk, Tuur Stuyck, Petr Kadle-                    ical parameter inference from a single video. In Proceed-
+      cek, Ladislav Kavan, Etienne Vouga, and Christoph Lass-                    ings of the IEEE/CVF Winter Conference on Applications
+      ner. Virtual elastic objects. In Proceedings of the IEEE/CVF               of Computer Vision, pages 2093–2103, 2023. 2
+
+
+
+                                                                     5952
+[24] Alain Hore and Djemel Ziou. Image quality metrics: Psnr               [37] Jinxi Li, Ziyang Song, and Bo Yang. Nvﬁ: neural ve-
+     vs. ssim. In 2010 20th international conference on pattern                 locity ﬁelds for 3d physics learning from dynamic videos.
+     recognition, pages 2366–2369. IEEE, 2010. 5                                Advances in Neural Information Processing Systems, 36,
+[25] Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-                    2024. 3
+     Zhu, Yuanzhi Li, Shean Wang, Lu Wang, Weizhu Chen,                    [38] Xuan Li, Yi-Ling Qiao, Peter Yichen Chen, Kr-
+     et al. Lora: Low-rank adaptation of large language models.                 ishna Murthy Jatavallabhula, Ming Lin, Chenfanfu Jiang,
+     ICLR, 1(2):3, 2022. 6                                                      and Chuang Gan. Pac-nerf: Physics augmented continuum
+[26] Yuanming Hu, Yu Fang, Ziheng Ge, Ziyin Qu, Yixin Zhu,                      neural radiance ﬁelds for geometry-agnostic system identi-
+     Andre Pradhana, and Chenfanfu Jiang. A moving least                        ﬁcation. arXiv preprint arXiv:2303.05512, 2023. 2, 3, 4, 5,
+     squares material point method with displacement disconti-                  6
+     nuity and two-way rigid body coupling. ACM Transactions               [39] Yunzhu Li, Jiajun Wu, Russ Tedrake, Joshua B Tenen-
+     on Graphics (TOG), 37(4):1–14, 2018. 2, 3                                  baum, and Antonio Torralba. Learning particle dynamics
+[27] Yuanming Hu, Luke Anderson, Tzu-Mao Li, Qi Sun,                            for manipulating rigid bodies, deformable objects, and ﬂu-
+     Nathan Carr, Jonathan Ragan-Kelley, and Frédo Durand.                     ids. arXiv preprint arXiv:1810.01566, 2018. 3
+     Difftaichi: Differentiable programming for physical simu-             [40] Yifei Li, Tao Du, Kui Wu, Jie Xu, and Wojciech Matusik.
+     lation. arXiv preprint arXiv:1910.00935, 2019. 2, 3                        Diffcloth: Differentiable cloth simulation with dry fric-
+[28] Tianyu Huang, Haoze Zhang, Yihan Zeng, Zhilu Zhang,                        tional contact. ACM Transactions on Graphics (TOG), 42
+     Hui Li, Wangmeng Zuo, and Rynson WH Lau. Dream-                            (1):1–20, 2022. 3
+     physics: Learning physical properties of dynamic 3d                   [41] Zhengqi Li, Qianqian Wang, Forrester Cole, Richard
+     gaussians with video diffusion priors. arXiv preprint                      Tucker, and Noah Snavely. Dynibar: Neural dynamic
+     arXiv:2406.01476, 2024. 3                                                  image-based rendering. In Proceedings of the IEEE/CVF
+[29] Zhiao Huang, Yuanming Hu, Tao Du, Siyuan Zhou, Hao                         Conference on Computer Vision and Pattern Recognition,
+     Su, Joshua B Tenenbaum, and Chuang Gan. Plasticinelab:                     pages 4273–4284, 2023. 2
+     A soft-body manipulation benchmark with differentiable                [42] Zhan Li, Zhang Chen, Zhong Li, and Yi Xu. Spacetime
+     physics. arXiv preprint arXiv:2104.03311, 2021. 3                          gaussian feature splatting for real-time dynamic view syn-
+[30] Krishna Murthy Jatavallabhula, Miles Macklin, Florian                      thesis. In Proceedings of the IEEE/CVF Conference on
+     Golemo, Vikram Voleti, Linda Petrini, Martin Weiss, Bre-                   Computer Vision and Pattern Recognition, pages 8508–
+     andan Considine, Jérôme Parent-Lévesque, Kevin Xie,                     8520, 2024. 2
+     Kenny Erleben, et al. gradsim: Differentiable simulation              [43] Zhengqi Li, Richard Tucker, Noah Snavely, and Aleksander
+     for system identiﬁcation and visuomotor control. arXiv                     Holynski. Generative image dynamics. In Proceedings of
+     preprint arXiv:2104.02646, 2021. 2, 3                                      the IEEE/CVF Conference on Computer Vision and Pattern
+[31] Chenfanfu Jiang, Craig Schroeder, Joseph Teran, Alexey                     Recognition, pages 24142–24153, 2024. 3
+     Stomakhin, and Andrew Selle. The material point method                [44] Zongyi Li, Hongkai Zheng, Nikola Kovachki, David Jin,
+     for simulating continuum materials. In ACM SIGGRAPH                        Haoxuan Chen, Burigede Liu, Kamyar Azizzadenesheli,
+     2016 Courses, pages 1–52, 2016. 2, 3, 1                                    and Anima Anandkumar. Physics-informed neural oper-
+[32] Takuhiro Kaneko. Improving physics-augmented contin-                       ator for learning partial differential equations. ACM/JMS
+     uum neural radiance ﬁeld-based geometry-agnostic system                    Journal of Data Science, 1(3):1–27, 2024. 2
+     identiﬁcation with lagrangian particle optimization. In Pro-          [45] Junbang Liang, Ming Lin, and Vladlen Koltun. Differen-
+     ceedings of the IEEE/CVF Conference on Computer Vision                     tiable cloth simulation for inverse problems. Advances in
+     and Pattern Recognition, pages 5470–5480, 2024. 3                          Neural Information Processing Systems, 32, 2019. 3
+[33] Namgyu Kang, Jaemin Oh, Youngjoon Hong, and Eun-                      [46] Xiao Liang, Fei Liu, Yutong Zhang, Yuelei Li, Shan Lin,
+     byung Park. Pig: Physics-informed gaussians as adap-                       and Michael Yip. Real-to-sim deformable object manipu-
+     tive parametric mesh representations.       arXiv preprint                 lation: Optimizing physics models with residual mappings
+     arXiv:2412.05994, 2024. 4                                                  for robotic surgery. In 2024 IEEE International Conference
+[34] Bernhard Kerbl, Georgios Kopanas, Thomas Leimkühler,                      on Robotics and Automation (ICRA), pages 15471–15477.
+     and George Drettakis. 3d gaussian splatting for real-time                  IEEE, 2024. 3
+     radiance ﬁeld rendering. ACM Trans. Graph., 42(4):139–1,              [47] Shanchuan Lin, Andrey Ryabtsev, Soumyadip Sengupta,
+     2023. 2, 3, 1                                                              Brian L Curless, Steven M Seitz, and Ira Kemelmacher-
+[35] Alexander Kirillov, Eric Mintun, Nikhila Ravi, Hanzi                       Shlizerman. Real-time high-resolution background mat-
+     Mao, Chloe Rolland, Laura Gustafson, Tete Xiao, Spencer                    ting. In Proceedings of the IEEE/CVF Conference on Com-
+     Whitehead, Alexander C Berg, Wan-Yen Lo, et al. Segment                    puter Vision and Pattern Recognition, pages 8762–8771,
+     anything. In Proceedings of the IEEE/CVF international                     2021. 5
+     conference on computer vision, pages 4015–4026, 2023. 5               [48] Yuchen Lin, Chenguo Lin, Jianjin Xu, and Yadong
+[36] Agelos Kratimenos, Jiahui Lei, and Kostas Daniilidis.                      Mu. Omniphysgs: 3d constitutive gaussians for gen-
+     Dynmf: Neural motion factorization for real-time dynamic                   eral physics-based dynamics generation. arXiv preprint
+     view synthesis with 3d gaussian splatting. In European                     arXiv:2501.18982, 2025. 2, 3
+     Conference on Computer Vision, pages 252–269. Springer,               [49] Huan Ling, Seung Wook Kim, Antonio Torralba, Sanja Fi-
+     2025. 3, 4                                                                 dler, and Karsten Kreis. Align your gaussians: Text-to-4d
+
+
+
+                                                                    5953
+     with dynamic 3d gaussians and composed diffusion models.                  Computer Vision and Pattern Recognition, pages 13894–
+     In Proceedings of the IEEE/CVF Conference on Computer                     13903, 2023. 2
+     Vision and Pattern Recognition, pages 8576–8588, 2024. 3             [62] Keunhong Park, Utkarsh Sinha, Jonathan T Barron, Soﬁen
+[50] Phillip Lippe, Bas Veeling, Paris Perdikaris, Richard                     Bouaziz, Dan B Goldman, Steven M Seitz, and Ricardo
+     Turner, and Johannes Brandstetter. Pde-reﬁner: Achieving                  Martin-Brualla. Nerﬁes: Deformable neural radiance ﬁelds.
+     accurate long rollouts with neural pde solvers. Advances in               In Proceedings of the IEEE/CVF International Conference
+     Neural Information Processing Systems, 36:67398–67433,                    on Computer Vision, pages 5865–5874, 2021. 2
+     2023. 2                                                              [63] Keunhong Park, Utkarsh Sinha, Peter Hedman, Jonathan T
+[51] Fangfu Liu, Hanyang Wang, Shunyu Yao, Shengjun Zhang,                     Barron, Soﬁen Bouaziz, Dan B Goldman, Ricardo Martin-
+     Jie Zhou, and Yueqi Duan. Physics3d: Learning physi-                      Brualla, and Steven M Seitz. Hypernerf: A higher-
+     cal properties of 3d gaussians via video diffusion. arXiv                 dimensional representation for topologically varying neural
+     preprint arXiv:2406.04338, 2024. 3                                        radiance ﬁelds. arXiv preprint arXiv:2106.13228, 2021. 2
+[52] Liyuan Liu, Haoming Jiang, Pengcheng He, Weizhu Chen,                [64] Albert Pumarola, Enric Corona, Gerard Pons-Moll, and
+     Xiaodong Liu, Jianfeng Gao, and Jiawei Han. On the                        Francesc Moreno-Noguer. D-nerf: Neural radiance ﬁelds
+     variance of the adaptive learning rate and beyond. arXiv                  for dynamic scenes. In Proceedings of the IEEE/CVF Con-
+     preprint arXiv:1908.03265, 2019. 6                                        ference on Computer Vision and Pattern Recognition, pages
+[53] Qingming Liu, Yuan Liu, Jiepeng Wang, Xianqiang Lv,                       10318–10327, 2021. 2
+     Peng Wang, Wenping Wang, and Junhui Hou. Modgs: Dy-                  [65] Yiling Qiao, Junbang Liang, Vladlen Koltun, and Ming
+     namic gaussian splatting from causually-captured monocu-                  Lin. Differentiable simulation of soft multi-body systems.
+     lar videos. arXiv preprint arXiv:2406.00434, 2024. 2                      Advances in Neural Information Processing Systems, 34:
+                                                                               17123–17135, 2021. 3
+[54] Shaowei Liu, Zhongzheng Ren, Saurabh Gupta, and Shen-
+                                                                          [66] Yi-Ling Qiao, Alexander Gao, and Ming Lin. Neuphysics:
+     long Wang. Physgen: Rigid-body physics-grounded image-
+                                                                               Editable neural geometry and physics from monocular
+     to-video generation. In European Conference on Computer
+                                                                               videos. Advances in Neural Information Processing Sys-
+     Vision, pages 360–378. Springer, 2025. 3
+                                                                               tems, 35:12841–12854, 2022. 3
+[55] Zhicheng Lu, Xiang Guo, Le Hui, Tianrui Chen, Min Yang,
+                                                                          [67] Ri-Zhao Qiu, Ge Yang, Weijia Zeng, and Xiaolong Wang.
+     Xiao Tang, Feng Zhu, and Yuchao Dai. 3d geometry-aware
+                                                                               Language-driven physics-based scene synthesis and editing
+     deformable gaussian splatting for dynamic view synthesis.
+                                                                               via feature splatting. In European Conference on Computer
+     In Proceedings of the IEEE/CVF Conference on Computer
+                                                                               Vision, pages 368–383. Springer, 2024. 3
+     Vision and Pattern Recognition, pages 8900–8910, 2024. 2
+                                                                          [68] Maziar Raissi, Paris Perdikaris, and George E Karniadakis.
+[56] Jonathon Luiten, Georgios Kopanas, Bastian Leibe, and                     Physics-informed neural networks: A deep learning frame-
+     Deva Ramanan.         Dynamic 3d gaussians: Tracking                      work for solving forward and inverse problems involving
+     by persistent dynamic view synthesis. arXiv preprint                      nonlinear partial differential equations. Journal of Compu-
+     arXiv:2308.09713, 2023. 2                                                 tational physics, 378:686–707, 2019. 3
+[57] Baorui Ma, Zhizhong Han, Yu-Shen Liu, and Matthias                   [69] Jiawei Ren, Liang Pan, Jiaxiang Tang, Chi Zhang, Ang Cao,
+     Zwicker. Neural-pull: Learning signed distance functions                  Gang Zeng, and Ziwei Liu. Dreamgaussian4d: Generative
+     from point clouds by learning to pull space onto surfaces.                4d gaussian splatting. arXiv preprint arXiv:2312.17142,
+     arXiv preprint arXiv:2011.13495, 2020. 5                                  2023. 3
+[58] Pingchuan Ma, Tao Du, Joshua B Tenenbaum, Wojciech                   [70] Alvaro Sanchez-Gonzalez, Jonathan Godwin, Tobias Pfaff,
+     Matusik, and Chuang Gan. Risp: Rendering-invariant                        Rex Ying, Jure Leskovec, and Peter Battaglia. Learning to
+     state predictor with differentiable simulation and render-                simulate complex physics with graph networks. In Interna-
+     ing for cross-domain parameter estimation. arXiv preprint                 tional conference on machine learning, pages 8459–8468.
+     arXiv:2205.05678, 2022. 3                                                 PMLR, 2020. 3
+[59] Pingchuan Ma, Peter Yichen Chen, Bolei Deng, Joshua B                [71] Yidi Shao, Mu Huang, Chen Change Loy, and Bo Dai.
+     Tenenbaum, Tao Du, Chuang Gan, and Wojciech Matusik.                      Gausim: Registering elastic objects into digital world
+     Learning neural constitutive laws from motion observations                by gaussian simulator. arXiv preprint arXiv:2412.17804,
+     for generalizable pde dynamics. In International Confer-                  2024. 3
+     ence on Machine Learning, pages 23279–23300. PMLR,                   [72] Haochen Shi, Huazhe Xu, Samuel Clarke, Yunzhu Li,
+     2023. 2, 3, 4, 5, 6                                                       and Jiajun Wu. Robocook: Long-horizon elasto-plastic
+[60] Ben Mildenhall, Pratul P Srinivasan, Matthew Tancik,                      object manipulation with diverse tools. arXiv preprint
+     Jonathan T Barron, Ravi Ramamoorthi, and Ren Ng. Nerf:                    arXiv:2306.14447, 2023. 3
+     Representing scenes as neural radiance ﬁelds for view syn-           [73] Haochen Shi, Huazhe Xu, Zhiao Huang, Yunzhu Li, and Ji-
+     thesis. Communications of the ACM, 65(1):99–106, 2021.                    ajun Wu. Robocraft: Learning to see, simulate, and shape
+     2                                                                         elasto-plastic objects in 3d with graph networks. The In-
+[61] Clinton A Mo, Kun Hu, Chengjiang Long, and Zhiyong                        ternational Journal of Robotics Research, 43(4):533–549,
+     Wang. Continuous intermediate token learning with im-                     2024. 3
+     plicit motion manifold for keyframe based motion interpo-            [74] Xiaoyu Shi, Zhaoyang Huang, Fu-Yun Wang, Weikang
+     lation. In Proceedings of the IEEE/CVF Conference on                      Bian, Dasong Li, Yi Zhang, Manyuan Zhang, Ka Chun
+
+
+
+                                                                   5954
+     Cheung, Simon See, Hongwei Qin, et al. Motion-i2v: Con-              [87] Weijia Wu, Zhuang Li, Yuchao Gu, Rui Zhao, Yefei He,
+     sistent and controllable image-to-video generation with ex-               David Junhao Zhang, Mike Zheng Shou, Yan Li, Tingting
+     plicit motion modeling. In ACM SIGGRAPH 2024 Confer-                      Gao, and Di Zhang. Draganything: Motion control for any-
+     ence Papers, pages 1–11, 2024. 3                                          thing using entity representation. In European Conference
+[75] Uriel Singer, Shelly Sheynin, Adam Polyak, Oron Ashual,                   on Computer Vision, pages 331–348. Springer, 2024. 3
+     Iurii Makarov, Filippos Kokkinos, Naman Goyal, Andrea                [88] Wenqi Xian, Jia-Bin Huang, Johannes Kopf, and Changil
+     Vedaldi, Devi Parikh, Justin Johnson, et al. Text-to-4d dy-               Kim. Space-time neural irradiance ﬁelds for free-viewpoint
+     namic scene generation. arXiv preprint arXiv:2301.11280,                  video. In Proceedings of the IEEE/CVF conference on
+     2023. 3                                                                   computer vision and pattern recognition, pages 9421–9431,
+[76] Colton Stearns, Adam Harley, Mikaela Uy, Florian Du-                      2021. 2
+     bost, Federico Tombari, Gordon Wetzstein, and Leonidas               [89] Tianyi Xie, Zeshun Zong, Yuxing Qiu, Xuan Li, Yutao
+     Guibas. Dynamic gaussian marbles for novel view synthe-                   Feng, Yin Yang, and Chenfanfu Jiang. Physgaussian:
+     sis of casual monocular videos. In SIGGRAPH Asia 2024                     Physics-integrated 3d gaussians for generative dynamics. In
+     Conference Papers, pages 1–11, 2024. 2                                    Proceedings of the IEEE/CVF Conference on Computer Vi-
+[77] Alexey Stomakhin, Craig Schroeder, Lawrence Chai,                         sion and Pattern Recognition, pages 4389–4398, 2024. 3
+     Joseph Teran, and Andrew Selle. A material point method              [90] Zhenjia Xu, Jiajun Wu, Andy Zeng, Joshua B Tenenbaum,
+     for snow simulation. ACM Transactions on Graphics                         and Shuran Song. Densephysnet: Learning dense physical
+     (TOG), 32(4):1–10, 2013. 1                                                object representations via multi-step dynamic interactions.
+[78] Deborah Sulsky, Shi-Jian Zhou, and Howard L Schreyer.                     arXiv preprint arXiv:1906.03853, 2019. 3
+     Application of a particle-in-cell method to solid mechan-            [91] Tianju Xue, Shuheng Liao, Zhengtao Gan, Chanwook Park,
+     ics. Computer physics communications, 87(1-2):236–252,                    Xiaoyu Xie, Wing Kam Liu, and Jian Cao. Jax-fem: A dif-
+     1995. 2, 3                                                                ferentiable gpu-accelerated 3d ﬁnite element solver for au-
+[79] Priya Sundaresan, Rika Antonova, and Jeannette Bohgl.                     tomatic inverse design and mechanistic data science. Com-
+     Diffcloud: Real-to-sim from point clouds with differen-                   puter Physics Communications, 291:108802, 2023. 2
+     tiable simulation and rendering of deformable objects. In            [92] Zeyu Yang, Hongye Yang, Zijie Pan, and Li Zhang.
+     2022 IEEE/RSJ International Conference on Intelligent                     Real-time photorealistic dynamic scene representation and
+     Robots and Systems (IROS), pages 10828–10835. IEEE,                       rendering with 4d gaussian splatting. arXiv preprint
+     2022. 3                                                                   arXiv:2310.10642, 2023. 2
+[80] Tetsuya Takahashi and Ming C Lin. Video-guided real-to-              [93] Ziyi Yang, Xinyu Gao, Wen Zhou, Shaohui Jiao, Yuqing
+     virtual parameter transfer for viscous ﬂuids. ACM Transac-                Zhang, and Xiaogang Jin. Deformable 3d gaussians for
+     tions on Graphics (TOG), 38(6):1–12, 2019. 3                              high-ﬁdelity monocular dynamic scene reconstruction. In
+[81] Xiyang Tan, Ying Jiang, Xuan Li, Zeshun Zong, Tianyi                      Proceedings of the IEEE/CVF Conference on Computer Vi-
+     Xie, Yin Yang, and Chenfanfu Jiang. Physmotion: Physics-                  sion and Pattern Recognition, pages 20331–20341, 2024.
+     grounded dynamics from a single image. arXiv preprint                     3, 4
+     arXiv:2411.17189, 2024. 3                                            [94] Nianjin Ye, Chuan Wang, Haoqiang Fan, and Shuaicheng
+[82] Bin Wang, Longhua Wu, KangKang Yin, Uri M Ascher, Li-                     Liu. Motion basis learning for unsupervised deep homog-
+     bin Liu, and Hui Huang. Deformation capture and modeling                  raphy estimation with subspace projection. In Proceedings
+     of soft objects. ACM Trans. Graph., 34(4):94–1, 2015. 3                   of the IEEE/CVF international conference on computer vi-
+[83] Chaoyang Wang, Lachlan Ewen MacDonald, Laszlo A                           sion, pages 13117–13125, 2021. 2
+     Jeni, and Simon Lucey. Flow supervision for deformable               [95] Heng Yu, Joel Julin, Zoltan A Milacski, Koichiro Niinuma,
+     nerf. In Proceedings of the IEEE/CVF Conference on Com-                   and László A Jeni. Dylin: Making light ﬁeld networks dy-
+     puter Vision and Pattern Recognition, pages 21128–21137,                  namic. In Proceedings of the IEEE/CVF Conference on
+     2023. 2                                                                   Computer Vision and Pattern Recognition, pages 12397–
+[84] Zhou Wang, Alan C Bovik, Hamid R Sheikh, and Eero P                       12406, 2023. 2
+     Simoncelli. Image quality assessment: from error visibility          [96] Heng Yu, Joel Julin, Zoltán Á Milacski, Koichiro Niinuma,
+     to structural similarity. IEEE transactions on image pro-                 and László A Jeni. Cogs: Controllable gaussian splatting.
+     cessing, 13(4):600–612, 2004. 5                                           In Proceedings of the IEEE/CVF Conference on Computer
+[85] Zhouxia Wang, Ziyang Yuan, Xintao Wang, Yaowei Li,                        Vision and Pattern Recognition, pages 21624–21633, 2024.
+     Tianshui Chen, Menghan Xia, Ping Luo, and Ying Shan.                      2
+     Motionctrl: A uniﬁed and ﬂexible motion controller for               [97] Vladimir Yugay, Yue Li, Theo Gevers, and Martin R Os-
+     video generation. In ACM SIGGRAPH 2024 Conference                         wald. Gaussian-slam: Photo-realistic dense slam with gaus-
+     Papers, pages 1–11, 2024. 3                                               sian splatting. arXiv preprint arXiv:2312.10070, 2023. 4
+[86] Guanjun Wu, Taoran Yi, Jiemin Fang, Lingxi Xie, Xi-                  [98] Tianyuan Zhang, Hong-Xing Yu, Rundi Wu, Brandon Y
+     aopeng Zhang, Wei Wei, Wenyu Liu, Qi Tian, and Xing-                      Feng, Changxi Zheng, Noah Snavely, Jiajun Wu, and
+     gang Wang. 4d gaussian splatting for real-time dynamic                    William T Freeman. Physdreamer: Physics-based inter-
+     scene rendering. In Proceedings of the IEEE/CVF Confer-                   action with 3d objects via video generation. In European
+     ence on Computer Vision and Pattern Recognition, pages                    Conference on Computer Vision, pages 388–406. Springer,
+     20310–20320, 2024. 3, 4                                                   2025. 3
+
+
+
+                                                                   5955
+ [99] Dongzhe Zheng, Siqiong Yao, Wenqiang Xu, and Cewu Lu.
+      Differentiable cloth parameter identiﬁcation and state esti-
+      mation in manipulation. IEEE Robotics and Automation
+      Letters, 2024. 3
+[100] Licheng Zhong, Hong-Xing Yu, Jiajun Wu, and Yunzhu
+      Li. Reconstruction and simulation of elastic objects with
+      spring-mass 3d gaussians. In European Conference on
+      Computer Vision, pages 407–423. Springer, 2025. 2, 3, 4,
+      5, 6
+[101] Xiaowei Zhou, Can Yang, and Weichuan Yu. Moving object
+      detection by detecting contiguous outliers in the low-rank
+      representation. IEEE transactions on pattern analysis and
+      machine intelligence, 35(3):597–610, 2012. 2
+
+
+
+
+                                                                     5956
+

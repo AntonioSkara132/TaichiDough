@@ -1,0 +1,442 @@
+{
+  "indexed": {
+    "date-parts": [
+      [
+        2026,
+        8,
+        17
+      ]
+    ],
+    "date-time": "2026-08-17T22:10:40Z",
+    "timestamp": 1787004640310,
+    "version": "build-2736575974"
+  },
+  "reference-count": 43,
+  "publisher": "Institution of Engineering and Technology (IET)",
+  "issue": "2",
+  "content-domain": {
+    "domain": [],
+    "crossmark-restriction": false
+  },
+  "short-container-title": [
+    "IET Syst. Biol."
+  ],
+  "published-print": {
+    "date-parts": [
+      [
+        2011,
+        3,
+        11
+      ]
+    ]
+  },
+  "DOI": "10.1049/iet-syb.2010.0061",
+  "type": "journal-article",
+  "created": {
+    "date-parts": [
+      [
+        2011,
+        3,
+        15
+      ]
+    ],
+    "date-time": "2011-03-15T13:25:28Z",
+    "timestamp": 1300195528000
+  },
+  "page": "120-130",
+  "source": "Crossref",
+  "is-referenced-by-count": 127,
+  "title": [
+    "Addressing parameter identifiability by model-based experimentation"
+  ],
+  "prefix": "10.1049",
+  "volume": "5",
+  "author": [
+    {
+      "given": "A.",
+      "family": "Raue",
+      "sequence": "first",
+      "affiliation": [
+        {
+          "name": "Physics Institute, University of Freiburg, Freiburg, 79104, Germany"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "C.",
+      "family": "Kreutz",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Physics Institute, University of Freiburg, Freiburg, 79104, Germany"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "T.",
+      "family": "Maiwald",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Department of Systems Biology, Harvard Medical School, Boston, MA 02115, USA"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "U.",
+      "family": "Klingmüller",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Division of Systems Biology of Signal Transduction, DKFZ-ZMBH Alliance, German Cancer Research Center, Heidelberg, 69120, Germany"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "J.",
+      "family": "Timmer",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Physics Institute and Freiburg Institute for Advanced Studies, University of Freiburg, Freiburg, 79104, Germany"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    }
+  ],
+  "member": "265",
+  "reference": [
+    {
+      "key": "10.1049/iet-syb.2010.0061_r1",
+      "unstructured": "Walter, E.: ‘Identifiability of parametric models’, (Pergamon Press 1987)"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r2",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1038/nature03001"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r3",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1101/gr.6339607"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r4",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1126/science.1069492"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r5",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1073/pnas.0237333100"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r6",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1093/bioinformatics/btp358"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r7",
+      "doi-asserted-by": "crossref",
+      "unstructured": "Lehmann, E.L., and Leo, E.: ‘Theory of point estimation’, (Wiley 1983)",
+      "DOI": "10.1007/978-1-4757-2769-2"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r8",
+      "unstructured": "Wolkenhauer, O.: ‘Systems biology’, (Portland Press 2008)"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r9",
+      "doi-asserted-by": "crossref",
+      "unstructured": "Heinrich, R., and Schuster, S.: ‘The regulation of cellular systems’, (Chapman & Hall 1996)",
+      "DOI": "10.1007/978-1-4613-1161-4"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r10",
+      "doi-asserted-by": "crossref",
+      "unstructured": "Seber, G.A.F., and Wild, C.J.: ‘Nonlinear regression’, (Wiley 2003)",
+      "DOI": "10.1002/9780471722199"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r11",
+      "unstructured": "Press, W.H., Teukolsky, S.L.A., Flannery, B.N.P., and Vetterling, W.M.T.: ‘Numerical recipes: FORTRAN’, (Cambridge University Press 1990)"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r12",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.2307/2684811"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r13",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1023/A:1025681223921"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r14",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1109/10.650350"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r15",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/0025-5564(85)90098-7"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r16",
+      "first-page": "7",
+      "volume": "239",
+      "author": "Cobelli",
+      "year": "1980"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r17",
+      "doi-asserted-by": "crossref",
+      "unstructured": "Lecourtier, Y., Lamnabhi-Lagarrigue, F., and Walter, E.: ‘Volterra and generating power series approaches to identifiability testing’, Walter, E., Identifiability of parametric models, (Pergamon Press 1987)",
+      "DOI": "10.1016/B978-0-08-034929-9.50009-1"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r18",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/0025-5564(89)90024-2"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r19",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/0025-5564(78)90063-9"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r20",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1007/s002000050128"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r21",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/0005-1098(94)90029-9"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r22",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/S0005-1098(02)00302-3"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r23",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1006/jsco.2002.0532"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r24",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/S0025-5564(01)00079-7"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r25",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/S0025-5564(01)00080-3"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r26",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1080/00986448908940662"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r27",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1081/PRE-120024426"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r28",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/j.jprocont.2003.12.008"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r29",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1038/nrm2030"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r30",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1186/1752-0509-3-50"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r31",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.2307/2347496"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r32",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.2307/2669386"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r33",
+      "first-page": "376",
+      "volume": "7",
+      "author": "Royston",
+      "year": "2007"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r34",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1093/bioinformatics/btm382"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r35",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1111/j.1742-4658.2008.06843.x"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r36",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1049/iet-syb.2008.0138"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r37",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1371/journal.pcbi.1000558"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r38",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/j.biosystems.2004.03.007"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r39",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1049/iet-syb:20070069"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r40",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1126/science.1184913"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r41",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1089014.1089020"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r42",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1093/bioinformatics/btn350"
+    },
+    {
+      "key": "10.1049/iet-syb.2010.0061_r43",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1371/journal.pcbi.0030189"
+    }
+  ],
+  "container-title": [
+    "IET Systems Biology"
+  ],
+  "original-title": [],
+  "language": "en",
+  "link": [
+    {
+      "URL": "https://digital-library.theiet.org/content/journals/10.1049/iet-syb.2010.0061?crawler=true&mimetype=application/pdf",
+      "content-type": "unspecified",
+      "content-version": "vor",
+      "intended-application": "similarity-checking"
+    }
+  ],
+  "deposited": {
+    "date-parts": [
+      [
+        2024,
+        11,
+        12
+      ]
+    ],
+    "date-time": "2024-11-12T13:42:05Z",
+    "timestamp": 1731418925000
+  },
+  "score": 1,
+  "resource": {
+    "primary": {
+      "URL": "http://digital-library.theiet.org/doi/10.1049/iet-syb.2010.0061"
+    }
+  },
+  "subtitle": [],
+  "short-title": [],
+  "issued": {
+    "date-parts": [
+      [
+        2011,
+        3,
+        11
+      ]
+    ]
+  },
+  "references-count": 43,
+  "journal-issue": {
+    "issue": "2",
+    "published-print": {
+      "date-parts": [
+        [
+          2011,
+          3,
+          11
+        ]
+      ]
+    }
+  },
+  "alternative-id": [
+    "10.1049/iet-syb.2010.0061"
+  ],
+  "URL": "https://doi.org/10.1049/iet-syb.2010.0061",
+  "relation": {},
+  "ISSN": [
+    "1751-8849",
+    "1751-8857"
+  ],
+  "issn-type": [
+    {
+      "value": "1751-8849",
+      "type": "print"
+    },
+    {
+      "value": "1751-8857",
+      "type": "electronic"
+    }
+  ],
+  "subject": [],
+  "published": {
+    "date-parts": [
+      [
+        2011,
+        3,
+        11
+      ]
+    ]
+  }
+}

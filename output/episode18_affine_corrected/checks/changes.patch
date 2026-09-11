@@ -1,0 +1,843 @@
+diff --git a/scripts/sweep_episode18_viscosity.py b/scripts/sweep_episode18_viscosity.py
+index 0c6abe8..8e8a9c3 100644
+--- a/scripts/sweep_episode18_viscosity.py
++++ b/scripts/sweep_episode18_viscosity.py
+@@ -1,17 +1,20 @@
+ #!/usr/bin/env python3
+-"""Sweep viscosity for the fixed Episode 18 SDF replay at one chosen tool friction."""
++"""Sweep viscosity for the fixed Episode 18 SDF replay at a chosen stiffness and tool friction."""
+ 
+ from __future__ import annotations
+ 
+ import argparse
++import contextlib
+ import csv
+ import json
+ import math
+ from pathlib import Path
++import sys
+ from typing import Any, Mapping, Sequence
+ 
+ # pyright: reportMissingImports=false
+ from calibrate_youngs_modulus import score_evaluation_artifact
++from material_calibration import canonical_json_hash, file_sha256, sequence_fingerprint
+ from sweep_episode18_tool_friction import (
+     FIXED_TOOL_CONTACT_PADDING_M,
+     FIXED_YOUNGS_MODULUS_PA,
+@@ -26,6 +29,7 @@ from sweep_episode18_tool_friction import (
+     validate_baseline,
+     write_json,
+ )
++from sweep_replay_sdf_contact_padding import required_option
+ 
+ VISCOSITY_VALUES_PA_S = (0.0, 1.0, 2.5, 5.0, 10.0)
+ REPLAY_END_FRAME = 60
+@@ -40,50 +44,162 @@ def viscosity_cases() -> list[dict[str, Any]]:
+     ]
+ 
+ 
+-def build_case_argv(baseline: Sequence[str], viscosity_pa_s: float, tool_contact_friction: float, simulation_dir: Path) -> list[str]:
++def build_case_argv(
++    baseline: Sequence[str], viscosity_pa_s: float, tool_contact_friction: float, simulation_dir: Path,
++    youngs_modulus_pa: float = FIXED_YOUNGS_MODULUS_PA, cpu: bool | None = None,
++) -> list[str]:
+     if viscosity_pa_s not in VISCOSITY_VALUES_PA_S:
+         raise ValueError(f"Unsupported viscosity {viscosity_pa_s:g}")
+     if not math.isfinite(tool_contact_friction) or tool_contact_friction < 0:
+         raise ValueError("--tool-contact-friction must be finite and nonnegative")
+-    argv = replace_option(baseline, "--youngs-modulus", format(FIXED_YOUNGS_MODULUS_PA, ".12g"))
++    if not math.isfinite(youngs_modulus_pa) or youngs_modulus_pa <= 0:
++        raise ValueError("--youngs-modulus must be positive and finite")
++    argv = replace_option(baseline, "--youngs-modulus", format(youngs_modulus_pa, ".12g"))
+     argv = replace_option(argv, "--tool-contact-padding", format(FIXED_TOOL_CONTACT_PADDING_M, ".17g"))
+     argv = replace_option(argv, "--tool-contact-friction", format(tool_contact_friction, ".12g"))
+     argv = replace_option(argv, "--viscosity", format(viscosity_pa_s, ".12g"))
++    argv = replace_option(argv, "--replay-start-frame", "0")
+     argv = replace_option(argv, "--replay-stride", "1")
+     argv = replace_option(argv, "--replay-end-frame", str(REPLAY_END_FRAME))
+-    argv = remove_flag(argv, "--cpu")
++    if cpu is not None:
++        argv = remove_flag(argv, "--cpu")
++        if cpu:
++            argv.append("--cpu")
+     return replace_option(argv, "--output-dir", str(simulation_dir))
+ 
+ 
+-def execute_case(root: Path, baseline: Sequence[str], case: Mapping[str, Any], tool_contact_friction: float, timeout_s: float, resume: bool, retry_failures: bool) -> dict[str, Any]:
++def file_record(path: Path) -> dict[str, str]:
++    path = path.expanduser().resolve()
++    return {"path": str(path), "sha256": file_sha256(path)}
++
++
++def case_fingerprint(simulator: Sequence[str], evaluator: Sequence[str]) -> dict[str, Any]:
++    scripts = Path(__file__).resolve().parent
++    source_files = {"simulator": file_record(Path(simulator[1])), "evaluator": file_record(Path(evaluator[1]))}
++    for name in (
++        "sweep_episode18_viscosity", "sweep_episode18_tool_friction", "sweep_replay_sdf_contact_padding",
++        "calibrate_youngs_modulus", "material_calibration", "deformpath_dynamics", "deformpath_topview",
++    ):
++        source_files[name] = file_record(scripts / f"{name}.py")
++    inputs = {
++        option[2:].replace("-", "_"): file_record(Path(required_option(simulator, option)))
++        for option in ("--initial-particles", "--initial-particles-metadata", "--initial-particles-calibration", "--tool-geometry")
++    }
++    for option, filename in (
++        ("--ur-tool-mesh", "ur_spathla.stl"),
++        ("--kinova-tool-mesh", "gen3_spathla.stl"),
++        ("--ur-tool-collision-mesh", "ur_spathla_collision_solid.stl"),
++        ("--kinova-tool-collision-mesh", "gen3_spathla_collision_solid.stl"),
++    ):
++        if option in simulator:
++            path = Path(required_option(simulator, option))
++        else:
++            # Resolve sourced ROS assets as the simulator does; keep validation stdout as JSON.
++            with contextlib.redirect_stdout(sys.stderr):
++                from taichi_viscoelastic_mpm_scene import find_tool_mesh
++            path = find_tool_mesh(filename, None)
++        inputs[option[2:].replace("-", "_")] = file_record(path)
++    inputs["collision_manifest"] = file_record(scripts.parent / "meshes" / "tool_collision_meshes_v1.json")
++    episode = Path(required_option(simulator, "--replay-episode")).expanduser().resolve()
++    metadata = episode / "sequence_metadata.json"
++    sequence = {
++        "episode_dir": str(episode), "fingerprint": sequence_fingerprint(episode),
++        "metadata": file_record(metadata) if metadata.is_file() else None,
++    }
++    simulator_template = replace_option(simulator, "--output-dir", "{simulation_dir}")
++    evaluator_template = replace_option(evaluator, "--output-dir", "{evaluation_dir}")
++    evaluator_template = replace_option(evaluator_template, "--taichi-metadata", "{simulation_dir}/camera_parameters.json")
++    return {
++        "schema": "taichidough/episode18-viscosity-case-fingerprint/v1",
++        "source_files": source_files, "input_files": inputs, "sequence": sequence,
++        "simulator_argv": simulator_template, "evaluator_argv": evaluator_template,
++        "youngs_modulus_pa": float(required_option(simulator, "--youngs-modulus")),
++        "backend_request": "cpu" if "--cpu" in simulator else "gpu",
++        "loss_settings": LOSS_SETTINGS,
++        "scoring_source_frame_range_inclusive": [SCORING_START_FRAME, SCORING_END_FRAME],
++    }
++
++
++def validate_loss(loss: Mapping[str, Any]) -> None:
++    if not loss.get("valid"):
++        raise ValueError(f"invalid loss: {loss.get('failure_reason') or 'scored frames are invalid'}")
++    total = loss.get("weighted_total")
++    if isinstance(total, bool) or not isinstance(total, (int, float)) or not math.isfinite(total):
++        raise ValueError("loss weighted_total must be finite")
++    frames = [frame.get("source_frame") for frame in loss.get("frames", [])]
++    if frames != list(range(SCORING_START_FRAME, SCORING_END_FRAME + 1)):
++        raise ValueError("loss must contain every source frame from 1 through 60 exactly once")
++
++
++def execute_case(
++    root: Path, baseline: Sequence[str], case: Mapping[str, Any], tool_contact_friction: float,
++    timeout_s: float, resume: bool, retry_failures: bool,
++    youngs_modulus_pa: float = FIXED_YOUNGS_MODULUS_PA, cpu: bool | None = None,
++) -> dict[str, Any]:
+     case_dir = root / "cases" / str(case["id"])
+-    simulation_dir = case_dir / "simulation"
+-    evaluation_dir = case_dir / "evaluation"
++    execution_dir = case_dir
++    simulation_dir = execution_dir / "simulation"
++    evaluation_dir = execution_dir / "evaluation"
+     result_path = case_dir / "result.json"
++    simulator = build_case_argv(baseline, float(case["viscosity_pa_s"]), tool_contact_friction, simulation_dir, youngs_modulus_pa, cpu)
++    evaluator = evaluator_argv(baseline, simulation_dir, evaluation_dir)
++    fingerprint = case_fingerprint(simulator, evaluator)
++    cache_key = canonical_json_hash(fingerprint)
+     if result_path.is_file():
+         previous = json.loads(result_path.read_text())
+-        if resume and previous.get("status") == "complete":
++        if previous.get("cache_key") != cache_key or previous.get("fingerprint") != fingerprint:
++            raise ValueError(f"Case fingerprint is missing or differs: {result_path}; preserve it and use a new output directory")
++        if previous.get("status") == "complete":
++            if not resume:
++                raise ValueError(f"Completed case already exists: {result_path}; use --resume, not --retry-failures")
++            validate_loss(previous.get("loss") or {})
++            output_files = previous.get("output_files") or {}
++            if set(output_files) != {"simulation_metadata", "evaluation_metrics"}:
++                raise ValueError(f"Completed case has no output fingerprints: {result_path}; use a new output directory")
++            for record in output_files.values():
++                if file_record(Path(record["path"])) != record:
++                    raise ValueError(f"Completed case output differs: {record['path']}; use a new output directory")
+             return previous
+-        if not retry_failures:
+-            raise ValueError(f"Case result already exists: {result_path}; use --resume for complete cases or --retry-failures to rerun failed cases")
+-    if case_dir.exists() and not retry_failures:
+-        raise ValueError(f"Case directory already exists: {case_dir}; use --resume or --retry-failures")
+-    case_dir.mkdir(parents=True, exist_ok=True)
+-    simulator = build_case_argv(baseline, float(case["viscosity_pa_s"]), tool_contact_friction, simulation_dir)
+-    evaluator = evaluator_argv(baseline, simulation_dir, evaluation_dir)
+-    write_json(case_dir / "simulator_command.json", {"argv": simulator})
+-    write_json(case_dir / "evaluator_command.json", {"argv": evaluator})
+-    simulation = run(simulator, case_dir / "simulator.stdout.log", case_dir / "simulator.stderr.log", timeout_s)
+-    result: dict[str, Any] = {**case, "tool_contact_friction": tool_contact_friction, "status": "failed", "simulator": simulation, "evaluator": None, "loss": None}
++        if previous.get("status") != "failed" or not retry_failures:
++            raise ValueError(f"Case result already exists: {result_path}; use --retry-failures only for failed cases")
++        # A failed replay may have written frames; keep them and retry in an empty directory.
++        attempt = 1
++        while (case_dir / f"attempt_{attempt:03d}").exists():
++            attempt += 1
++        execution_dir = case_dir / f"attempt_{attempt:03d}"
++        simulation_dir = execution_dir / "simulation"
++        evaluation_dir = execution_dir / "evaluation"
++        simulator = build_case_argv(baseline, float(case["viscosity_pa_s"]), tool_contact_friction, simulation_dir, youngs_modulus_pa, cpu)
++        evaluator = evaluator_argv(baseline, simulation_dir, evaluation_dir)
++    elif case_dir.exists():
++        raise ValueError(f"Case directory exists without a result: {case_dir}; preserve it and use a new output directory")
++    execution_dir.mkdir(parents=True, exist_ok=True)
++    write_json(execution_dir / "simulator_command.json", {"argv": simulator, "cache_key": cache_key})
++    write_json(execution_dir / "evaluator_command.json", {"argv": evaluator, "cache_key": cache_key})
++    simulation = run(simulator, execution_dir / "simulator.stdout.log", execution_dir / "simulator.stderr.log", timeout_s)
++    result: dict[str, Any] = {
++        **case, "youngs_modulus_pa": fingerprint["youngs_modulus_pa"], "backend_request": fingerprint["backend_request"],
++        "tool_contact_friction": tool_contact_friction, "status": "failed", "simulator": simulation,
++        "evaluator": None, "loss": None, "cache_key": cache_key, "fingerprint": fingerprint,
++        "simulation_dir": str(simulation_dir), "evaluation_dir": str(evaluation_dir),
++    }
+     if simulation["failure_reason"] is None:
+-        evaluation = run(evaluator, case_dir / "evaluator.stdout.log", case_dir / "evaluator.stderr.log", timeout_s)
++        evaluation = run(evaluator, execution_dir / "evaluator.stdout.log", execution_dir / "evaluator.stderr.log", timeout_s)
+         result["evaluator"] = evaluation
+         if evaluation["failure_reason"] is None:
+             try:
+-                result["loss"] = score_evaluation_artifact(
++                loss = score_evaluation_artifact(
+                     evaluation_dir / "dynamic_topview_metrics.json", LOSS_SETTINGS,
+                     start_frame=SCORING_START_FRAME, end_frame=SCORING_END_FRAME,
+                 )
++                validate_loss(loss)
++                if case_fingerprint(simulator, evaluator) != fingerprint:
++                    raise ValueError("source files or inputs changed during execution; use a new output directory")
++                result["output_files"] = {
++                    "simulation_metadata": file_record(simulation_dir / "camera_parameters.json"),
++                    "evaluation_metrics": file_record(evaluation_dir / "dynamic_topview_metrics.json"),
++                }
++                result["loss"] = loss
+                 result["status"] = "complete"
+             except (OSError, ValueError) as exc:
+                 result["failure_reason"] = f"could not score evaluation: {exc}"
+@@ -97,11 +213,12 @@ def execute_case(root: Path, baseline: Sequence[str], case: Mapping[str, Any], t
+ 
+ def write_summary(path: Path, cases: Sequence[Mapping[str, Any]]) -> None:
+     with path.open("w", newline="") as stream:
+-        writer = csv.DictWriter(stream, fieldnames=["id", "viscosity_pa_s", "tool_contact_friction", "status", "weighted_total", "failure_reason"])
++        writer = csv.DictWriter(stream, fieldnames=["id", "viscosity_pa_s", "youngs_modulus_pa", "backend_request", "tool_contact_friction", "status", "weighted_total", "failure_reason"])
+         writer.writeheader()
+         for case in cases:
+             writer.writerow({
+                 "id": case["id"], "viscosity_pa_s": case["viscosity_pa_s"],
++                "youngs_modulus_pa": case["youngs_modulus_pa"], "backend_request": case["backend_request"],
+                 "tool_contact_friction": case["tool_contact_friction"], "status": case["status"],
+                 "weighted_total": (case.get("loss") or {}).get("weighted_total"), "failure_reason": case.get("failure_reason"),
+             })
+@@ -112,6 +229,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--source-command", type=Path, default=root / "output" / "episode18_e2000_full_replay_command.json")
+     parser.add_argument("--material-manifest", type=Path, help="Use fixed simulator inputs from a prior material calibration")
++    parser.add_argument("--youngs-modulus", type=float, default=FIXED_YOUNGS_MODULUS_PA, help="Fixed Young's modulus in Pa; defaults to the previous Episode 18 fit")
++    backend = parser.add_mutually_exclusive_group()
++    backend.add_argument("--cpu", dest="cpu", action="store_true", help="Request CPU simulation; otherwise preserve the source command's backend")
++    backend.add_argument("--gpu", dest="cpu", action="store_false", help="Request Taichi's GPU selection by removing --cpu from the simulator command")
++    parser.set_defaults(cpu=None)
+     parser.add_argument("--tool-contact-friction", required=True, type=float, help="Fixed value selected before this viscosity sweep")
+     parser.add_argument("--output-dir", type=Path, default=root / "output" / "episode18_e130579_dx8_viscosity_sweep")
+     parser.add_argument("--timeout-s", type=float, default=7200.0)
+@@ -127,21 +249,39 @@ def main(argv: Sequence[str] | None = None) -> int:
+         raise ValueError("--timeout-s must be positive and finite")
+     if not math.isfinite(args.tool_contact_friction) or args.tool_contact_friction < 0:
+         raise ValueError("--tool-contact-friction must be finite and nonnegative")
++    if not math.isfinite(args.youngs_modulus) or args.youngs_modulus <= 0:
++        raise ValueError("--youngs-modulus must be positive and finite")
+     baseline = command_from_material_manifest(args.material_manifest) if args.material_manifest else load_command(args.source_command)
+     baseline = rebase_workspace_paths(baseline)
+     validate_baseline(baseline)
++    root = args.output_dir.resolve()
+     if args.validate_only:
+-        print(json.dumps({"status": "validated", "viscosity_values_pa_s": VISCOSITY_VALUES_PA_S, "tool_contact_friction": args.tool_contact_friction}, indent=2))
++        commands = []
++        fingerprint = None
++        for case in viscosity_cases():
++            simulation_dir = root / "cases" / case["id"] / "simulation"
++            evaluation_dir = root / "cases" / case["id"] / "evaluation"
++            simulator = build_case_argv(baseline, case["viscosity_pa_s"], args.tool_contact_friction, simulation_dir, args.youngs_modulus, args.cpu)
++            evaluator = evaluator_argv(baseline, simulation_dir, evaluation_dir)
++            fingerprint = case_fingerprint(simulator, evaluator)
++            commands.append({**case, "simulator": simulator, "evaluator": evaluator, "cache_key": canonical_json_hash(fingerprint)})
++        if fingerprint is None:
++            raise ValueError("Viscosity sweep has no cases")
++        print(json.dumps({
++            "status": "validated", "viscosity_values_pa_s": VISCOSITY_VALUES_PA_S,
++            "youngs_modulus_pa": fingerprint["youngs_modulus_pa"], "backend_request": fingerprint["backend_request"],
++            "tool_contact_friction": args.tool_contact_friction, "source_files": fingerprint["source_files"],
++            "input_files": fingerprint["input_files"], "sequence": fingerprint["sequence"], "commands": commands,
++        }, indent=2))
+         return 0
+-    root = args.output_dir.resolve()
+     if root.exists() and not args.resume:
+         raise ValueError(f"Output directory already exists: {root}; use --resume")
+     root.mkdir(parents=True, exist_ok=True)
+-    cases = [execute_case(root, baseline, case, args.tool_contact_friction, args.timeout_s, args.resume, args.retry_failures) for case in viscosity_cases()]
++    cases = [execute_case(root, baseline, case, args.tool_contact_friction, args.timeout_s, args.resume, args.retry_failures, args.youngs_modulus, args.cpu) for case in viscosity_cases()]
+     report = {
+         "schema": "taichidough/episode18-viscosity-sweep/v1",
+         "fixed_parameters": {
+-            "youngs_modulus_pa": FIXED_YOUNGS_MODULUS_PA,
++            "youngs_modulus_pa": cases[0]["youngs_modulus_pa"], "backend_request": cases[0]["backend_request"],
+             "tool_contact_padding_m": FIXED_TOOL_CONTACT_PADDING_M,
+             "tool_contact_friction": args.tool_contact_friction,
+             "grid": 48, "tool_collision": "sdf", "tool_sdf_resolution": 64,
+@@ -149,7 +289,7 @@ def main(argv: Sequence[str] | None = None) -> int:
+         },
+         "training_source_frame_range_inclusive": [SCORING_START_FRAME, SCORING_END_FRAME],
+         "cases": cases,
+-        "limitation": "This compares effective viscosity for this fixed Episode 18 numerical setup; it is not a universal material viscosity measurement.",
++        "limitation": "This compares effective viscosity for this fixed Episode 18 numerical setup; it is not a universal material viscosity measurement. backend_request records the requested mode, not the device selected by Taichi.",
+     }
+     write_json(root / "viscosity_sweep.json", report)
+     write_summary(root / "summary.csv", cases)
+diff --git a/scripts/taichi_viscoelastic_mpm_scene.py b/scripts/taichi_viscoelastic_mpm_scene.py
+index 34a17d0..599b605 100644
+--- a/scripts/taichi_viscoelastic_mpm_scene.py
++++ b/scripts/taichi_viscoelastic_mpm_scene.py
+@@ -791,12 +791,12 @@ def fit_initial_particles_to_scene(points, args, calibration=None):
+ 
+ 
+ def mpm_grid_stencil_is_safe(position, grid_size):
+-    """Return whether the existing Taichi integer stencil base stays in the grid."""
++    """Return whether the quadratic stencil fits the grid, including its lower padding."""
+     values = np.asarray(position, dtype=np.float64)
+     if values.shape != (3,) or not np.isfinite(values).all() or int(grid_size) < 3:
+         return False
+-    base = np.trunc(values * int(grid_size) - 0.5).astype(np.int64)
+-    return bool(np.all(base >= 0) and np.all(base + 2 < int(grid_size)))
++    base = np.floor(values * int(grid_size) - 0.5).astype(np.int64)
++    return bool(np.all(base >= -1) and np.all(base + 2 < int(grid_size)))
+ 
+ 
+ def resize_initial_particles(points, count, seed):
+@@ -881,8 +881,10 @@ def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
+     F = ti.Matrix.field(dim, dim, dtype=ti.f32, shape=n_particles)
+     Jp = ti.field(dtype=ti.f32, shape=n_particles)
+     yielded = ti.field(dtype=ti.i32, shape=n_particles)
+-    grid_v = ti.Vector.field(dim, dtype=ti.f32, shape=(n_grid, n_grid, n_grid))
+-    grid_m = ti.field(dtype=ti.f32, shape=(n_grid, n_grid, n_grid))
++    # Nodes at -dx retain complete B-spline support at scene zero without moving the floor.
++    grid_shape = (n_grid + 1, n_grid + 1, n_grid + 1)
++    grid_v = ti.Vector.field(dim, dtype=ti.f32, shape=grid_shape, offset=(-1, -1, -1))
++    grid_m = ti.field(dtype=ti.f32, shape=grid_shape, offset=(-1, -1, -1))
+     tool_x = ti.Vector.field(dim, dtype=ti.f32, shape=tool_vis_count)
+     tool_center = ti.Vector.field(dim, dtype=ti.f32, shape=2)
+     tool_quat = ti.Vector.field(4, dtype=ti.f32, shape=2)
+@@ -1216,14 +1218,12 @@ def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
+ 
+     @ti.func
+     def position_has_safe_grid_stencil(position):
+-        # This exactly matches the base conversion used by P2G and G2P below.
+-        # Taichi's float-to-int conversion truncates toward zero, so checking a
+-        # continuous lower bound would reject valid floor-adjacent particles.
+-        base = (position * inv_dx - 0.5).cast(int)
++        # Match P2G/G2P floor rounding and the node at -dx on each axis.
++        base = ti.floor(position * inv_dx - 0.5).cast(int)
+         return (
+-            base.x >= 0 and base.x + 2 < n_grid
+-            and base.y >= 0 and base.y + 2 < n_grid
+-            and base.z >= 0 and base.z + 2 < n_grid
++            base.x >= -1 and base.x + 2 < n_grid
++            and base.y >= -1 and base.y + 2 < n_grid
++            and base.z >= -1 and base.z + 2 < n_grid
+         )
+ 
+     @ti.kernel
+@@ -1284,7 +1284,7 @@ def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
+                 if not particle_state_is_finite(p):
+                     ti.atomic_min(invalid_pre_p2g_state[None], p)
+                 else:
+-                    base = (x[p] * inv_dx - 0.5).cast(int)
++                    base = ti.floor(x[p] * inv_dx - 0.5).cast(int)
+                     fx = x[p] * inv_dx - base.cast(float)
+                     w = [
+                         0.5 * (1.5 - fx) ** 2,
+@@ -1360,7 +1360,7 @@ def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
+             elif not position_has_safe_grid_stencil(x[p]):
+                 ti.atomic_min(invalid_post_g2p_stencil[None], p)
+             else:
+-                base = (x[p] * inv_dx - 0.5).cast(int)
++                base = ti.floor(x[p] * inv_dx - 0.5).cast(int)
+                 fx = x[p] * inv_dx - base.cast(float)
+                 w = [
+                     0.5 * (1.5 - fx) ** 2,
+@@ -1375,7 +1375,8 @@ def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
+                     g_v = grid_v[base + offset]
+                     weight = w[i].x * w[j].y * w[k].z
+                     new_v += weight * g_v
+-                    new_C += 4 * inv_dx * weight * g_v.outer_product(dpos)
++                    # Physical offsets have a quadratic B-spline moment of dx^2 / 4.
++                    new_C += 4 * inv_dx * inv_dx * weight * g_v.outer_product(dpos)
+                 v[p] = new_v * velocity_damping
+                 x[p] += dt * v[p]
+                 projected_x = x[p]
+@@ -1454,7 +1455,7 @@ def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
+             grid_coordinate = position * inv_dx
+             stencil_base = None
+             if np.isfinite(grid_coordinate).all():
+-                stencil_base = np.trunc(grid_coordinate - 0.5).astype(np.int64)
++                stencil_base = np.floor(grid_coordinate - 0.5).astype(np.int64)
+             diagnostic = {
+                 "schema": "taichidough/mpm-invalid-state/v1",
+                 "failure_kind": failure_kind,
+@@ -1464,7 +1465,7 @@ def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
+                 "grid_size": n_grid,
+                 "grid_coordinate": json_safe(grid_coordinate),
+                 "stencil_base": json_safe(stencil_base),
+-                "safe_stencil_base_interval": [0, n_grid - 3],
++                "safe_stencil_base_interval": [-1, n_grid - 3],
+                 "position_scene": json_safe(position),
+                 "velocity_scene": json_safe(velocities[particle_index]),
+                 "affine_velocity": json_safe(affine[particle_index]),
+diff --git a/scripts/test_mpm_mass.py b/scripts/test_mpm_mass.py
+index a073d67..d210b74 100644
+--- a/scripts/test_mpm_mass.py
++++ b/scripts/test_mpm_mass.py
+@@ -158,6 +158,9 @@ class MpmMassTests(unittest.TestCase):
+         grid = 16
+         self.assertTrue(mpm.mpm_grid_stencil_is_safe([0.5 / grid, 0.5 / grid, 0.5 / grid], grid))
+         self.assertTrue(mpm.mpm_grid_stencil_is_safe([(0.5 - 1e-6) / grid] * 3, grid))
++        self.assertTrue(mpm.mpm_grid_stencil_is_safe([0.5, 0.0, 0.5], grid))
++        self.assertTrue(mpm.mpm_grid_stencil_is_safe([-0.5 / grid] * 3, grid))
++        self.assertFalse(mpm.mpm_grid_stencil_is_safe([(-0.5 - 1e-6) / grid] * 3, grid))
+         self.assertTrue(mpm.mpm_grid_stencil_is_safe([(grid - 1.5001) / grid] * 3, grid))
+         self.assertFalse(mpm.mpm_grid_stencil_is_safe([(-0.6) / grid] * 3, grid))
+         self.assertFalse(mpm.mpm_grid_stencil_is_safe([(grid - 1.5) / grid] * 3, grid))
+diff --git a/test/test_episode18_viscosity_sweep.py b/test/test_episode18_viscosity_sweep.py
+index f2d2b66..bb81092 100644
+--- a/test/test_episode18_viscosity_sweep.py
++++ b/test/test_episode18_viscosity_sweep.py
+@@ -1,11 +1,19 @@
+ # pyright: reportMissingImports=false
+ 
++import contextlib
++import io
++import json
++import math
+ import sys
++import tempfile
+ import unittest
+ from pathlib import Path
++from unittest import mock
+ 
+ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+ 
++import sweep_episode18_viscosity as sweep
++from material_calibration import file_sha256
+ from sweep_episode18_viscosity import (
+     FIXED_TOOL_CONTACT_PADDING_M,
+     FIXED_YOUNGS_MODULUS_PA,
+@@ -34,18 +42,274 @@ class Episode18ViscositySweepTests(unittest.TestCase):
+         self.assertEqual(argv[argv.index("--tool-contact-padding") + 1], format(FIXED_TOOL_CONTACT_PADDING_M, ".17g"))
+         self.assertEqual(argv[argv.index("--tool-contact-friction") + 1], "0.17")
+         self.assertEqual(argv[argv.index("--viscosity") + 1], "2.5")
++        self.assertEqual(argv[argv.index("--replay-start-frame") + 1], "0")
+         self.assertEqual(argv[argv.index("--replay-stride") + 1], "1")
+         self.assertEqual(argv[argv.index("--replay-end-frame") + 1], str(REPLAY_END_FRAME))
+         self.assertEqual(argv[argv.index("--output-dir") + 1], "/simulation")
+-        self.assertNotIn("--cpu", argv)
++        self.assertIn("--cpu", argv)
+         self.assertEqual(argv[argv.index("--unrelated") + 1], "keep-me")
+ 
++    def test_selected_modulus_and_backend_overrides(self):
++        argv = build_case_argv(self.baseline(), 1.0, 0.2, Path("/simulation"), youngs_modulus_pa=4500.0, cpu=False)
++        self.assertEqual(argv[argv.index("--youngs-modulus") + 1], "4500")
++        self.assertNotIn("--cpu", argv)
++        self.assertNotIn("--gpu", argv)
++        gpu_baseline = [value for value in self.baseline() if value != "--cpu"]
++        self.assertNotIn("--cpu", build_case_argv(gpu_baseline, 0.0, 0.2, Path("/simulation")))
++        cpu_argv = build_case_argv(gpu_baseline, 0.0, 0.2, Path("/simulation"), cpu=True)
++        self.assertEqual(cpu_argv.count("--cpu"), 1)
++        self.assertEqual(build_case_argv(self.baseline(), 0.0, 0.2, Path("/simulation"), cpu=True).count("--cpu"), 1)
++
+     def test_rejects_unapproved_viscosity_and_negative_friction(self):
+         with self.assertRaisesRegex(ValueError, "Unsupported"):
+             build_case_argv(self.baseline(), 3.0, 0.2, Path("/simulation"))
+         with self.assertRaisesRegex(ValueError, "nonnegative"):
+             build_case_argv(self.baseline(), 0.0, -0.1, Path("/simulation"))
+ 
++    def test_rejects_nonpositive_and_nonfinite_modulus(self):
++        for value in (0.0, -1.0, math.inf, -math.inf, math.nan):
++            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "youngs-modulus must be positive and finite"):
++                build_case_argv(self.baseline(), 0.0, 0.2, Path("/simulation"), youngs_modulus_pa=value)
++
++    def test_cli_backend_defaults_and_mutual_exclusion(self):
++        self.assertIsNone(sweep.parse_args(["--tool-contact-friction", "0.2"]).cpu)
++        self.assertTrue(sweep.parse_args(["--tool-contact-friction", "0.2", "--cpu"]).cpu)
++        self.assertFalse(sweep.parse_args(["--tool-contact-friction", "0.2", "--gpu"]).cpu)
++        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
++            sweep.parse_args(["--tool-contact-friction", "0.2", "--cpu", "--gpu"])
++
++    def input_fixture(self, directory):
++        directory = Path(directory)
++        baseline = self.baseline()
++        simulator = directory / "simulator.py"
++        simulator.write_text("# simulated test source\n")
++        baseline[1] = str(simulator)
++        episode = directory / "episode"
++        episode.mkdir()
++        for filename in ("pointclouds_interpolated.pt", "paths_interpolated.pt", "sequence_metadata.json"):
++            (episode / filename).write_text("test input\n")
++        baseline = sweep.replace_option(baseline, "--replay-episode", str(episode))
++        for option in (
++            "--initial-particles", "--initial-particles-metadata", "--initial-particles-calibration", "--tool-geometry",
++            "--ur-tool-mesh", "--kinova-tool-mesh", "--ur-tool-collision-mesh", "--kinova-tool-collision-mesh",
++        ):
++            path = directory / (option[2:] + ".data")
++            path.write_text("test input\n")
++            if option in baseline:
++                baseline = sweep.replace_option(baseline, option, str(path))
++            else:
++                baseline.extend([option, str(path)])
++        return baseline
++
++    def valid_loss(self):
++        return {
++            "valid": True, "weighted_total": 0.25, "failure_reason": None,
++            "counts": {"total": 60, "valid": 60, "invalid": 0},
++            "frames": [{"source_frame": index, "valid": True} for index in range(1, 61)],
++        }
++
++    def fake_run(self, argv, stdout_path, stderr_path, timeout_s):
++        stdout_path.write_text("test execution\n")
++        stderr_path.write_text("")
++        output = Path(argv[argv.index("--output-dir") + 1])
++        output.mkdir(parents=True)
++        filename = "dynamic_topview_metrics.json" if "--taichi-metadata" in argv else "camera_parameters.json"
++        (output / filename).write_text("{}\n")
++        return {"returncode": 0, "duration_s": 0.01, "failure_reason": None}
++
++    def run_case(self, root, baseline, loss=None, **kwargs):
++        with mock.patch.object(sweep, "run", side_effect=self.fake_run) as run_mock, mock.patch.object(
++            sweep, "score_evaluation_artifact", return_value=self.valid_loss() if loss is None else loss,
++        ):
++            result = sweep.execute_case(root, baseline, viscosity_cases()[0], 0.2, 10.0, **{
++                "resume": False, "retry_failures": False, "youngs_modulus_pa": 4500.0, **kwargs,
++            })
++        return result, run_mock
++
++    def test_default_collision_assets_and_manifest_are_fingerprinted(self):
++        with tempfile.TemporaryDirectory() as temporary:
++            baseline = self.input_fixture(temporary)
++            defaults = {}
++            for option, filename in (
++                ("--ur-tool-collision-mesh", "ur_spathla_collision_solid.stl"),
++                ("--kinova-tool-collision-mesh", "gen3_spathla_collision_solid.stl"),
++            ):
++                index = baseline.index(option)
++                del baseline[index:index + 2]
++                path = Path(temporary) / filename
++                path.write_text("test default collision mesh\n")
++                defaults[filename] = path
++            simulation = Path(temporary) / "simulation"
++            simulator = build_case_argv(baseline, 0.0, 0.2, simulation)
++            evaluator = sweep.evaluator_argv(baseline, simulation, Path(temporary) / "evaluation")
++            with mock.patch("taichi_viscoelastic_mpm_scene.find_tool_mesh", side_effect=lambda filename, override: defaults[filename]) as resolve_mesh:
++                first = sweep.case_fingerprint(simulator, evaluator)
++                self.assertEqual(resolve_mesh.call_args_list, [
++                    mock.call("ur_spathla_collision_solid.stl", None),
++                    mock.call("gen3_spathla_collision_solid.stl", None),
++                ])
++                defaults["ur_spathla_collision_solid.stl"].write_text("changed default collision mesh\n")
++                changed = sweep.case_fingerprint(simulator, evaluator)
++            self.assertNotEqual(first["input_files"]["ur_tool_collision_mesh"]["sha256"], changed["input_files"]["ur_tool_collision_mesh"]["sha256"])
++            manifest = first["input_files"]["collision_manifest"]
++            self.assertEqual(Path(manifest["path"]).name, "tool_collision_meshes_v1.json")
++            self.assertEqual(manifest["sha256"], file_sha256(Path(manifest["path"])))
++
++    def test_identical_resume_reuses_only_matching_complete_case(self):
++        with tempfile.TemporaryDirectory() as temporary:
++            baseline = self.input_fixture(temporary)
++            root = Path(temporary) / "sweep"
++            result, first_run = self.run_case(root, baseline)
++            self.assertEqual(result["status"], "complete")
++            self.assertEqual(result["youngs_modulus_pa"], 4500.0)
++            self.assertEqual(result["backend_request"], "cpu")
++            self.assertEqual(result["fingerprint"]["source_files"]["simulator"]["sha256"], file_sha256(Path(baseline[1])))
++            self.assertEqual(first_run.call_count, 2)
++            repeated, second_run = self.run_case(root, baseline, resume=True)
++            self.assertEqual(repeated, result)
++            second_run.assert_not_called()
++
++    def test_resume_rejects_changed_source_inputs_and_settings_without_overwriting(self):
++        for change in ("source", "particles", "sequence", "modulus", "backend"):
++            with self.subTest(change=change), tempfile.TemporaryDirectory() as temporary:
++                baseline = self.input_fixture(temporary)
++                root = Path(temporary) / "sweep"
++                self.run_case(root, baseline)
++                result_path = root / "cases" / "viscosity_0" / "result.json"
++                previous = result_path.read_bytes()
++                kwargs: dict[str, bool | float] = {"resume": True, "retry_failures": True}
++                if change == "source":
++                    Path(baseline[1]).write_text("# corrected solver\n")
++                elif change == "particles":
++                    Path(baseline[baseline.index("--initial-particles") + 1]).write_text("changed particles\n")
++                elif change == "sequence":
++                    (Path(baseline[baseline.index("--replay-episode") + 1]) / "paths_interpolated.pt").write_text("changed motion\n")
++                elif change == "modulus":
++                    kwargs["youngs_modulus_pa"] = 5000.0
++                else:
++                    kwargs["cpu"] = False
++                with self.assertRaisesRegex(ValueError, "fingerprint is missing or differs"):
++                    self.run_case(root, baseline, **kwargs)
++                self.assertEqual(result_path.read_bytes(), previous)
++
++    def test_retry_failures_cannot_overwrite_a_completed_case(self):
++        with tempfile.TemporaryDirectory() as temporary:
++            baseline = self.input_fixture(temporary)
++            root = Path(temporary) / "sweep"
++            self.run_case(root, baseline)
++            result_path = root / "cases" / "viscosity_0" / "result.json"
++            previous = result_path.read_bytes()
++            with self.assertRaisesRegex(ValueError, "Completed case already exists"):
++                self.run_case(root, baseline, retry_failures=True)
++            self.assertEqual(result_path.read_bytes(), previous)
++
++    def test_resume_rejects_legacy_unfingerprinted_results(self):
++        with tempfile.TemporaryDirectory() as temporary:
++            baseline = self.input_fixture(temporary)
++            root = Path(temporary) / "sweep"
++            case_dir = root / "cases" / "viscosity_0"
++            case_dir.mkdir(parents=True)
++            result_path = case_dir / "result.json"
++            result_path.write_text(json.dumps({"status": "complete", "loss": self.valid_loss()}))
++            previous = result_path.read_bytes()
++            with self.assertRaisesRegex(ValueError, "fingerprint is missing or differs"):
++                self.run_case(root, baseline, resume=True, retry_failures=True)
++            self.assertEqual(result_path.read_bytes(), previous)
++
++    def test_invalid_incomplete_and_nonfinite_losses_are_failed(self):
++        invalid = self.valid_loss()
++        invalid.update(valid=False, weighted_total=None, failure_reason="one frame is invalid")
++        missing_frame = self.valid_loss()
++        missing_frame["frames"].pop()
++        nonfinite = self.valid_loss()
++        nonfinite["weighted_total"] = math.nan
++        for loss in (invalid, missing_frame, nonfinite):
++            with self.subTest(loss=loss.get("failure_reason")), tempfile.TemporaryDirectory() as temporary:
++                baseline = self.input_fixture(temporary)
++                result, _ = self.run_case(Path(temporary) / "sweep", baseline, loss=loss)
++                self.assertEqual(result["status"], "failed")
++                self.assertIsNone(result["loss"])
++                self.assertIn("could not score evaluation", result["failure_reason"])
++
++    def test_retry_failed_case_preserves_prior_partial_outputs(self):
++        with tempfile.TemporaryDirectory() as temporary:
++            baseline = self.input_fixture(temporary)
++            root = Path(temporary) / "sweep"
++            failed, _ = self.run_case(root, baseline, loss={"valid": False, "failure_reason": "test failure"})
++            original = Path(failed["simulation_dir"]) / "camera_parameters.json"
++            previous = original.read_bytes()
++            retried, _ = self.run_case(root, baseline, resume=True, retry_failures=True)
++            self.assertEqual(retried["status"], "complete")
++            self.assertEqual(failed["cache_key"], retried["cache_key"])
++            self.assertIn("attempt_001", retried["simulation_dir"])
++            self.assertEqual(original.read_bytes(), previous)
++            repeated, run_mock = self.run_case(root, baseline, resume=True)
++            self.assertEqual(repeated, retried)
++            run_mock.assert_not_called()
++
++    def test_source_change_during_execution_fails_the_case(self):
++        with tempfile.TemporaryDirectory() as temporary:
++            baseline = self.input_fixture(temporary)
++            root = Path(temporary) / "sweep"
++
++            def changing_run(argv, stdout_path, stderr_path, timeout_s):
++                result = self.fake_run(argv, stdout_path, stderr_path, timeout_s)
++                Path(baseline[1]).write_text("# source changed during test execution\n")
++                return result
++
++            with mock.patch.object(sweep, "run", side_effect=changing_run), mock.patch.object(sweep, "score_evaluation_artifact", return_value=self.valid_loss()):
++                result = sweep.execute_case(root, baseline, viscosity_cases()[0], 0.2, 10.0, False, False, youngs_modulus_pa=4500.0)
++            self.assertEqual(result["status"], "failed")
++            self.assertIn("changed during execution", result["failure_reason"])
++
++    def test_main_report_has_selected_modulus_and_preserved_backend(self):
++        with tempfile.TemporaryDirectory() as temporary:
++            baseline = self.input_fixture(temporary)
++            source = Path(temporary) / "command.json"
++            source.write_text(json.dumps(baseline))
++            output = Path(temporary) / "sweep"
++            args = ["--source-command", str(source), "--output-dir", str(output), "--tool-contact-friction", "0.2", "--youngs-modulus", "4500"]
++            with mock.patch.object(sweep, "rebase_workspace_paths", side_effect=list), mock.patch.object(sweep, "run", side_effect=self.fake_run), mock.patch.object(sweep, "score_evaluation_artifact", return_value=self.valid_loss()), contextlib.redirect_stdout(io.StringIO()):
++                self.assertEqual(sweep.main(args), 0)
++            report = json.loads((output / "viscosity_sweep.json").read_text())
++            self.assertEqual(report["fixed_parameters"]["youngs_modulus_pa"], 4500.0)
++            self.assertEqual(report["fixed_parameters"]["backend_request"], "cpu")
++            self.assertEqual(len(report["cases"]), 5)
++            self.assertTrue(all(case["status"] == "complete" for case in report["cases"]))
++
++    def test_resume_rejects_altered_output_metadata(self):
++        with tempfile.TemporaryDirectory() as temporary:
++            baseline = self.input_fixture(temporary)
++            root = Path(temporary) / "sweep"
++            result, _ = self.run_case(root, baseline)
++            (Path(result["simulation_dir"]) / "camera_parameters.json").write_text("changed output\n")
++            with self.assertRaisesRegex(ValueError, "Completed case output differs"):
++                self.run_case(root, baseline, resume=True)
++
++    def test_validate_only_checks_inputs_and_expanded_commands_without_running(self):
++        with tempfile.TemporaryDirectory() as temporary:
++            baseline = self.input_fixture(temporary)
++            source = Path(temporary) / "command.json"
++            source.write_text(json.dumps(baseline))
++            output = Path(temporary) / "unused-output"
++            args = ["--source-command", str(source), "--output-dir", str(output), "--tool-contact-friction", "0.2", "--youngs-modulus", "4500", "--gpu", "--validate-only"]
++            with mock.patch.object(sweep, "rebase_workspace_paths", side_effect=list), mock.patch.object(sweep, "run") as run_mock, contextlib.redirect_stdout(io.StringIO()) as stdout:
++                self.assertEqual(sweep.main(args), 0)
++            report = json.loads(stdout.getvalue())
++            self.assertEqual(report["youngs_modulus_pa"], 4500.0)
++            self.assertEqual(report["backend_request"], "gpu")
++            self.assertEqual(len(report["commands"]), 5)
++            for command in report["commands"]:
++                argv = command["simulator"]
++                self.assertNotIn("--cpu", argv)
++                self.assertEqual(argv[argv.index("--youngs-modulus") + 1], "4500")
++            self.assertFalse(output.exists())
++            run_mock.assert_not_called()
++            Path(baseline[baseline.index("--initial-particles") + 1]).unlink()
++            with mock.patch.object(sweep, "rebase_workspace_paths", side_effect=list), self.assertRaises(FileNotFoundError):
++                sweep.main(args)
++            self.assertFalse(output.exists())
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/test/test_mpm_affine_transfer.py b/test/test_mpm_affine_transfer.py
+new file mode 100644
+index 0000000..52a97e6
+--- /dev/null
++++ b/test/test_mpm_affine_transfer.py
+@@ -0,0 +1,128 @@
++# pyright: reportMissingImports=false
++
++import inspect
++import sys
++import unittest
++from pathlib import Path
++from types import SimpleNamespace
++
++import numpy as np
++import taichi as ti
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
++
++import taichi_viscoelastic_mpm_scene as mpm
++
++
++class MpmAffineTransferTests(unittest.TestCase):
++    def tearDown(self):
++        ti.reset()
++
++    def build_affine_particle(self, grid, gradient, velocity, viscosity=0.0):
++        ti.reset()
++        ti.init(arch=ti.cpu, cpu_max_num_threads=1, offline_cache=False)
++        args = SimpleNamespace(
++            particles=1,
++            grid=grid,
++            dt=0.0001,
++            density=1000.0,
++            youngs_modulus=0.0,
++            poisson_ratio=0.3,
++            viscosity=viscosity,
++            gravity=0.0,
++            floor_y=-1.0,
++            tool_close_time=1.0,
++            tool_motion_start=0.0,
++            tool_contact_padding=0.0,
++            tool_contact_friction=1.0,
++            tool_contact_absorption=0.0,
++            tool_stickiness=0.0,
++            floor_friction=1.0,
++            floor_stickiness=0.0,
++            floor_absorption=0.0,
++            floor_plastic_damping_band=0.0,
++            velocity_damping=1.0,
++            pure_viscoelastic=True,
++            plastic_min=0.9,
++            plastic_max=1.1,
++            plastic_velocity_damping=1.0,
++            plastic_affine_damping=1.0,
++            use_jp=False,
++            jp_hardening=0.0,
++            jp_min=0.5,
++            jp_max=2.0,
++            ros_control=True,
++            tool_collision="none",
++        )
++        positions, _, initialize, substep, _, _ = mpm.build_sim(args)
++        initialize()
++        # The error-reporting wrapper retains the actual solver state fields.
++        state = inspect.getclosurevars(substep).nonlocals
++        position = (grid // 2 + np.array([0.83, 1.18, 0.94])) / grid
++        positions.from_numpy(position[None].astype(np.float32))
++        state["v"].from_numpy(np.asarray(velocity, dtype=np.float32)[None])
++        state["C"].from_numpy(np.asarray(gradient, dtype=np.float32)[None])
++        return args, positions, substep, state
++
++    def test_affine_gradient_and_deformation_are_reproduced_across_grids(self):
++        gradient = np.array([[1.2, -0.4, 0.8], [0.3, 3.0, -0.6], [-0.2, 0.5, -1.0]])
++        velocity = np.array([0.12, -0.21, 0.06])
++        for grid in (24, 48, 96):
++            with self.subTest(grid=grid):
++                args, positions, substep, state = self.build_affine_particle(grid, gradient, velocity)
++                initial_position = positions.to_numpy()[0].copy()
++                substep(0.0)
++                np.testing.assert_allclose(state["C"].to_numpy()[0], gradient, rtol=3e-5, atol=3e-5)
++                np.testing.assert_allclose(state["v"].to_numpy()[0], velocity, rtol=3e-5, atol=3e-6)
++                np.testing.assert_allclose(positions.to_numpy()[0], initial_position + args.dt * velocity, atol=1e-7)
++                substep(args.dt)
++                increment = np.eye(3) + args.dt * gradient
++                np.testing.assert_allclose(state["F"].to_numpy()[0], increment @ increment, rtol=3e-6, atol=3e-7)
++                np.testing.assert_allclose(state["C"].to_numpy()[0], gradient, rtol=6e-5, atol=6e-5)
++
++    def test_affine_gradient_is_reproduced_next_to_scene_zero(self):
++        gradient = np.array([[1.2, -0.4, 0.8], [0.3, 3.0, -0.6], [-0.2, 0.5, -1.0]])
++        velocity = np.array([0.12, 0.21, 0.06])
++        args, positions, substep, state = self.build_affine_particle(48, gradient, velocity)
++        for fraction in (0.0, 0.016, 0.49):
++            with self.subTest(fraction=fraction):
++                position = np.array([0.51, fraction / args.grid, 0.53], dtype=np.float32)
++                positions.from_numpy(position[None])
++                state["v"].from_numpy(velocity[None].astype(np.float32))
++                state["C"].from_numpy(gradient[None].astype(np.float32))
++                substep(0.0)
++                np.testing.assert_allclose(state["v"].to_numpy()[0], velocity, rtol=3e-5, atol=3e-6)
++                np.testing.assert_allclose(state["C"].to_numpy()[0], gradient, rtol=3e-5, atol=3e-5)
++                np.testing.assert_allclose(positions.to_numpy()[0], position + args.dt * velocity, atol=1e-7)
++
++    def test_translation_does_not_create_a_velocity_gradient(self):
++        velocity = np.array([0.12, -0.21, 0.06])
++        _, _, substep, state = self.build_affine_particle(48, np.zeros((3, 3)), velocity)
++        substep(0.0)
++        np.testing.assert_allclose(state["v"].to_numpy()[0], velocity, rtol=3e-5, atol=3e-6)
++        np.testing.assert_allclose(state["C"].to_numpy()[0], 0.0, atol=3e-5)
++
++    def test_rigid_rotation_preserves_spin_without_viscous_strain_rate(self):
++        gradient = np.array([[0.0, -2.0, 0.5], [2.0, 0.0, -0.3], [-0.5, 0.3, 0.0]])
++        _, _, substep, state = self.build_affine_particle(48, gradient, np.zeros(3), viscosity=5.0)
++        substep(0.0)
++        actual = state["C"].to_numpy()[0]
++        np.testing.assert_allclose(actual, gradient, rtol=3e-5, atol=3e-5)
++        np.testing.assert_allclose(actual + actual.T, 0.0, atol=3e-5)
++
++    def test_viscous_stress_uses_the_physical_affine_gradient(self):
++        gradient = np.array([[1.2, -0.4, 0.8], [-0.4, 0.6, -0.2], [0.8, -0.2, -0.3]])
++        viscosity = 5.0
++        for grid in (24, 48, 96):
++            with self.subTest(grid=grid):
++                args, _, substep, state = self.build_affine_particle(grid, gradient, np.zeros(3), viscosity)
++                substep(0.0)
++                # A lone particle gives an affine grid field after P2G normalization.
++                # With E=0, only the known viscous stress changes its affine part.
++                expected = gradient - 4 * args.dt * grid ** 2 * viscosity / args.density * (gradient + gradient.T)
++                np.testing.assert_allclose(state["C"].to_numpy()[0], expected, rtol=3e-5, atol=3e-5)
++                np.testing.assert_allclose(state["v"].to_numpy()[0], 0.0, atol=3e-6)
++
++
++if __name__ == "__main__":
++    unittest.main()

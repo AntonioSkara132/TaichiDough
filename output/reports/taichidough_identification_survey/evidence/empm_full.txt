@@ -1,0 +1,640 @@
+                                         EMPM: Embodied MPM for Modeling and Simulation of
+                                         Deformable Objects
+                                         Yunuo Chen1,2∗ , Yafei Hu1∗ , Lingfeng Sun1 , Tushar Kusnur1 , Laura Herlant1 , Chenfanfu Jiang2
+                                         ∗
+                                           equal contribution
+                                         1
+                                           Robotics and AI Institute 2 UCLA
+
+
+
+
+                                             Abstract
+arXiv:2601.17251v1 [cs.RO] 24 Jan 2026
+
+
+
+
+                                             Modeling deformable objects – especially continuum materials – in a way that is physically plausible, generalizable,
+                                             and data-efficient remains challenging across 3D vision, graphics, and robotic manipulation. Many existing methods
+                                             oversimplify the rich dynamics of deformable objects or require large training sets, which often limits generalization.
+                                             We introduce embodied MPM (EMPM), a deformable object modeling and simulation framework built on a
+                                             differentiable Material Point Method (MPM) simulator that captures the dynamics of challenging materials. From
+                                             multi-view RGB-D videos, our approach reconstructs geometry and appearance, then uses an MPM physics engine
+                                             to simulate object behavior by minimizing the mismatch between predicted and observed visual data. We further
+                                             optimize MPM parameters online using sensory feedback, enabling adaptive, robust, and physics-aware object
+                                             representations that open new possibilities for robotic manipulation of complex deformables. Experiments show
+                                             that EMPM outperforms spring-mass baseline models. Project website: https://embodied-mpm.github.io.
+
+
+
+                                                     differentiable
+                                                     MPM simulator
+
+
+
+
+                                                                                       tear bread               squeeze plasticine      stretch dough                 poke elastic toy
+                                                                                                           handling diverse deformable object classes
+
+
+                                            e.g. Young’s Modulus   Poisson's ratio
+
+                                                    material parameters
+
+                                                            model
+                                                         parameters
+                                                         optimization
+
+
+
+
+                                          MPM model                         real
+                                          predictions                   observations                rope manipulation                              dough stretching
+                                             MPM model optimization                                                     real robot manipulation
+                                         Figure 1: Overview. Our differentiable MPM simulator estimates material parameters from real observations such as 3D object
+                                         shape. It handles diverse, complex deformable objects and can update parameters online from streaming video.
+
+                                         1. Introduction                                                           physics-aware robotic manipulation tasks.
+                                                                                                                      Joint modeling and simulation of deformable objects
+                                         Accurately modeling deformable objects, including their
+                                         geometry, appearance, physical properties, and dynamics                   often involve integrating geometry reconstruction, appear-
+                                         from visual information, and using these models for differ-               ance rendering, and physics-based simulation. With re-
+                                         entiable physics simulation, remains a long-standing and                  cent advances in radiance field methods such as NeRF
+                                         fundamental challenge in 3D vision, graphics, and robotics.               and Gaussian Splatting (GS) [1, 2], appearance model-
+                                                                                                                   ing for both static and dynamic scenes and objects has
+                                         By using a differentiable real-to-sim-to-real pipeline, we
+                                                                                                                   seen significant progress through differentiable render-
+                                         can employ gradient-based optimization to perform accu-
+                                         rate interactive simulation of deformable objects directly                ing techniques [3, 4]. However, physics-based simulation
+                                         from visual inputs, paving the way for constructing photo-                remains a core challenge in this domain. Previous ap-
+                                         and physics-realistic digital twins, as well as enabling                  proaches have tackled this problem using particle-based
+physics models [5–7] and spring-mass systems [8]. While           2. Related Work
+effective for certain scenarios, these methods often over-
+                                                                  2.1. 4D visual reconstruction
+simplify the complex dynamics of deformable objects and
+struggle to accurately simulate various real-world objects.       4D reconstruction is the problem of modeling 3D geometry
+Although learning-based intuitive physics models [9–12]           of dynamic objects/scene over time to capture their motion.
+offer the potential to capture more complex behaviors             Many methods track dynamic objects in 3D and differenti-
+through statistical approximation, they typically require         ate the static background from the moving objects. Recent
+large amounts of training data and often generalize poorly        3D point tracking feedforward models are able to gener-
+to novel objects—limiting their real-world applicability.         alize to unseen scenarios and handle certain degrees of
+Recently, more advanced methods based on the Material             occlusion [18, 19]. Recent radiance field approaches also
+Point Method (MPM) [13] have shown promise in simulat-            adapt this traditional 4D reconstruction framework, ex-
+ing deformable objects composed of continuum materials            tending the original NeRF to dynamics alternatives [20].
+directly from visual information [14–16].                         Radiance field methods based on explicit scene representa-
+   In this paper, we introduce EMPM, a real-to-sim-to-            tion, such as dynamic Gaussian Splatting-based methods,
+real pipeline that jointly performs MPM-based differen-           adapt more naturally with the conventional 4D reconstruc-
+tiable physics modeling and simulation, alongside geome-          tion more naturally by regularizing the rigid-body motion
+try reconstruction and appearance rendering of deformable         of underlying Gaussian kernels [3]. Our reconstruction
+objects, including both elastic and elastoplastic materi-         pipeline follows these aforementioned methods and con-
+als from multi-view RGB-D video inputs. Using a pre-              sists of point cloud lifting, 3D tracking and GS-based
+calibrated multi-view RGB-D camera rig, we reconstruct            appearance modeling.
+a 3D point cloud to represent the object’s geometry. This
+point cloud is then used to build a 3D Gaussian Splat-            2.2. Physics simulation for deformable objects
+ting (3DGS) model for high-fidelity appearance render-            Although physics simulation has been studied for decades
+ing. The resulting geometry-appearance model is inte-             [13, 21–23], methods that leverage sensory input and
+grated with an MPM simulator to capture the object’s              enable differentiability through observations have only
+dynamic behavior. MPM physical parameters—such as                 gained popularity in recent years [8, 14, 16, 24]. Early
+elasticity and stiffness—are optimized by minimizing the          methods follow particle-based models to model rigid ob-
+discrepancy between real-world observations and simu-             jects and a few types of deformable objects [6]. Subse-
+lated rollouts, measured in both 3D geometry and visual           quent approaches have adopted the spring–mass model
+appearance throughout the object’s deformation process.           for simulating deformable objects [8, 25], and learning-
+Our approach includes both offline training of the MPM            based particle/grid-based methods [9, 10, 12, 26, 27]. As
+physics model parameters using pre-collected RGB-D data           the dynamics of deformable objects and interactive mo-
+and online correction/adaptation based on live sensory ob-        tions such as tearing become more complex, spring–mass
+servations. While concurrent work [17] also applies MPM           and learning-based models may fail to accurately capture
+simulation to robotic manipulation, it focuses solely on          the underlying physics. Subsequently, MPM-based ap-
+elastoplastic objects and lacks visual rendering capabil-         proaches emerged as one of the leading approaches in
+ities. In contrast, our method handles a broader range            this domain, which are well-suited for handling objects
+of deformable materials and integrates photorealistic ren-        with continuum materials, and interactions like large de-
+dering. Experimental results on various deformable ob-            formations, fracture and tearing. Differentiable MPM-
+jects demonstrate the effectiveness of our MPM-based              based methods been successfully demonstrated in prior
+differentiable physics simulation, outperforming baseline         work [16], which likewise underpins our work.
+spring-mass models [8].
+   In summary, the major contributions of this paper are as       2.3. Differentiable MPM simulation
+summarized as follows:
+                                                                  To accurately model and simulate real-world deformable
+   • We present a real-to-sim-to-real system based on             objects, it is often necessary to optimize physical parame-
+     MPM physics simulation, featuring differentiable pa-         ters such as material stiffness based on real-world obser-
+     rameter optimization grounded in real sensory obser-         vations, a process commonly referred to as system iden-
+     vations.                                                     tification. The sources of discrepancy used to guide this
+   • We present an online parameter optimization scheme           optimization can vary, including force measurements [28],
+     that adapts to incoming observations, unlocking key          3D geometry alignment [8], and photometric loss from
+     power for potential downstream robotic control tasks.        image-based rendering [15, 16]. Our method follows this
+   • We demonstrate our method on a wide range of de-             line of research by leveraging 3D geometry to optimize
+     formable objects, including both elastic and elasto-         MPM parameters in a differentiable manner. While deriv-
+     plastic materials, which are challenging for existing        ing analytical gradients for multi-stage physical simulators
+     real-to-sim-to-real simulation approaches.                   is prohibitively complex, recent advances have shown that
+                                                                  auto-differentiation can effectively make MPM simulation
+                                                                  a differentiable layer [29]. Most recent efforts in applying
+
+
+                                                              2
+                            grounded
+                              SAM2
+                                                                    differentiable
+                                                                     MPM engine
+
+                                                                                                                                model rollout
+         …
+
+
+
+
+                                                                         Young’s Modulus
+
+
+
+
+                                                                           Poisson's ratio
+                           3D tracking
+                             model                                                                                        Gaussian rendering
+
+                                                                   forward              backward
+                                                                   gradient             gradient
+
+
+                                                                        reconstruction
+                                                                             loss
+                                                                                                                           robot manipulation
+            data preprocessing                               model optimization                             downstream tasks
+Figure 2: Method Overview of EMPM. Our MPM simulation engine takes a reconstructed pointcloud and tracked 3D points as
+inputs. The model parameters are optimized using the discrepancy between the model’s prediction and 3D shape reconstruction and
+tracking. The control inputs applied to the dynamics model of MPM is computed as the velocity extracted from the reconstructions.
+In the inference stage, we test the model’s performance in terms of predicting 3D point positions and RGB image rendering of the 3D
+Gaussian splats.
+
+
+differentiable MPM systems have leveraged frameworks                   3.2. MPM and Continuum Mechanics
+such as Taichi [30, 31] and Warp [32], demonstrating reli-             We briefly review the Material Point Method (MPM) [13]
+able capabilities in physical parameter estimation and the             used in our work. MPM couples continuum balance laws
+advantages of GPU acceleration [15,16,33,34]. Similarly,               with a hybrid particle–grid discretization, making it well-
+we also leverage Warp [32] as the tool for our differentiable          suited for large deformations, contact, and elastoplastic
+MPM engine to differentiate through the model outputs.                 flow in embodied interactions.
+                                                                          MPM represents objects as particles while performing
+3. Method                                                              force computations on a background grid. At each step,
+                                                                       particle mass and momentum are transferred to grid nodes
+3.1. Overview                                                          (P2G) , in eq. (2). Grid velocities are then updated with
+We model deformable object dynamics with an action-                    action conditions (eq. (3)) and transferred back to the
+conditioned MPM simulator that is embodied through                     particles for advection (G2P) , in eq. (4). We summarize
+robot (or hand) interactions. Let 𝑿𝑡 denote particle states            the explicit MPM update at time step 𝑡 𝑛 as follows, with 𝑝
+at time 𝑡 (with positions 𝒙𝑝 , velocities 𝒗𝑝 , and deforma-            denoting particles and 𝑖 denoting grid nodes:
+tion gradients 𝑭𝑝 ), and let 𝒖𝑡 denote controller (hands or            P2G (particle to grid). We transfer mass and momen-
+grippers) actions obtained from hand tracking or robot                 tum using the affine particle-in-cell method (APIC) [35]
+telemetry. The MPM model advances state prediction at                  scheme:
+the next step as, 𝑿̂ 𝑡+1 = 𝑓𝜽 (𝑿𝑡 , 𝒖𝑡 ), where 𝜽 denotes
+                                                                        𝑚𝑛𝑖 = ∑ 𝑤𝑖𝑝
+                                                                                 𝑛
+                                                                                    𝑚𝑝 , 𝑚𝑛𝑖 𝒗𝑖𝑛 = ∑ 𝑤𝑖𝑝
+                                                                                                      𝑛
+                                                                                                         𝑚𝑝 (𝒗𝑝𝑛 + 𝑪𝑝𝑛 (𝒙𝑖 − 𝒙𝑝𝑛 )), (2)
+material parameters (e.g., Young’s modulus 𝑬, Poisson’s                          𝑝                      𝑝
+ratio 𝝂, density 𝝆, plastic yield stress 𝒚).
+   We use multi-view RGB-D images to provide observa-                  where 𝑤𝑖𝑝 are the B-spline weights and 𝑪𝑝𝑛 is the affine
+tions 𝑶𝑡𝑖 = {𝑰𝑡𝑖 , 𝑫𝑡𝑖 }, where 𝑰 and 𝑫 denote color and depth         velocity term.
+images, and 𝑖 denotes the camera index. We reconstruct                 Grid update (embodiment and contact). Grid velocities
+the point cloud 𝑿̃ 𝑡 ∈ ℝ3×𝑁 by fusing the points and uplift-           advance under stress, gravity, and constraints:
+ing them to 3D world frame. Due to potential occlusions,
+we employ a point tracking model using the initial frame                                                     Δ𝑡
+                                                                                             𝒗𝑖𝑛+1 = 𝒗𝑖𝑛 +      𝒇𝑖 (𝒙𝑖𝑛 ; 𝜽).                   (3)
+as a reference to obtain the 3D point trajectories 𝑿̃ 𝑡trk .                                                 𝑚𝑖
+   Our goal is to optimize the MPM model parameters 𝜽,                  Here, 𝒇𝑖 denotes the forces at grid node 𝑖, which are
+based on the loss function of observed points 𝑿,    ̃ 𝑿̃ trk and
+                                                                       internally computed within 𝑓𝜽 , the full simulation step in
+model predictions 𝑿,      ̂ hence solving the general optimiza-
+                                                                       eq. (1). We enforce Dirichlet boundary velocities on nodes
+tion problem in the following form:                                    in contact with the controller (from reconstructed or robot-
+                                                                       measured end-effector motion 𝒖𝑡 ), and apply Coulomb
+                          ̃ 𝑿̃ trk , 𝑓𝜽 (𝑿, 𝒖))
+                argmin 𝐿 (𝑿,                                (1)
+                   𝜽
+                                                                       friction for table/gripper contact.
+
+
+                                                                   3
+G2P (grid to particle). Grid velocities are transferred                             velocities, and contacts with the table and grippers are
+back to particles:                                                                  modeled using Coulomb friction.
+                                                                                    Objective. To bridge the discrepancy between MPM
+      𝒗𝑝𝑛+1 = ∑ 𝑤𝑖𝑝
+                 𝑛 𝑛+1
+                    𝒗𝑖 ,                  𝒙𝑝𝑛+1 = 𝒙𝑝𝑛 + Δ𝑡 𝒗𝑝𝑛+1 .        (4)       model predictions and real observations, we minimize
+                  𝑖
+                                                                                    the predicted position 𝑿̂ 𝑡 with lifted 3D points and their
+Deformation update. Deformation gradient is updated                                 trackings:
+                                                                                                      𝑇                               𝑇
+by:                                                                                                                                      ‖            trk ‖
+                                                                                                                                                            2
+                                                                                     𝐿offline = 𝜆dist ∑ Chamfer(𝑿̂ 𝑡 , 𝑿̃ 𝑡 ) + 𝜆trk ∑ ∑ ‖𝑿̂ 𝑡,𝑗 − 𝑿̃ 𝑡,𝑗 ‖     (8)
+                                                                                                                                         ‖                ‖2
+       𝑭𝑝𝑛+1 = (𝑰 + Δ𝑡 ∑ 𝒗𝑖𝑛+1 (∇𝑤𝑖𝑝
+                                  𝑛 ⊤
+                                     ) )𝑭𝑝𝑛 .    (5)                                                  𝑡=1                            𝑡=1  𝑗∈𝑡
+                                      𝑖                                             In this loss function, the first term measures the 3D Cham-
+Elastoplasticity. Most real-world deformable objects                                fer distance between the point clouds, while the second
+are not purely elastic and they undergo permanent shape                             term computes the 2 squared distance between each par-
+changes under deformation. In continuum mechanics, this                             ticle, serving to align the motions of individual particles.
+can be modeled by factoring the deformation gradient as                             We use occlusion masks from the pre-processing stage to
+𝑭 = 𝑭 𝐸 𝑭 𝑃 . Here the plastic part 𝑭 𝑝 serves as an intermedi-                     filter out the invalid particles and exclude them from loss
+ate state that stores the new rest shape, and only the elastic                      computation.
+part 𝑭 𝐸 is used to compute stress. During MPM updates,                             Optimization. We differentiate through the model rollout
+we use a trial deformation graident to track this process:                          with Warp [32] to obtain the loss gradient ∇𝜽 𝐿offline and
+     𝑭𝑝trial,𝑛+1 = updateF(𝑭𝑝𝐸,𝑛 ),   𝑭𝑝𝐸,𝑛+1 = returnMap(𝑭𝑝trial,𝑛+1 )   (6)
+                                                                                    update 𝜽 by gradient-based optimization methods. While
+                                                                                    gradient-based optimization enables smooth recovery of
+In this paper, we use Fixed Corotated stress as elastic-                            MPM physics parameters, we also provide an option of
+ity model and use von Mises return mapping to model                                 zero-order optimization using CMA-ES on the forward
+plasticity.                                                                         simulator. This strategy may be preferable for reducing
+Connection to embodiments. Robot or hand motion 𝒖𝑡                                  memory usage or enabling a more aggressive parameter
+can enter as boundary velocities at the grid step. This                             search.
+makes the simulator action-conditioned: given candidate
+end-effector trajectories 𝒖𝑡∶𝑡+𝐻 , we can predict object re-                        3.4. Online Adaptive Identification
+sponses 𝑿̂ 𝑡∶𝑡+𝐻 and score task costs (target geometry, col-                        We also optimize the model parameters online during real
+lision). The same interface supports system identification                          interactions using streaming 3D observations.
+(align to observations) and decision-making (rollout for                            Streaming supervision from cameras. At the beginning
+planning). We next instantiate this in the offline identifica-                      of streaming, we use multi-view RGB-D images to fuse
+tion setting.                                                                       an initial point cloud 𝑿̃ 0 , which is then sampled as the
+                                                                                    MPM particles 𝑿. Similar to offline optimization, we
+3.3. Offline Simulation and Optimization                                            use Grounded SAM2 model to segment target objects.
+We instantiate the action-conditioned simulator for parame-                         In subsequent streaming steps, we continuously perform
+ter identification from multi-view RGB-D videos. At time                            segmentation and back-projection to lift the video frames
+step 𝑡, RGB-D image observations {𝑰𝑡𝑖 , 𝑫𝑡𝑖 }𝑇𝑡=0 are fused                         to get 3D point clouds, serving as the 3D observation 𝑿̃ 𝑡 .
+into point sets 𝑿̃ 𝑡 , and end-effector motion is reconstructed                     Additionally, we record the current positions of the robot
+as 𝒖0∶𝑇 −1 , which is enforced as boundary velocities in the                        grippers as the control inputs 𝒖𝑡 to define the boundary
+grid update.                                                                        conditions. During online streaming, we observe that 3D
+Problem. Let 𝑿0 denote particles sampled from 𝑿̃ 0 (with                            point tracking becomes less reliable as tracked points tend
+point densification applied when required for enhanced                              to become invalid over time due to occlusion in indefinite
+dynamics). For material parameters 𝜽 = {𝑬, 𝝂, 𝝆, 𝒚}, the                            incoming image sequences. Therefore, we do not perform
+MPM rollout recursively produces 𝑿̂ 1∶𝑇 = 𝑓𝜽 (𝑿0 , 𝒖0∶𝑇 −1 ).                       online key point tracking in this stage.
+The identification problem is                                                       Simulation and Online Correction. With the object ge-
+                                           trk
+                                                                                    ometry reconstructed in real time, we perform simultane-
+         𝜽⋆ = arg min 𝐿offline(𝑿̃ 1∶𝑇 , 𝑿̃ 1∶𝑇 , 𝑿̂ 1∶𝑇 ),                (7)       ous simulation on the initial point cloud 𝑿̃ 0 and the current
+                       𝜽
+                                                                                    controller motion 𝒖𝑡 . Through continuous dynamic up-
+which conditions learning on the observed interaction                               dates, the simulated object 𝑿̂ 𝑡 serves as a synchronized
+through 𝒖0∶𝑇 −1 .                                                                   digital twin, closely aligning with the real object’s motion.
+Real-to-sim data processing.          We use grounded-                                 To narrow the gap in real-to-sim object deformation
+SAM2 [36] to compute the object and controllers (e.g.                               and extract estimation of material parameters of the mod-
+hands) masks for each image frame based on language                                 eled objects, we perform differentiable-simulation steps
+prompts. Next we lift the 3D object point cloud measure-                            along with the synchronized simulation, generating gradi-
+ment 𝑿̃ 𝑡 with depth and camera extrinsics. 3D temporal                             ent flows to direct the object to 3D observation. To avoid
+correspondences 𝑿̃ 𝑡trk are computed on offline sequences                           unstable gradients, we restrict the optimizing steps to only
+with an off-the-shelf point tracking model. The controller                          quasi-static states – assuming objects are close to stable-
+actions 𝒖𝑡 are bound to grid nodes as Dirichlet boundary                            equilibrium. More specifically, when an object is under
+
+
+                                                                                4
+balanced forces, such as being pinned by two end-effectors,              objects—including extending, stretching, squeezing, and
+we perform a fixed-step 𝐻 forward simulation, using the                  tearing—to demonstrate the range of deformations achiev-
+current particle states as input: 𝑿̌ 𝑡+𝐻 = 𝑓𝜽 (𝑿̂ 𝑡 , 𝒖𝑡 ). Under        able in our framework.
+the equilibrium assumption, the object should not deviate
+from its current rest shape (i.e., 𝑿̌ 𝑡+𝐻 ≈ 𝑿̂ 𝑡 ) if the material
+parameters are estimated correctly. To penalize the dis-
+crepancy caused by inaccurate parameters, we propose a
+loss function similar to the one used in offline optimization.
+We use the same 3D Chamfer distance 𝐿dist to align the
+point clouds. Since we do not have direct correspondence                    (1) rope segment     (2) soft elastic toy    (3) cloth
+between simulated and observed particles during online
+optimization, we additionally employ a 2D segmentation
+mask loss 𝐿mask as a regularizer to align the simulated par-
+ticles 𝑿̌ 𝑡+𝐻 with the segmented mask 𝑴𝑡+𝐻 . Together, we
+have:
+               𝐿online = 𝜆dist 𝐿dist + 𝜆mask 𝐿mask .           (9)            (4) pita bread      (5) bread dough        (6) plasticine
+
+Similarly, we back-propagate the gradient to obtain a new                Figure 3: Objects used in our experiments. first row: elastic
+estimation of parameter 𝜽′ . After each step, the new pa-                objects to simulate bending, poking and pulling; second row:
+                                                                         elastoplastic objects to simulate fracture, stretch, and squeezing.
+rameter 𝜽′ will replace the current parameter in the simu-
+lation.
+                                                                            For the sensor setup used in data collection and online
+3.5. Applications                                                        optimization, we employ a multi-view stereo RGB-D cam-
+The EMPM simulator, potentially combined with offline                    era rig as the perception system. In our experiments, we
+and online optimization, offers a direct interface for incor-            set up three RealSense D455 cameras. We first collect
+porating deformable dynamics into embodied workflows.                    data using human hands to facilitate the complicated in-
+Because end-effector motions are bound to grid boundary                  teractions with the deformable objects that robot grippers
+conditions, EMPM produces action-conditioned rollouts                    struggle. This data is used in the offline simulation and
+that can potential be queried for both interactive simulation            optimization pipeline. For the robotic manipulation experi-
+and robotic decision making.                                             ments within the online optimization framework, we use a
+   With the digital twin synchronized to observed motions,               bimanual setup with two Franka arms equipped with their
+operators can visualize the responses of objects under                   original grippers.
+teleoperation or hypothetical controller inputs. This en-                    Implementation details: We perform training/online
+ables rapid what-if analysis of manipulation strategies and              optimizaiton of the MPM model parameters on a single
+immediate feedback on feasibility, contact regimes, and                  Nvidia A6000 GPU. We optimize the Young’s modulus
+deformation patterns. Candidate end-effector trajectories                𝐸 and Poisson’s ratio 𝜈 of the objects and assume the
+{𝒖𝑡∶𝑡+𝐻 } are applied as boundary velocities to generate                 parameters remain constant accross the material field. 𝐸
+predictions 𝑿̂ 𝑡∶𝑡+𝐻 . The same interface could support both             is normalized to [0, 1] by a factor of 106 . We leverage
+gradient-free sampling and trajectory optimization. End-                 Warp’s automatic differentiation capability via its PyTorch
+effector control points and simulator boundary conditions                integration, using the AdamW optimizer with a default
+are aligned in EMPM, which transforms the simulator into                 learning rate of 10−4 .
+a predictive engine that seamlessly connects perception to
+planning and execution.                                                  4.2. Offline Simulation and Optimization
+                                                                         Using the collected videos, we follow the data processing
+4. Experiments                                                           procedure outlined above to extract the 3D information
+                                                                         and perform offline simulation and optimization.
+4.1. Experiment Setup                                                       We visualize the simulated particles overlaid on the
+To demonstrate the coverage and capability of the MPM                    input video in Figure 4. Our simulated results exhibit
+simulation engine in modeling deformable objects, we                     physically plausible deformations consistent with the prop-
+select objects from two major categories:                                erties of each object type, closely aligning with the behav-
+                                                                         ior observed in the real world. Additionally, we present
+   • Elastic objects: a rope segment; a piece of cloth; a
+                                                                         Gaussian-rendered visualizations of the dynamic simula-
+     soft elastic toy that bounces back when pushed or
+                                                                         tions in Figure 5, offering a photorealistic reproduction
+     poked
+                                                                         of the visual observations. The Gaussian splatting is
+   • Elastoplastic objects: a piece of plasticine; a lump
+                                                                         based on the origianl 3DGS and the gsplat [37] library’s
+     of bread dough; a pita bread
+                                                                         implementations and the motion of the Gaussian centers
+Figure 3 shows the types of objects we simulate in our                   is interpolated with the motions of neighboring MPM par-
+experiments. We perform various manipulations on these                   ticle nodes using Linear Blend Skinning (LBS) [8].
+
+
+                                                                     5
+              Ours
+ Rope
+              Phystwin
+              Ours
+ Pita Bread
+              Phystwin
+
+
+
+
+Figure 4: Qualitative results showing the simulation predictions and real observations for different objects, comparing our method
+and PhysTwin [8]. Our method especially shines at modeling fracture, illustrated in the pita bread example, where PhysTwin model
+prediction completely fails. In the last frame of the plasticine example, the PhysTwin model prediction fails due to the over-bend of
+the internal spring model, where our model can still successfully model the squeezing of the object.
+
+
+   To demonstrate the advantages of our method, we com-              dynamics and produces realistic and desirable outcomes.
+pare our results with PhysTwin [8], which models de-
+formable objects using a spring–mass system. We visu-                4.3. Online Optimization
+alize the qualitative results and photorealistic rendering
+                                                                     To demonstrate the efficacy of our online optimization, we
+in Figures 4 and 5. To quantitatively evaluate the perfor-
+                                                                     conduct experiments on one elastic object (rope) and one
+mance, we report the reconstruction qualities in terms of
+                                                                     elastoplastic object (bread dough). We teleoperate a pair of
+geometric differences of point clouds, as well as visual
+                                                                     bimanual Franka arms to control the objects. Specifically,
+rendering qualities. We also compare our results with a
+                                                                     we control the arms to move along various trajectories,
+learning-based dynamic model PGND [10], reported in
+                                                                     while also allowing the objects to remain steady between
+Table 1.
+                                                                     motions. With an initial point cloud generated at the be-
+   Leveraging our MPM-based simulator, our method
+                                                                     ginning of the loop, we simulate the object point clouds
+achieves higher simulation accuracy and narrows the gap
+                                                                     under the same manipulations. As shown in Figure 6,
+between real-world captured data and the simulated predic-
+                                                                     our simulated twins closely follow the motion of the real
+tion. Compared to the spring–mass system baseline [8] and
+                                                                     objects.
+neural dynamic baseline [10], our approach demonstrates
+                                                                        We perform online differentiable simulation to optimize
+better alignment in both geometric and visual metrics.
+                                                                     the material stiffness of the objects during the simulation,
+   In addition to offering higher overall simulation accu-
+                                                                     with the loss function shown in Eq. 9. In our experiments,
+racy, another key advantage of EMPM is its ability to han-
+                                                                     we perform one optimization step every 5 online stream-
+dle a broad spectrum of materials and physical phenomena
+                                                                     ing step and provided the object is relatively steady at that
+within our framework. Our method can model both hyper-
+                                                                     step. In each optimization step, we simulate for a total of
+elastic and elastoplastic materials, encompassing a wide
+                                                                     10 forward simulation steps. With the optimization, the
+range of everyday objects—from purely elastic jelly to
+                                                                     alignments between simulated objects and real observa-
+plasticine, which exhibits largely different behavior under
+                                                                     tions improved over time, while we gradually adjust our
+external forces. In contrast, spring-mass systems are lim-
+                                                                     estimation of the physical parameters. To quantitatively
+ited to modeling elastic springs and cannot capture intrin-
+                                                                     evaluate the improvement with simulation correction, we
+sic non-elastic behaviors, such as permanent shape change
+                                                                     report the 2D mask and 3D distance errors in the online
+beyond the elastic threshold in elastoplastic materials, as
+                                                                     experiments for both objects, with and without optimiza-
+demonstrated in our experiments. Moreover, spring-mass
+                                                                     tion, in Table 2. We observe improved simulation accuracy
+systems are unable to simulate more complex phenomena
+                                                                     with the presence of our online correction.
+like material damage (e.g., in the pita experiment), since
+                                                                         We also include running time analysis results com-
+elastic springs do not naturally accommodate fracture. On
+                                                                     paring EMPM with the baseline methods PhysTwin [8]
+the other hand, our method accurately captures fracture
+                                                                     and PGND [10] in Table 3. For PhysTwin, we conducted
+
+
+                                                                 6
+                                                 Elastic Objects                                            Elastoplasic Objects
+      Method
+                        Dist ↓    Track↓   IoU % ↑       PSNR ↑    SSIM ↑    LPIPS ↓   Dist ↓    Track↓     IoU % ↑     PSNR ↑     SSIM ↑     LPIPS ↓
+      PGND [10]         0.0618       -      0.6898        21.06    0.8938    0.0977    0.0245       -       0.5069       21.26      0.9472     0.0738
+      PhysTwin [8]      0.0227    0.1467    0.6981        24.12    0.9312    0.0756    0.0177    0.1108     0.6918       27.01      0.9695     0.0353
+      Ours              0.0222    0.1377    0.7095        24.19    0.9319    0.0711    0.0082    0.1014     0.7768       27.82      0.9725     0.0291
+Table 1: Quantitative Comparison on Offline Simulation. We compare our prediction results with PhysTwin [8] and PGND [10]
+in terms of both reconstruction accuracy (measured by distance and tracking of the 3D point cloud; tracking errors from [10] are
+omitted because we do not have point correspondence between their results and ours) and visual quality (evaluated using IoU, PSNR,
+SSIM, and LPIPS) through photorealistic rendering with Gaussian Splatting. The results are categorized by object type: elastic and
+elastoplastic. Our method outperforms baselines across all metrics, with a particularly notable advantage in handling elastoplastic
+objects.
+                 Ours
+       Bread Dough
+PhysTwin     Ours
+Pita Bread
+             PhysTwin
+
+
+
+
+ Figure 5: Qualitative results demonstrate photorealistic reconstruction using Gaussian Splatting. Our reconstructed dynamics closely
+ match real observations, whereas the spring-mass-based PhysTwin [8] fails to accurately model these materials.
+
+
+                                                                                                          Elastic Objects        Elastoplasic Objects
+                        Without Optimization           With Optimization          Running time (s)
+      Experiment                                                                                     Training ↓      Testing ↓   Training ↓   Testing ↓
+                        𝐿mask ↓        𝐿dist ↓         𝐿mask ↓     𝐿dist ↓
+                                                                                  PGND [10]          50675.50          5.06      48464.40       5.34
+      Rope              0.0456        0.0057           0.0428      0.0054         PhysTwin [8]        496.84          11.49       589.51       15.94
+      Bread Dough       0.0031        0.0060           0.0024      0.0059         Ours                161.80          14.71       171.60       22.21
+Table 2: Quantitative results demonstrate improvements in geo-                   Table 3: Running time (in seconds) analysis of EMPM and
+metric accuracy achieved through progressive correction during                   baseline approaches using the same trianing data.
+online simulation.
+
+                                                                                 tasks, shown in Figure 7. With accurate dynamics model
+both CMA-ES and gradient-based optimization and re-                              for deformable objects proposed in this work, we can
+port only the gradient training time. For PGND, we train                         potentially deploy model-based robotic motion planning
+10 episodes following the default setup. The training of                         and control and enable autonomous manipulations.
+EMPM is the most efficient due to its optimization over en-
+tire training frames as a batch. PGND achieves the lowest
+inference time due to the feedforward pass of a relatively                       5. Conclusions & Discussions
+small network, but with the cost of very long training time.                     We presented EMPM, an embodied, differentiable MPM
+                                                                                 framework for modeling geometry, appearance, and dy-
+                                                                                 namics of complex deformable objects – including elastic
+ 4.4. Applications                                                               and soft/hard elastoplastic materials that are difficult for
+ In our experiment, we demonstrate a proof-of-concept                            spring–mass baselines. EMPM updates material param-
+ application with real robotics hardware to show how our                         eters from real observations in both offline and online
+ method would be used for deformable object manipulation                         settings and improves over spring-mass baselines qualita-
+
+
+                                                                             7
+        Experiment Setup                            Online Simulation and Optimization                                                Loss Plot
+                                                                                                                1.0
+
+
+                                                                                                                0.8
+ Rope
+                                                                                                                0.6
+
+
+                                                                                                                0.4
+                                                                                                               Steps: 0         200    400     600   800
+                                                                                                                1.00
+
+                                                                                                               0.88
+
+
+Bread                                                                                                          0.76
+
+Dough                                                                                                          0.65
+
+                                                                                                                0.53
+                                                                                                                Steps: 0   20     40   60    80 100 120 140
+
+
+Figure 6: Qualitative results of the online simulation demonstrate the tracking performance of our MPM model against real
+observations. With online optimization guided by real-time reconstruction, the alignment between simulation and observation
+improves progressively over time. The losses are normalized from 0 to 1 for better illustration. Updates in the bread dough case are
+not obvious due to a relatively small motion and the occlusion of the grippers, it is recommended to refer to the video for a better
+dynamic visualization.
+
+
+                                                                        [3] Jonathon Luiten, Georgios Kopanas, Bastian Leibe, and
+                                                                            Deva Ramanan. Dynamic 3d gaussians: Tracking by per-
+                                                                            sistent dynamic view synthesis. In 3DV, 2024.
+                                                                        [4] Hidenobu Matsuki, Riku Murai, Paul H. J. Kelly, and An-
+                           (a) Rope operation                               drew J. Davison. Gaussian Splatting SLAM. In Proceed-
+                                                                            ings of the IEEE/CVF Conference on Computer Vision and
+                                                                            Pattern Recognition, 2024.
+                                                                        [5] Jad Abou-Chakra, Feras Dayoub, and Niko Sünderhauf.
+                                                                            Particlenerf: A particle-based encoding for online neural
+                     (b) Bread dough operation                              radiance fields. In WACV, pages 5975–5984, January 2024.
+Figure 7: Application of EMPM in potential model-based plan-
+                                                                        [6] Jad Abou-Chakra, Krishan Rana, Feras Dayoub, and Niko
+ning and control for manipulation. Here we simulate model
+                                                                            Suenderhauf. Physically embodied gaussian splatting: A re-
+rollout and let robot track these changes.
+                                                                            altime correctable world model for robotics. In 8th Annual
+                                                                            Conference on Robot Learning, 2024.
+tively and quantitatively. Future work includes enhanced                [7] Jad Abou-Chakra, Lingfeng Sun, Krishan Rana, Brandon
+appearance modeling for Gaussian Splatting and integrat-                    May, Karl Schmeckpeper, Niko Suenderhauf, Maria Vitto-
+ing model-based control for autonomous deformable ma-                       ria Minniti, and Laura Herlant. Real-is-sim: Bridging the
+                                                                            sim-to-real gap with a dynamic digital twin, 2025.
+nipulation.
+                                                                        [8] Hanxiao Jiang, Hao-Yu Hsu, Kaifeng Zhang, Hsin-Ni
+Limitation We observe that a key obstacle during opti-                      Yu, Shenlong Wang, and Yunzhu Li. Phystwin: Physics-
+mization is obtaining reliable point tracking, whose quality                informed reconstruction and simulation of deformable ob-
+degrades under occlusion and large deformations, leading                    jects from videos. ICCV, 2025.
+to unreliable 3D trajectories. Tracking conditioned on                  [9] Mingtong Zhang, Kaifeng Zhang, and Yunzhu Li. Dynamic
+the first frame often yields zero reliably tracked points                   3d gaussian tracking for graph-based neural dynamics mod-
+after just a few seconds, rendering it unsuitable for on-                   eling. In 8th Annual Conference on Robot Learning, 2024.
+line optimization. We note that emerging tracking models               [10] Kaifeng Zhang, Baoyu Li, Kris Hauser, and Yunzhu Li.
+hold promise for mitigating this issue, potentially enabling                Particle-grid neural dynamics for learning deformable ob-
+more faithful 3D guidance for reconstruction and facili-                    ject models from rgb-d videos. In Proceedings of Robotics:
+tating the integration of tracking-based losses into online                 Science and Systems (RSS), 2025.
+optimization.                                                          [11] Jan Obrist, Miguel Zamora, Hehui Zheng, Ronan Hinchet,
+                                                                            Firat Ozdemir, Juan Zarate, Robert K. Katzschmann, and
+References                                                                  Stelian Coros. Pokeflex: A real-world dataset of volumetric
+                                                                            deformable objects for robotics, 2025.
+ [1] Ben Mildenhall, Pratul P. Srinivasan, Matthew Tancik,
+     Jonathan T. Barron, Ravi Ramamoorthi, and Ren Ng. Nerf:           [12] Suning Huang, Qianzhong Chen, Xiaohan Zhang, Jiankai
+     Representing scenes as neural radiance fields for view syn-            Sun, and Mac Schwager. Particleformer: A 3d point cloud
+     thesis. In ECCV, 2020.                                                 world model for multi-object, multi-material robotic ma-
+                                                                            nipulation. In 9th Conference on Robot Learning (CoRL
+ [2] Bernhard Kerbl, Georgios Kopanas, Thomas Leimkühler,
+                                                                            2025), 2025.
+     and George Drettakis. 3d gaussian splatting for real-time
+     radiance field rendering. ACM Transactions on Graphics,           [13] Chenfanfu Jiang, Craig Schroeder, Joseph Teran, Alexey
+     42(4), July 2023.                                                      Stomakhin, and Andrew Selle. The material point method
+
+
+                                                                   8
+     for simulating continuum materials. In Acm siggraph 2016          [28] Wenqiang Xu, Dongzhe Zheng, Yutong Li, Jieji Ren, and
+     courses, pages 1–52. 2016.                                             Cewu Lu. Differentiable fluid physics parameter iden-
+                                                                            tification by stirring and for stirring. In 2024 IEEE/RSJ
+[14] Tianyi Xie, Zeshun Zong, Yuxing Qiu, Xuan Li, Yutao
+                                                                            International Conference on Intelligent Robots and Systems
+     Feng, Yin Yang, and Chenfanfu Jiang. Physgaussian:
+                                                                            (IROS). IEEE, 2024.
+     Physics-integrated 3d gaussians for generative dynamics.
+     CVPR, 2024.                                                       [29] Yuanming Hu, Jiancheng Liu, Andrew Spielberg, Joshua B
+                                                                            Tenenbaum, William T Freeman, Jiajun Wu, Daniela Rus,
+[15] Xuan Li, Yi-Ling Qiao, Peter Yichen Chen, Krishna Murthy               and Wojciech Matusik. Chainqueen: A real-time differen-
+     Jatavallabhula, Ming Lin, Chenfanfu Jiang, and Chuang                  tiable physical simulator for soft robotics. In 2019 Inter-
+     Gan. Pac-nerf: Physics augmented continuum neural ra-                  national conference on robotics and automation (ICRA),
+     diance fields for geometry-agnostic system identification.             pages 6265–6271. IEEE, 2019.
+     2023.
+                                                                       [30] Yuanming Hu, Tzu-Mao Li, Luke Anderson, Jonathan
+[16] Tianyuan Zhang, Hong-Xing Yu, Rundi Wu, Brandon Y.                     Ragan-Kelley, and Frédo Durand. Taichi: a language
+     Feng, Changxi Zheng, Noah Snavely, Jiajun Wu, and                      for high-performance computation on spatially sparse data
+     William T. Freeman. PhysDreamer: Physics-based inter-                  structures. ACM Transactions on Graphics (TOG), 38(6):1–
+     action with 3d objects via video generation. In ECCV.                  16, 2019.
+     Springer, 2024.
+                                                                       [31] Yuanming Hu, Luke Anderson, Tzu-Mao Li, Qi Sun,
+[17] Xintong Yang, Ze Ji, and Yu-Kun Lai. Differentiable                    Nathan Carr, Jonathan Ragan-Kelley, and Frédo Durand.
+     physics-based system identification for robotic manipu-                Difftaichi: Differentiable programming for physical simu-
+     lation of elastoplastic materials. In IJRR, 2025.                      lation. arXiv preprint arXiv:1910.00935, 2019.
+[18] Zhengqi Li, Richard Tucker, Forrester Cole, Qianqian              [32] Miles Macklin. Warp: A high-performance python frame-
+     Wang, Linyi Jin, Vickie Ye, Angjoo Kanazawa, Aleksander                work for gpu simulation and graphics. https://github.com/
+     Holynski, and Noah Snavely. MegaSaM: Accurate, fast and                nvidia/warp, March 2022. NVIDIA GPU Technology Con-
+     robust structure and motion from casual dynamic videos.                ference (GTC).
+     CVPR, 2025.
+                                                                       [33] Haozhe Su, Xuan Li, Tao Xue, Chenfanfu Jiang, and Mridul
+[19] Nikita Karaev, Iurii Makarov, Jianyuan Wang, Natalia                   Aanjaneya. A generalized constitutive model for versatile
+     Neverova, Andrea Vedaldi, and Christian Rupprecht. Co-                 mpm simulation and inverse learning with differentiable
+     Tracker3: Simpler and better point tracking by pseudo-                 physics. Proceedings of the ACM on Computer Graphics
+     labelling real videos. 2024.                                           and Interactive Techniques, 6(3):1–20, 2023.
+[20] Albert Pumarola, Enric Corona, Gerard Pons-Moll, and              [34] Zeshun Zong, Xuan Li, Minchen Li, Maurizio M Chiara-
+     Francesc Moreno-Noguer. D-NeRF: Neural Radiance                        monte, Wojciech Matusik, Eitan Grinspun, Kevin Carlberg,
+     Fields for Dynamic Scenes. In Proceedings of the                       Chenfanfu Jiang, and Peter Yichen Chen. Neural stress
+     IEEE/CVF Conference on Computer Vision and Pattern                     fields for reduced-order elastoplasticity and fracture. In
+     Recognition, 2021.                                                     SIGGRAPH Asia 2023 Conference Papers, pages 1–11,
+                                                                            2023.
+[21] Demetri Terzopoulos, John Platt, Alan Barr, and Kurt Fleis-
+     cher. Elastically deformable models. 1987.                        [35] Chenfanfu Jiang, Craig Schroeder, Andrew Selle, Joseph
+                                                                            Teran, and Alexey Stomakhin. The affine particle-in-cell
+[22] James F. O’Brien Jessica K. Hodgins. Graphical modeling                method. ACM Transactions on Graphics (TOG), 34(4):1–
+     and animation of brittle fracture. 1999.                               10, 2015.
+[23] Eftychios Sifakis and Jernej BarbicAuthors. Fem simu-             [36] Nikhila Ravi, Valentin Gabeur, Yuan-Ting Hu, Ronghang
+     lation of 3d deformable solids: A practitioner’s guide to              Hu, Chaitanya Ryali, Tengyu Ma, Haitham Khedr, Roman
+     theory, discretization and model reduction. 2012.                      Rädle, Chloe Rolland, Laura Gustafson, Eric Mintun, Junt-
+[24] Yutao Feng, Yintong Shang, Xuan Li, Tianjia Shao, Chen-                ing Pan, Kalyan Vasudev Alwala, Nicolas Carion, Chao-
+     fanfu Jiang, and Yin Yang. Pie-nerf: Physics-based in-                 Yuan Wu, Ross Girshick, Piotr Dollár, and Christoph Feicht-
+     teractive elastodynamics with nerf. In Proceedings of the              enhofer. Sam 2: Segment anything in images and videos,
+     IEEE/CVF Conference on Computer Vision and Pattern                     2024.
+     Recognition (CVPR), pages 4450–4461, June 2024.                   [37] Vickie Ye, Ruilong Li, Justin Kerr, Matias Turkulainen,
+                                                                            Brent Yi, Zhuoyang Pan, Otto Seiskari, Jianbo Ye, Jeffrey
+[25] Licheng Zhong, Hong-Xing Yu, Jiajun Wu, and Yunzhu
+                                                                            Hu, Matthew Tancik, and Angjoo Kanazawa. gsplat: An
+     Li. Reconstruction and simulation of elastic objects with
+                                                                            open-source library for gaussian splatting, 2024.
+     spring-mass 3d gaussians. ECCV, 2024.
+[26] Yunzhu Li, Jiajun Wu, Russ Tedrake, Joshua B Tenenbaum,
+     and Antonio Torralba. Learning particle dynamics for ma-
+     nipulating rigid bodies, deformable objects, and fluids. In
+     ICLR, 2019.
+[27] Kaifeng Zhang, Baoyu Li, Kris Hauser, and Yunzhu Li.
+     Adaptigraph: Material-adaptive graph-based neural dynam-
+     ics for robotic manipulation. In Proceedings of Robotics:
+     Science and Systems (RSS), 2024.
+
+
+                                                                   9
+

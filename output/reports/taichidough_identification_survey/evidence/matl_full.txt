@@ -1,0 +1,458 @@
+                                        Inferring the Material Properties of Granular Media for Robotic Tasks
+                                                          Carolyn Matl1,2 , Yashraj Narang2 , Ruzena Bajcsy1 , Fabio Ramos2,3 , Dieter Fox2,4
+
+
+                                           Abstract— Granular media (e.g., cereal grains, plastic resin
+                                        pellets, and pills) are ubiquitous in robotics-integrated indus-
+                                        tries, such as agriculture, manufacturing, and pharmaceuti-
+                                        cal development. This prevalence mandates the accurate and
+                                        efficient simulation of these materials. This work presents
+                                        a software and hardware framework that automatically cali-
+                                        brates a fast physics simulator to accurately simulate granular
+arXiv:2003.08032v4 [cs.RO] 5 Nov 2020
+
+
+
+
+                                        materials by inferring material properties from real-world
+                                        depth images of granular formations (i.e., piles and rings).
+                                        Specifically, coefficients of sliding friction, rolling friction, and
+                                        restitution of grains are estimated from summary statistics
+                                        of grain formations using likelihood-free Bayesian inference.
+                                        The calibrated simulator accurately predicts unseen granular
+                                        formations in both simulation and experiment; furthermore,                   Fig. 1: Granular parameter inference framework. (Bottom branch): Multiple
+                                        simulator predictions are shown to generalize to more complex                granular parameter sets are randomly sampled from a prior distribution
+                                                                                                                     θ ∼ p(θ ˜ ), and for each, summary statistics T (xS ) are extracted from a
+                                        tasks, including using a robot to pour grains into a bowl,
+                                        as well as to create a desired pattern of piles and rings.                   simulation g(θ ). The set of T (xS ) are used to learn a conditional density
+                                                                                                                     function for the parameters using BayesSim. (Top branch): The summary
+                                        Visualizations of the framework and experiments can be viewed
+                                                                                                                     statistics of a depth image of a real granular formation are extracted. With
+                                        at https://youtu.be/OBvV5h2NMKA.                                             the conditional density function, a posterior is estimated to infer the likeliest
+                                                                                                                     simulation granular parameters to match the macroscopic granular behavior.
+                                                                 I. I NTRODUCTION
+                                           A granular material is a collection of discrete macroscopic
+                                        particles that primarily experience inelastic collisions and                 leveraged by the robotics community for applications such
+                                        are usually unaffected by temperature [17]. Naturally, this                  as locomotion on sand or gravel [29], [22], [32] and motion
+                                        definition spans a wide variety of materials, from sand and                  planning for pouring [13]. However, calibrating the material
+                                        stones to powders and pills to seeds and cereals, making gran-               parameters of the simulated grains is still an open problem.
+                                        ular material one of the most manipulated substances in the                  Most DEM calibration methods involve a tedious cycle of
+                                        construction, pharmaceutical, agriculture, and food industries               performing small-scale materials tests, manually tuning pa-
+                                        [38]. As robots continue to permeate these industries, they                  rameters, and iterating until the desired experimental behavior
+                                        will inevitably interact with granular materials in a variety                is captured. To reduce this burden, the physics community
+                                        of settings, such as pouring flour in the kitchen, scattering                has posed the following challenge: how can particle-scale
+                                        seeds on a farm, or traversing loose terrain [23].                           parameters (e.g., frictional properties) be determined from
+                                           Despite the ubiquity of granular materials, much of the                   observations of macroscale behavior (e.g., granular pile shape)
+                                        physics behind their complex behaviors remains a mystery.                    [1]? Answering this could lead to more efficient methods for
+                                        Granular materials are often considered their own category of                refining simulations to match real macroscale behavior.
+                                        matter (separate from solids, liquids, and gases), and conse-                   This paper addresses this question by integrating a frame-
+                                        quently, new constitutive laws must be defined. While recent                 work for likelihood-free Bayesian inference (BayesSim [37])
+                                        work has delivered promising advances in the formulation                     with a fast and efficient physics simulation platform capable of
+                                        of continuum models for granular materials [18], [3], [15],                  DEM simulations (NVIDIA’s Isaac Simulator [2]), as well as
+                                        [33], [20], [19], researchers frequently rely on numerical                   experimental observations using off-the-shelf depth cameras.
+                                        techniques and simulations to corroborate and extend their                   Using this software and hardware framework, depicted in
+                                        predictions.                                                                 Figure 1, particle-scale material properties (i.e., coefficients of
+                                           The state-of-the-art numerical technique for simulating                   friction and restitution) of granular materials are inferred from
+                                        granular materials is the discrete element method (DEM),                     simple, inexpensive observations of macroscale behavior in
+                                        where each particle is represented independently. Although                   the real world. The calibrated simulator can then be leveraged
+                                        DEM has primarily been used in physics, it has also been                     to predict unseen granular formations in both simulation
+                                                                                                                     and experiment. This paper concludes by demonstrating how
+                                           1 Department of Electrical Engineering and Computer Science, University   this research may be applied to robotics tasks by using the
+                                        of California, Berkeley, CA, USA                                             developed framework on an industrial robot to manipulate
+                                           2 NVIDIA Corporation, Seattle, WA, USA
+                                           3 School of Computer Science, University of Sydney, Sydney, Australia
+                                                                                                                     agricultural grains (i.e., couscous and barley).
+                                           4 Paul G. Allen School of Computer Science & Engineering, University         The main contributions of this paper are
+                                        of Washington, Seattle, WA, USA                                                 • A software and hardware framework that integrates
+    likelihood-free Bayesian inference, an efficient physics        small time steps for stiff systems. In this work we model
+    simulator, and depth images of granular formations to           contact as a nonlinear complementarity problem (NCP) which
+    estimate particle-scale material properties                     is solved implicitly using a GPU-optimized non-smooth
+  • A demonstration of the use of this framework to calibrate       Newton solver in the NVIDIA Isaac Simulator platform [2],
+    material properties of agricultural grains (couscous and        [26]. This enables both high accuracy and rapid simulation
+    barley) for a simulator, which is then evaluated against        of ∼2000 spherical grains. Furthermore, the platform allows
+    new scenarios in simulation and experiment                      direct input of particle-scale parameters such as geometry
+  • A robotic demonstration that uses the proposed frame-           and material properties, as well as a programmatic interface
+    work to reason about agricultural grains in order to            in which new testing scenarios can be rapidly created. The
+    complete a simple manipulation task                             platform has recently been applied to reinforcement learning
+                                                                    applications for non-DEM simulations [6], [24].
+                     II. R ELATED W ORK
+A. Granular Materials in Physics                                    D. Automatic Calibration of Granular Material Simulation
+   The mechanics of granular materials is an active area of             Most techniques used to calibrate the material parameters
+research within the physics community. Recent advancements          for DEM simulation require tedious experiments and manual
+present new constitutive relations of granular media that           tuning until the desired experimental behavior is captured
+relate flow behavior to particle-scale properties like grain size   [11]. Thus, recent work aims to automate this process. For
+[19], geometry [30], and surface friction [21]. Throughout          instance, in [14], a genetic algorithm and direct optimization
+this body of work, DEM simulators are consistently used             are used to determine the frictional coefficients of sand
+to evaluate and extend theoretical explanations [12], [42],         grains by measuring discharge time from an hourglass. In
+[21], [18], [30]. This emphasis on simulation encourages the        [4], an artificial neural network is used to infer multiple
+development of frameworks that can infer difficult-to-measure       material parameters of iron ore sinter; the network greatly
+material parameters (e.g., frictional coefficients of a grain)      increases the speed of inference at the expense of training
+from macroscale behavior of collections of grains (e.g., pile       time. Recently, likelihood-free inference techniques, such as
+shape). This work proposes one such framework, designed             Approximate Bayesian Computation (ABC) methods, have
+primarily for robotic applications due to its speed, efficiency,    been explored to increase the interpretability of results, as well
+and minimal hardware requirements.                                  as to enhance robustness to non-unique mappings between
+                                                                    material properties and macroscale behavior. Specifically, in
+B. Granular Materials in Robotics                                   [8], an iterative Bayesian filtering framework was used to
+   Within robotics, the mechanics of granular materials has         infer the coefficients of friction of glass beads based on 100
+been investigated to design jamming grippers and manip-             measurements of porosity and stress per iteration.
+ulators [5], [41], [25], [9], as well as mobile robots that             In the present work, we leverage a likelihood-free Bayesian
+can traverse granular terrain [44], [23], [29], [22], [43], [32].   inference framework called BayesSim [37]. The framework
+Recent work has explored the perception of granular materials       allows the complexities of the simulator to be fully abstracted
+[10], [7], [40] and their manipulation in scooping [10] and         from the inference process and requires only a single training
+pouring [39] tasks. Such work has largely focused on the            phase followed by a prediction step. This is in contrast
+classification of granular materials rather than estimation of      to multiple prediction steps necessary in typical Bayesian
+material parameters; furthermore, it has often been highly          filtering. Because BayesSim is an ε-free method [34] (i.e.,
+task-specific. However, granular parameter identification is        it does not rely on sampling with acceptance region defined
+important to enable physical reasoning of how different             by ε), it is generally more sample-efficient and produces
+grains may behave in unseen scenarios while dynamically             more accurate parametric approximations of the posteriors
+interacting with robots. Due to the complexity of granular          than ABC methods [34]. Furthermore, the preceding studies
+physics, researchers in robotics have leveraged simulation to       measured macroscopic behavior using highly-specific experi-
+model robot-granular interactions [44], [43], [29], [32].           mental setups and advanced laboratory equipment, which may
+                                                                    be prohibitively expensive for many robotics applications. In
+C. Simulation of Granular Materials                                 contrast, the present work measures macroscopic behavior
+   The state-of-the-art numerical technique to simulate granu-      (e.g., granular formations from pouring grains through a
+lar materials is the Discrete Element Method (DEM), where           funnel) using single images taken with inexpensive, off-the-
+each grain is generally represented as an independent particle      shelf depth cameras.
+that interacts with others only through direct contact. Other
+                                                                                     III. P ROBLEM S TATEMENT
+granular simulation techniques include the Material Point
+Method (MPM) [16], [15], which constructs a background              A. Simplifying Assumptions
+mesh to compute forces, and Position Based Dynamics (PBD)              This section defines the key simplifications made in the
+[31], [27], [28], which directly manipulates particle positions     simulator. First, we consider grains with a length scale of at
+to enforce attachments and resolve collisions, typically trading    least 1 mm, thus excluding powders. Given that the average
+off accuracy for speed. Although accurate, DEM often uses           size and mass of a grain can be measured, they are assumed
+explicit time-integration, which can require impractically          as known inputs to the simulator. While natural grains will
+represent a distribution of sizes and masses, we make the
+simplification that all grains are of the same size and mass.
+   We further assume that the grains are perfectly rigid,
+cohesionless, and experience negligible drag, so that the
+only sources of energy dissipation are friction and collisions
+with each other and the ground. The forces experienced
+during these interactions, depicted in Figure 2, are functions
+of the coefficients of restitution e, sliding friction µs , and
+rolling friction µr for the grain-to-grain or grain-to-ground
+interactions. To simplify parameter search, we assume that the     Fig. 2: The simulations capture sliding friction forces (Ff ), rolling friction
+grain-to-grain and grain-to-ground coefficients are equivalent.    forces (Fr ), and energy loss due to inelastic collisions for grain-grain and
+Together, these three parameters enable the simulator to           grain-ground interactions. These forces are parameterized by the coefficients
+                                                                   of sliding friction (µs ), rolling friction (µr ), and restitution (e), respectively.
+generate a diversity of realistic granular behavior. Using a
+subset of {e, µs , µr } restricts the simulator’s expressiveness
+and may likely cause the real and simulated distributions of
+granular formations to be completely distinct.                     likelihood-free Bayesian inference framework BayesSim [37],
+   Finally, we represent all grains as spheres. While it has       discussed in the following section, is used to approximate
+been shown that aggregate behavior is dependent on grain           this posterior.
+geometry and size, this coarse approximation makes collisions
+easier and faster to compute, and thus practical for robotic                                      IV. M ETHODS
+applications. Further, although the parameters are bounded
+by real-world values, it is not the goal of this paper to             The goal of this paper’s proposed framework is to estimate
+estimate physically-exact friction and restitution coefficients.   granular parameters θ = [µs , µr , e]T from summary statistics
+Rather, the calibration framework aims to accurately simulate      T (X r ) using BayesSim, which approximates the posterior
+macroscopic behavior of the granular material. For non-            p(θ |T (X) = T (X r )) by sampling from a simulator g(θ ).
+spherical grains, larger or smaller valued material parameters     In this section, we discuss the BayesSim likelihood-free
+may sufficiently compensate for a spherical approximation.         framework, simulator g(θ ) = X s , physical experimental setup
+                                                                   to observe X r , and extraction of summary statistics T (X).
+B. Definitions
+   Let θ = [µs , µr , e]T represent a vector of the grain simu-    A. Granular Parameter Inference Using BayesSim
+lation parameters, composed of the coefficients of sliding
+friction µs , rolling friction µr , and restitution e. Let X          BayesSim directly learns a conditional density function,
+represent the birds-eye-view depth image of the grains             qφ (θ |T (X)) (where φ is the set of learnable parameters
+once they have reached steady-state. Variables X r and X s         of q), by mapping summary statistics to a mixture of K
+are used to distinguish real from simulated depth images,          Gaussian components via random Fourier features [36]. The
+respectively, and X s = g(θ ), where g(θ ) is the simulation.      Mixture Density Random Fourier Feature (MDRFF) network
+Because of the high-dimensional space of depth images X r          learns from N pairs of parameters and summary statistics,
+and X s , we define the random variable T (X) as a vector          {θi , T (Xis )}Ni=1 , generated by independently sampling from a
+composed of statistics (such as average distance of grains         predefined prior distribution, p(θ ), and forward-simulating
+from the centroid) to summarize the observed state X. Let the      each sample, θi . For twice differentiability of q, the Matérn
+likelihood function be defined as p(T (X)|θ ) and the posterior    kernel is used with ν = 2.5, where ν increases with smooth-
+be defined as p(θ |T (X) = T (X r )). The likelihood function,     ness. The posterior is then parametrically approximated
+defined implicitly by g(θ ), is often intractable to evaluate or   using the learned conditional density qφ (θ |T (X)) and a real
+unavailable with such complex simulations, thus motivating         observation T (X r ). The main advantages of using BayesSim
+the use of a likelihood-free inference approach.                   over classical optimization methods are that the complexities
+                                                                   and inaccuracies of the DEM simulator and PDE solver are
+C. Objective                                                       incorporated in the estimated posterior. The multimodality
+   Given samples of T (X s ) and the corresponding parameters      and uncertainty of the approximated posterior can be used to
+used to generate the simulations, we would like to approx-         analyze the accuracy with respect to the parameters θ and
+imate the posterior function p(θ |T (X) = T (X r )) such that,     robustness with respect to measurement noise. In addition,
+from a real observation X r , we can infer granular simulation     because BayesSim is an ε-free method, it improves on ABC
+parameters θ from the macroscopic behavior of the material,        methods by being more sample efficient and producing more
+summarized by features T (X). Because DEM simulations              accurate posterior approximations [34] with a limited number
+leverage various numerical solvers and are associated with         of samples. After the initial cost of running N simulations and
+complex systems of differential equations, we choose a             training the model, BayesSim can quickly produce posterior
+simulator-agnostic inference framework that approximates           approximations, making it a compelling method for granular
+the intractable posterior by sampling from the simulator. The      material inference problems in robotic applications.
+B. Simulation
+   Critical dimensions are made equivalent in the simulated
+and physical scenes. The simulated funnel, which was
+modeled in 3D based on the physical funnel, is positioned at
+an equivalent distance above the ground surface. The spherical
+grains are scaled to match the diameter of a single grain of
+Israeli couscous along its longest axis (4 mm). For simplicity,
+at the start of the simulation, the 2000 grains are each spaced
+at 8 mm intervals in a 10 × 10 × 20 grid, where the bottom            Fig. 3: Sensitivity to observation error. An example X s is shown perturbed
+grains are just below the top of the funnel.                          by different levels of noise. 50 different test images X s were generated by
+                                                                      evenly sampling µs ∈ [0.01, 1.0]. The resulting approximated posteriors are
+   The coefficient of restitution e is the ratio of a grain’s speed   plotted per true value of µs , where the highest peaks correspond to the
+before and after a collision; this coefficient ranges from 0 to       brightest points. A perfect inference would result in a white line overlapping
+1, corresponding to perfectly inelastic and elastic collisions,       the red. While the model is fairly robust to the level of per-pixel Gaussian
+                                                                      depth noise applied, accuracy is more affected by Gaussian blur. Posterior
+respectively. The ranges of the coefficients of sliding friction      peaks become wider, and distributions can become multimodal with σ > 4.
+µs and rolling friction µr that create a noticeable diversity in
+granular formations are 0 to 1 and 1E-7 to 1E-1, respectively.
+For this reason, rolling friction is sampled from a logarithmic       Because the X r are fairly noisy, a color threshold mask is used
+distribution. A simulated depth camera is positioned at a             to segment pixels corresponding to the granular formations.
+birds-eye viewpoint, 29 cm from the surface ground, giving            These pixels are then reprojected into 3D using the camera
+it a 58 cm × 58 cm field of view.                                     intrinsics matrix. For the real depth image, a plane is fit to
+   The solver chosen is NVIDIA Isaac’s Preconditioned                 reprojected pixels corresponding to the ground surface. The
+Conjugate Residual (PCR) solver, and 20 inner iterations              orientation of the fitted ground plane informs the centering
+with 4 outer iterations are used in experiments [26]. The             and re-orientation of the granular point cloud to account for
+simulator runs with time step 1/60 sec, 10 substeps, and a            camera tilt. Let r represent the vector of radial distances of
+relaxation factor of 0.75 for stability and convergence.              grain points in the horizontal plane from the centroid of the
+C. Physical Setup                                                     granular formation and z be the vector of grain point heights.
+                                                                         The summary statistics of a single depth image T (X) are
+   For the physical experiments, the funnel is positioned with
+                                                                      chosen as [max(z), µ(z), σ (z), max(r), µ(r), σ (x), σ (y), σ (r),
+its bottom tip 12 cm above the ground surface. The surface
+                                                                      IQR(x), IQR(y), IQR(r), KURT (r), dCor(r, z), d f , b, A]T ,
+is covered in thin, moderate-friction black velvet to limit
+                                                                      where µ(·), σ (·), IQR(·), KURT (·), and dCor(·, ·) are the
+the spread of the grains upon impact, as well as to simplify
+                                                                      mean, standard deviation, interquartile range, kurtosis, and
+segmentation. The primary grain used in the experiments is
+                                                                      distance correlation. A chi-distribution, chosen for its likeness
+Israeli couscous, which has the approximate geometry of a
+                                                                      in shape to a cross-section of a granular formation, is fit to
+rounded cylinder; barley, which has a similar density but
+                                                                      r. Statistics d f , b, and A denote degrees of freedom, shift,
+is slightly larger and more ellipsoidal, is also used in the
+                                                                      and scale, respectively, from a standardized chi probability
+latter half of the experiments. An Intel RealSense D435 depth
+                                                                      density. These statistics were chosen to summarize the
+camera is positioned at 40 cm above the ground surface. This
+                                                                      dispersion and statistical dependence of the grain locations.
+position was chosen to balance the trade-off between field-of-
+                                                                      A preliminary ablation study suggested that subsets of
+view and clarity of the depth image. Although the raw depth
+                                                                      T (X) were sufficiently descriptive in capturing the granular
+images are still noisy at 40 cm, eliminating the background
+                                                                      distributions, unless the subsets contained less than three
+using color segmentation results in well-defined point clouds
+                                                                      features or the features exclusively pertained to either r or z.
+of the granular formations. An ABB YuMi dual-arm robot is
+used for the robot experiments.                                               V. S ENSITIVITY T ESTS FOR S YSTEM D ESIGN
+D. Summary Statistic Extraction                                       A. Preliminary Tests for System Noise
+   A majority of DEM calibration work relies on extracting               When running the simulator to train BayesSim, there
+specific features (e.g., angle of repose) of a conical pile in        are two main sources of uncertainty. The first is purely
+order to infer a single parameter (e.g., µs ). However, initial       algorithmic, due to the non-determinism of the simulator
+experiments showed that pouring grains can result in piles            and numerical error. To measure algorithmic uncertainty, the
+or rings, which may be more informative of other material             simulator was run 1000 times with identical conditions except
+parameters. Moreover, for shallow formations, it may be               for sliding friction, where µs ∈ {0.01, 1}, evenly split. The
+difficult to measure angle of repose from a depth image.              measured summary statistics for each µs had variances of at
+We take a more generalizable approach and propose using a             least two orders of magnitude smaller than their mean values.
+vector of 16 summary statistics to serve as T (X).                       Second, an insufficient number of samples for training and
+   To extract the summary statistics features from a granular         interpolation uncertainty may contribute to poor performance.
+formation, the depth image X is first downsampled by factor           To test these, a training set was created by sampling µs
+n. For X s , n = 20 and for X r , n = 10 to match resolutions.        uniformly between 0.01 and 1. A 50-simulation testing set
+was generated by sampling between 0.01 and 1, independently
+of the training set. Supporting intuition, the accuracy of the
+friction coefficients inferred by BayesSim improved with
+more samples. For a training set of 500 samples, the error
+in the friction coefficient estimates is 0.0191 ± 0.0799, while
+for 1000 samples, the error is reduced to 0.0062 ± 0.0018.
+B. Sensitivity to Observation Error
+   A key assumption of our system is that the summary
+statistics of the real and simulated depth images will lie within
+the same distribution. However, the two might not align or           Fig. 4: Examples comparing simulated depth images of testing set and
+overlap given drastically different observations (e.g., due to       simulated depth images from running a forward simulation with inferred
+a low-quality experimental depth image). To test the effect          parameters. Table shows corresponding errors in inferred parameters, as well
+                                                                     as L2 errors between summary statistics.
+of observation noise on inference, we simulate two types of
+camera noise on a 50-sample testing set, where µs is evenly
+sampled from 0.01 to 1 with all other parameters equivalent.
+An XY Gaussian blur with σ = {0, 2, 4, 6, 8} is convolved            calculate the L2-norm error. We avoid evaluating accuracy via
+with the depth image, and pixel-wise Gaussian noise with             direct comparisons of the downsampled depth images, as the
+σ = {0, 0.001, 0.002, 0.003, 0.004} is added to each depth           computed error would be highly sensitive to misalignments of
+value, with ranges chosen to mimic realistic noise magnitudes.       the scattered grains rather than reflect meaningful differences
+These two perturbations are applied independently, and the           in spatial distributions.
+resulting posteriors per true friction value are illustrated in         The 50 test grain formations were simulated by randomly
+Figure 3. As shown, inference of µs is fairly robust to pixel-       sampling µs and e uniformly and µr logarithmically from
+wise noise, but is sensitive to high values of Gaussian blur.        their given ranges. The average error of the inferred e was
+                                                                     −0.0008±0.0148, while that of µs and ln(µr ) were 0.0380±
+C. Propagation of Error                                              0.0646 and −1.1695 ± 0.7032, respectively. As in Section V-
+   Given an observation X, the approximated posterior en-            C, these error bounds correspond to negligible changes in the
+codes the uncertainty of the inferred parameters θ ∗ . Sensitivity   resulting statistics. As shown in Figure 4, forward simulations
+tests were performed to investigate how this uncertainty             of the inferred parameters for the 50 test formations generate
+propagates to errors in the summary statistics T (g(θ ∗ )).          visually equivalent shapes. To consider as a baseline for the
+Fixing all other parameters, µs , ln(µr ), and e required errors     following experiments, the average L2-norm error between
+of ±0.05, 3, 0.01, respectively, to perturb the height and           the 50 pairs of {T (X s,i ), T (X s,o )} was 1.582 ± 0.3356.
+average radial distance to more than the width of a single              Sim-to-sim comparisons also enable a principled approach
+grain. For real-world context, manufacturing applications may        to testing sensitivity to model error. For instance, the grains
+require that the diameter of a granular pile be predicted to         are spherical, when in reality most grains are not. We tested
+within 5% of the true value. (For example, for a pile with           sensitivity to mismatched geometry by creating a testing set
+base diameter equal to 50 times a grain diameter of 4 mm,            of cylindrical and cube-shaped grains, where the diameter
+an error of 1 cm may be allowable). With the proposed                and length of each grain were 4 mm, the diameter of the
+system, this specification is fulfilled by the optimal values,       training set spheres. Each testing set consisted of 50 different
+with allowable variation of ±0.1, 4, 0.05 that is within the         formations which varied in µs , while e and µr were fixed
+performance achieved in the following experiments.                   at 0.5 and 1E−6, respectively. Parameters µs , µr , and e
+                                                                     were inferred from the test formations and forward simulated
+                         VI. R ESULTS                                with spherical grains. Comparing T (X s,i ) (with cylindrical
+A. Sim-to-sim Parameter Estimation                                   and cubic grains) with T (X s,o ) (using spherical grains) the
+   The first objective was to test the accuracy of the trained       L2-norm errors were 4.0139 ± 1.0574 and 1.8301 ± 1.9275,
+BayesSim model on simulated depth images. Given a simu-              respectively. Spherical grains can approximate formations
+lated input image X s,i = g(θ ), we aimed to quantify how            made with cubes better than cylinders, possibly due to
+close the inferred parameters θ ∗ = µs∗ , µr∗ , e∗ were to θ .       the asymmetry of cylinder geometry. Depending on the
+Furthermore, to evaluate the propagation of error in θ ∗ , a         application, a spherical representation may be sufficient.
+forward simulation was run to obtain a new pile X s,o = g(θ ∗ ).
+                                                                     B. Real-to-sim Parameter Estimation
+The difference between the piles was evaluated via the L2-
+norm error between T (X s,i ) and T (X s,o ), both standardized         The goal of this experiment was to test whether material
+over the summary statistics of the training dataset. Note that,      parameters of real-world granular formations could be inferred
+for some applications, evaluating particular subsets of the          to produce accurate simulations of macroscopic behavior. The
+summary statistics might be more useful (e.g., height of the         initial test set was composed of real depth images of ∼2000
+granular pile or the angle of repose). To enable generality,         grains of Israeli couscous, poured through a funnel fixed at
+all 16 summary statistics defined in Section IV-D are used to        12 cm above the ground surface. Ten different pours were
+                                                                                Fig. 6: Two granular manipulation tasks were tested. (Left): The height
+                                                                                of the funnel is inferred to create a desired ring shape. Performance is
+                                                                                demonstrated by creating a pattern of three concentric rings. (Right): The
+                                                                                calibrated simulator is used to recreate a real-life scene of pouring grains
+                                                                                into a bowl. At various heights, both the simulations of couscous and barley
+                                                                                reasonably estimate the number of grains that leave the cereal bowl.
+
+
+Fig. 5: Comparisons of real depth images of piles poured at different heights
+and simulated depth images generated from running a forward simulation at       computed from the resulting granular formation (i.e., the
+the corresponding heights, using parameters inferred from a height of 12
+cm. L2 errors are listed below the depth images.
+                                                                                5th and 50th percentile of granular radial distance, which
+                                                                                approximated the inner and outer radii of a ring). BayesSim
+                                                                                was then evaluated on a testing set to infer the funnel height
+executed, and for each, ten consecutive depth images were                       from these two summary statistics; the height was estimated
+collected and averaged to mitigate temporal noise from the                      within 0.0530 ± 0.2221 cm. For the demonstration, summary
+camera. For each of the averaged images {X r,i }10                              statistics were chosen to correspond to a desired pattern of
+                                                 i=1 , summary
+statistics {T (X r,i )}10  were computed,   and                                 two concentric rings with an inner pile. BayesSim inferred
+                       i=1                      µ s , µr , and e
+were inferred. Forward simulation was executed for each                         corresponding funnel heights of {27.1, 10.1, 1.5} cm. The
+parameter set, and the L2-error was computed between the                        robot was commanded to pour couscous from these heights,
+summary statistics of the real and forward-simulated granular                   resulting in the desired pattern (Figure 6).
+formations. From the ten parameter sets inferred, the five                         The second demonstration evaluated how closely the
+corresponding to the lowest errors were averaged. The inferred                  presented framework could predict undesirable spilling during
+parameters for couscous were µs = 0.6687, µr = 8.1506E-7,                       a granular pouring task. The calibrated simulator was used to
+and e = 0.7689, and the parameters for barley were µs =                         simulate the pouring of couscous and barley into a cereal bowl,
+0.3807, µr = 1.0613E-6, and e = 0.4792.                                         with the simulation relaxation constant increased from 0.75
+   Forward simulation with the estimated parameters captures                    to 0.9 to ensure accurate simulation of high-speed collisions.
+similar macroscopic behavior as the five real-world pours at                    The number of grains that spilled out of the bowl was counted.
+12 cm, with an average L2-norm error of 2.2263 ± 0.1377                         The industrial robot was then used to precisely repeat the
+and 2.0311 ± 0.3807 for the couscous and barley formations,                     experiment in the real-world, pouring grains into a velvet-lined
+respectively. However, it is critical to test how well these                    cereal bowl to match simulator conditions. As tabulated in
+parameters generalize to pours at different heights. Five more                  Figure 6, in most cases, the calibrated simulator predicted the
+pours of each grain were performed, with each pour at a                         number of spilled grains across different pouring heights with
+different height: {2, 4, 6, 8, 10} cm off the ground. For each                  surprising accuracy. (Please see the supplementary video.)
+of these pours, a forward simulation was run with the same
+                                                                                                        VII. C ONCLUSIONS
+grain parameters while shifting the funnel height. Figure 5
+illustrates that the inferred parameters generalize reasonably                     In this paper, the material parameters of granular ma-
+well, with relatively low L2 errors. This suggests that it may                  terials were inferred using a new framework combining
+be possible under this framework to reason about pour heights                   likelihood-free Bayesian inference, efficient simulation, and
+to create desired pile and ring shapes given a specific type of                 simple experiments. The use of GPU-based simulation and
+grain. We test this hypothesis in the following experiment.                     off-the-shelf depth cameras may be particularly appealing
+                                                                                for robotics applications. Simulation-to-simulation inference
+C. Robotic Demonstrations                                                       was highly accurate, and simulation-to-experiment inference
+   The first demonstration evaluated whether the presented                      trailed closely in performance. Robotics demos showed that
+framework could enable an industrial robot to pour granular                     the inferred parameters generalized well to different pouring
+material into a desired shape, as may be necessary in a kitchen                 heights, and furthermore, that a robot can effectively reason
+or factory. A new BayesSim model was trained on 1000                            about granular material to pour desired granular formations
+simulated piles. The simulator parameters µs , µr , and e were                  and predict its behavior in dynamic scenarios.
+set to their inferred values for couscous (0.6687, 8.1506E-7,                      There are numerous exciting opportunities for future work
+and 0.7689, respectively), and the funnel height was uniformly                  in perceiving and reasoning about granular materials. To
+sampled between 1 and 13 cm. Two summary statistics were                        improve inference, observations can be amended to include
+temporal sequences of depth images, with additional summary                     [14] Huy Q Do, Alejandro M Aragón, and Dingena L Schott. Automated
+statistics to capture transient dynamics. To enhance simulation,                     discrete element method calibration using genetic and optimization
+                                                                                     algorithms. In EPJ Web of Conferences, volume 140, page 15011.
+NVIDIA’s Isaac Simulator can be applied to model cohesion,                           EDP Sciences, 2017.
+allowing liquid-solid interactions (e.g., capillary bridging); in               [15] Sachith Dunatunga and Ken Kamrin. Continuum modelling and
+addition, simulated particle geometries could be represented as                      simulation of granular flows through their many phases. Journal
+                                                                                     of Fluid Mechanics, 779:483–513, 2015.
+superquadrics [35], enabling more accurate approximation of                     [16] Yuanming Hu, Yu Fang, Ziheng Ge, Ziyin Qu, Yixin Zhu, Andre
+complex real-world grain geometries. Finally, more elaborate                         Pradhana, and Chenfanfu Jiang. A moving least squares material
+robotic manipulation tasks can be explored, such as moving                           point method with displacement discontinuity and two-way rigid body
+                                                                                     coupling. ACM Transactions on Graphics (TOG), 37(4):150, 2018.
+the end effector along a trajectory to create an asymmetric                     [17] Heinrich M Jaeger and Sidney R Nagel. Physics of the granular state.
+grain trail, or scooping and pouring granular material into                          Science, 255(5051):1523–1531, 1992.
+and out of assorted containers.                                                 [18] Pierre Jop, Yoël Forterre, and Olivier Pouliquen. A constitutive law
+                                                                                     for dense granular flows. Nature, 441(7094):727, 2006.
+                                                                                [19] Ken Kamrin. Quantitative rheological model for granular materials:
+                        ACKNOWLEDGMENT                                               The importance of particle size. Handbook of Materials Modeling:
+                                                                                     Applications: Current and Emerging Materials, pages 1–24, 2018.
+   The authors were supported in part by the National Science Foundation        [20] Ken Kamrin. Non-locality in granular flow: Phenomenology and
+Graduate Research Fellowship. We thank Miles Macklin, Renato Gasoto,                 modeling approaches. Frontiers in Physics, 7:116, 2019.
+and Hammad Mazhar for their tireless assistance with the NVIDIA Isaac           [21] Ken Kamrin and Georg Koval. Effect of particle surface friction on non-
+                                                                                     local constitutive behavior of flowing granular media. Computational
+Simulator, as well as Matthew Matl, Karl Van Wyk, and Qian Wan for their             Particle Mechanics, 1(2):169–176, 2014.
+insightful feedback and suggestions.                                            [22] Margaret A Knuth, JB Johnson, MA Hopkins, RJ Sullivan, and
+                                                                                     JM Moore. Discrete element modeling of a Mars Exploration Rover
+                                                                                     wheel in granular material. Journal of Terramechanics, 49(1):27–36,
+                             R EFERENCES                                             2012.
+                                                                                [23] Chen Li, Tingnan Zhang, and Daniel I Goldman. A terradynamics of
+ [1] Granular material by design.             https://jfi.uchicago.                  legged locomotion on granular media. science, 339(6126):1408–1412,
+     edu/~jaeger/group/Granular_Matter_by_Design/                                    2013.
+     Granular_Matter_by_Design.html. Accessed:2019-09-15.                       [24] Jacky Liang, Viktor Makoviychuk, Ankur Handa, Nuttapong Chentanez,
+ [2] NVIDIA Isaac: Virtual simulator for robots.                    https:           Miles Macklin, and Dieter Fox. GPU-accelerated robotic simulation for
+     //www.nvidia.com/en-us/deep-learning-ai/                                        distributed reinforcement learning. arXiv preprint arXiv:1810.05762,
+     industries/robotics/. Accessed: 2019-09-11.                                     2018.
+ [3] L Anand and C Gu. Granular materials: constitutive equations and           [25] Andrea J Liu and Sidney R Nagel. Granular and jammed materials.
+     strain localization. Journal of the Mechanics and Physics of Solids,            Soft Matter, 6(13):2869–2870, 2010.
+     48(8):1701–1733, 2000.                                                     [26] Miles Macklin, Kenny Erleben, Matthias Müller, Nuttapong Chentanez,
+ [4] L Benvenuti, C Kloss, and S Pirker. Identification of DEM simulation            Stefan Jeschke, and Viktor Makoviychuk. Non-smooth Newton methods
+     parameters by artificial neural networks and bulk experiments. Powder           for deformable multi-body dynamics. ACM Transactions on Graphics
+     technology, 291:456–465, 2016.                                                  (TOG), 38(5):1–20, 2019.
+ [5] Eric Brown, Nicholas Rodenberg, John Amend, Annan Mozeika, Erik            [27] Miles Macklin and Matthias Müller. Position based fluids. ACM
+     Steltz, Mitchell R Zakin, Hod Lipson, and Heinrich M Jaeger. Universal          Transactions on Graphics (TOG), 32(4):104, 2013.
+     robotic gripper based on the jamming of granular material. Proceedings     [28] Miles Macklin, Matthias Müller, Nuttapong Chentanez, and Tae-Yong
+     of the National Academy of Sciences, 107(44):18809–18814, 2010.                 Kim. Unified particle physics for real-time applications. ACM
+ [6] Yevgen Chebotar, Ankur Handa, Viktor Makoviychuk, Miles Macklin,                Transactions on Graphics (TOG), 33(4):153, 2014.
+     Jan Issac, Nathan Ratliff, and Dieter Fox. Closing the sim-to-real loop:   [29] Ryan D Maladen, Yang Ding, Paul B Umbanhowar, and Daniel I
+     Adapting simulation randomization with real world experience. In                Goldman. Undulatory swimming in sand: experimental and simulation
+     2019 International Conference on Robotics and Automation (ICRA),                studies of a robotic sandfish. The International Journal of Robotics
+     pages 8973–8979. IEEE, 2019.                                                    Research, 30(7):793–805, 2011.
+ [7] Carolyn L Chen, Jeffrey O Snyder, and Peter J Ramadge. Learning            [30] Hammad Mazhar, Jonas Bollmann, Endrina Forti, Andreas Praeger,
+     to identify container contents through tactile vibration signatures. In         Tim Osswald, and Dan Negrut. Studying the effect of powder geometry
+     2016 IEEE International Conference on Simulation, Modeling, and                 on the selective laser sintering process. Society of Plastics Engineers
+     Programming for Autonomous Robots (SIMPAR), pages 43–48. IEEE,                  (SPE) ANTEC, 2014.
+     2016.                                                                      [31] Matthias Müller, Bruno Heidelberger, Marcus Hennix, and John Ratcliff.
+ [8] Hongyang Cheng, Takayuki Shuku, Klaus Thoeni, Pamela Tempone,                   Position based dynamics. Journal of Visual Communication and Image
+     Stefan Luding, and Vanessa Magnanimo. An iterative Bayesian                     Representation, 18(2):109–118, 2007.
+     filtering framework for fast and automated calibration of DEM models.      [32] Dan Negrut, Daniel Melanz, Hammad Mazhar, David Lamb, Param-
+     Computer Methods in Applied Mechanics and Engineering, 350:268–                 sothy Jayakumar, and Michael Letherwood. Investigating through
+     294, 2019.                                                                      simulation the mobility of light tracked vehicles operating on discrete
+ [9] Matteo Cianchetti, Tommaso Ranzani, Giada Gerboni, Thrishantha                  granular terrain. SAE International Journal of Passenger Cars-
+     Nanayakkara, Kaspar Althoefer, Prokar Dasgupta, and Arianna Men-                Mechanical Systems, 6(2013-01-1191):369–381, 2013.
+     ciassi. Soft robotics technologies to address shortcomings in today’s      [33] Sia Nemat-Nasser and Juhua Zhang. Constitutive relations for
+     minimally invasive surgery: the STIFF-FLOP approach. Soft Robotics,             cohesionless frictional granular materials. International Journal of
+     1(2):122–131, 2014.                                                             Plasticity, 18(4):531–547, 2002.
+[10] Samuel Clarke, Travers Rhodes, Christopher G Atkeson, and Oliver           [34] George Papamakarios and Iain Murray. Fast ε-free inference of
+     Kroemer. Learning audio feedback for estimating amount and flow of              simulation models with Bayesian conditional density estimation. In
+     granular material. In Conference on Robot Learning, pages 529–550,              Advances in Neural Information Processing Systems, pages 1028–1036,
+     2018.                                                                           2016.
+[11] CJ Coetzee. Calibration of the discrete element method. Powder             [35] Alexander Podlozhnyuk, Stefan Pirker, and Christoph Kloss. Efficient
+     Technology, 310:104–142, 2017.                                                  implementation of superquadric particles in discrete element method
+[12] Peter A Cundall and Otto DL Strack. A discrete numerical model for              within an open-source framework. Computational Particle Mechanics,
+     granular assemblies. geotechnique, 29(1):47–65, 1979.                           4(1):101–118, 2017.
+[13] Karola Dierichs, Tobias Schwinn, and Achim Menges. Robotic pouring         [36] Ali Rahimi and Benjamin Recht. Random features for large-scale kernel
+     of aggregate structures. In Rob| Arch 2012, pages 196–205. Springer,            machines. In Advances in Neural Information Processing Systems,
+     2013.                                                                           pages 1177–1184, 2008.
+[37] Fabio Ramos, Rafael Carvalhaes Possas, and Dieter Fox. BayesSim:                International Conference On Advanced Intelligent Mechatronics (AIM),
+     adaptive domain randomization via probabilistic inference for robotics          pages 165–170. IEEE, 2015.
+     simulators. arXiv preprint arXiv:1906.01728, 2019.                         [42] Qiong Zhang and Ken Kamrin. Microscopic description of the granular
+[38] Patrick Richard, Mario Nicodemi, Renaud Delannay, Philippe Ribiere,             fluidity field in nonlocal flow modeling. Physical review letters,
+     and Daniel Bideau. Slow relaxation and compaction of granular systems.          118(5):058001, 2017.
+     Nature materials, 4(2):121, 2005.
+[39] Connor Schenck, Jonathan Tompson, Dieter Fox, and Sergey Levine.           [43] Tingnan Zhang, Feifei Qian, Chen Li, Pierangelo Masarati, Aaron M
+     Learning robotic manipulation of granular media. arXiv preprint                 Hoover, Paul Birkmeyer, Andrew Pullin, Ronald S Fearing, and Daniel I
+     arXiv:1709.02833, 2017.                                                         Goldman. Ground fluidization promotes rapid running of a lightweight
+[40] Jivko Sinapov, Connor Schenck, and Alexander Stoytchev. Learning                robot. The International Journal of Robotics Research, 32(7):859–869,
+     relational object categories using behavioral exploration and multimodal        2013.
+     perception. In 2014 IEEE International Conference on Robotics and          [44] Yifan Zhu, Laith Abdulmajeid, and Kris Hauser. A data-driven approach
+     Automation (ICRA), pages 5691–5698. IEEE, 2014.                                 for fast simulation of robot locomotion on granular media. In 2019
+[41] Elliot Thompson-Bean, Oliver Steiner, and Andrew McDaid. A                      International Conference on Robotics and Automation (ICRA), pages
+     soft robotic exoskeleton utilizing granular jamming. In 2015 IEEE               7653–7659. IEEE, 2019.
+

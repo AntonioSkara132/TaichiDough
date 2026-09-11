@@ -1,0 +1,32 @@
+{
+  "kind": "algebraic_test_not_simulation",
+  "rows": [
+    {
+      "grid": 24,
+      "dx": 0.041666666666666664,
+      "expected_A_yy_per_s": 3.0,
+      "implemented_C_yy": 0.12500000000000003,
+      "max_abs_implemented_minus_dx_A": 2.7755575615628914e-17,
+      "max_abs_affine_preserving_minus_A": 8.881784197001252e-16,
+      "max_abs_mean_velocity_minus_b": 5.551115123125783e-17
+    },
+    {
+      "grid": 48,
+      "dx": 0.020833333333333332,
+      "expected_A_yy_per_s": 3.0,
+      "implemented_C_yy": 0.0625,
+      "max_abs_implemented_minus_dx_A": 1.734723475976807e-17,
+      "max_abs_affine_preserving_minus_A": 7.771561172376096e-16,
+      "max_abs_mean_velocity_minus_b": 5.551115123125783e-17
+    },
+    {
+      "grid": 96,
+      "dx": 0.010416666666666666,
+      "expected_A_yy_per_s": 3.0,
+      "implemented_C_yy": 0.03125,
+      "max_abs_implemented_minus_dx_A": 2.2985086056692694e-17,
+      "max_abs_affine_preserving_minus_A": 2.1649348980190553e-15,
+      "max_abs_mean_velocity_minus_b": 2.7755575615628914e-17
+    }
+  ]
+}

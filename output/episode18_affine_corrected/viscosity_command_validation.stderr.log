@@ -1,0 +1,2 @@
+[Taichi] version 1.7.4, llvm 15.0.4, commit b4b956fd, linux, python 3.10.12
+[I 09/11/26 20:11:48.047 840808] [shell.py:_shell_pop_print@23] Graphical python shell detected, using wrapped sys.stdout

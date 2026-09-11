@@ -1,0 +1,211 @@
+{
+  "source": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/output/episode18_e130579_dx8_viscosity_sweep2",
+  "source_summary_sha256": "b702f3c151afe945b6b38266f9bc51f8d1bf3e4ef35428659505b6cdc9ef55bc",
+  "renderer": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/scripts/render_replay_depth_tools.py",
+  "renderer_sha256": "145e2207c085397dab76b1836264d6ea50923f550a778c3e77dbca781078d25c",
+  "no_simulation_rerun": true,
+  "frame_count": 61,
+  "fps": 7.572,
+  "source_frame_range": [
+    0,
+    60
+  ],
+  "scored_source_frame_range": [
+    1,
+    60
+  ],
+  "camera": {
+    "width": 960,
+    "height": 720,
+    "fx": 738.1093829685466,
+    "fy": 738.1093829685466,
+    "cx": 479.5,
+    "cy": 359.5,
+    "zNear": 0.01,
+    "zFar": 5.0,
+    "scene_from_camera": [
+      [
+        0.779620360119655,
+        0.27358976446568983,
+        -0.5633300407989157,
+        0.72
+      ],
+      [
+        0.0,
+        -0.8995255306439063,
+        -0.4368681949052816,
+        0.42
+      ],
+      [
+        -0.626252420423985,
+        0.34059133943687925,
+        -0.7012884181374258,
+        1.34
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  "shared_display_depth_range_m": [
+    0.8122625584940855,
+    0.9664141946843674
+  ],
+  "fixed_parameters": {
+    "grid": 48,
+    "plastic_velocity_damping": 1.0,
+    "tool_collision": "sdf",
+    "tool_contact_friction": 0.2,
+    "tool_contact_padding_m": 0.0026041666666666665,
+    "tool_sdf_resolution": 64,
+    "velocity_damping": 1.0,
+    "youngs_modulus_pa": 130579.320726
+  },
+  "renderer_equivalence_checks": [
+    {
+      "case": "viscosity_0",
+      "source_frame": 0,
+      "identical_to_existing_renderer": true
+    },
+    {
+      "case": "viscosity_10",
+      "source_frame": 60,
+      "identical_to_existing_renderer": true
+    }
+  ],
+  "cases": [
+    {
+      "id": "viscosity_0",
+      "viscosity_pa_s": 0.0,
+      "training_loss": 0.3611063537133981,
+      "metadata_sha256": "bafe7008ff1c0cda66162e2be2fc61aeced4381182048543f8e6b328f8d6658b"
+    },
+    {
+      "id": "viscosity_1",
+      "viscosity_pa_s": 1.0,
+      "training_loss": 0.36109166663665204,
+      "metadata_sha256": "ff096420b9914366125f15ebc6df8190451ffcaea2acb9f0cb47503c547ba04c"
+    },
+    {
+      "id": "viscosity_2p5",
+      "viscosity_pa_s": 2.5,
+      "training_loss": 0.36103418347008154,
+      "metadata_sha256": "38b7f06d51c5c85eecb553498b7d843127b6f3c2d87f6bf930dfa6b86dee640f"
+    },
+    {
+      "id": "viscosity_5",
+      "viscosity_pa_s": 5.0,
+      "training_loss": 0.36101766252581863,
+      "metadata_sha256": "23bce88f8b99ac8c00e3f86652888509a4b55dbed3bc239e8aa4058fc7a4aef8"
+    },
+    {
+      "id": "viscosity_10",
+      "viscosity_pa_s": 10.0,
+      "training_loss": 0.3610061713928395,
+      "metadata_sha256": "ed0654587b956cc4d76de04488fdb9b8f4e0d4a31044829ad3d319a8e445faa0"
+    }
+  ],
+  "videos": {
+    "viscosity_0_isometric.mp4": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 720,
+          "pix_fmt": "yuv420p",
+          "r_frame_rate": "1893/250",
+          "nb_read_frames": "61"
+        }
+      ],
+      "format": {
+        "duration": "8.056000"
+      }
+    },
+    "viscosity_1_isometric.mp4": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 720,
+          "pix_fmt": "yuv420p",
+          "r_frame_rate": "1893/250",
+          "nb_read_frames": "61"
+        }
+      ],
+      "format": {
+        "duration": "8.056000"
+      }
+    },
+    "viscosity_2p5_isometric.mp4": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 720,
+          "pix_fmt": "yuv420p",
+          "r_frame_rate": "1893/250",
+          "nb_read_frames": "61"
+        }
+      ],
+      "format": {
+        "duration": "8.056000"
+      }
+    },
+    "viscosity_5_isometric.mp4": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 720,
+          "pix_fmt": "yuv420p",
+          "r_frame_rate": "1893/250",
+          "nb_read_frames": "61"
+        }
+      ],
+      "format": {
+        "duration": "8.056000"
+      }
+    },
+    "viscosity_10_isometric.mp4": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 720,
+          "pix_fmt": "yuv420p",
+          "r_frame_rate": "1893/250",
+          "nb_read_frames": "61"
+        }
+      ],
+      "format": {
+        "duration": "8.056000"
+      }
+    },
+    "viscosity_comparison_isometric.mp4": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 1920,
+          "height": 960,
+          "pix_fmt": "yuv420p",
+          "r_frame_rate": "1893/250",
+          "nb_read_frames": "61"
+        }
+      ],
+      "format": {
+        "duration": "8.056000"
+      }
+    }
+  },
+  "duration_s": 113.1792586579977,
+  "interpretation": "Training-only comparison of effective coefficients; tiny score differences do not establish a unique physical viscosity."
+}

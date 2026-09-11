@@ -1,0 +1,1927 @@
+                                                                                                                                               Journal Title
+                                                                                                                                               XX(X):1–25
+                                         Differentiable Physics-based System                                                                   ©The Author(s) 2024
+                                                                                                                                               Reprints and permission:
+                                         Identification for Robotic Manipulation                                                               sagepub.co.uk/journalsPermissions.nav
+                                                                                                                                               DOI: 10.1177/ToBeAssigned
+
+                                         of Elastoplastic Materials                                                                            www.sagepub.com/
+
+                                                                                                                                                 SAGE
+
+                                         Xintong Yang1 , Ze Ji1 , Yu-Kun Lai2
+
+
+
+                                         Abstract
+                                         Robotic manipulation of volumetric elastoplastic deformable materials, from foods such as dough to construction
+                                         materials like clay, is in its infancy, largely due to the difficulty of modelling and perception in a high-dimensional
+                                         space. Simulating the dynamics of such materials is computationally expensive. It tends to suffer from inaccurately
+                                         estimated physics parameters of the materials and the environment, impeding high-precision manipulation. Estimating
+                                         such parameters from raw point clouds captured by optical cameras suffers further from heavy occlusions. To address
+                                         this challenge, this work introduces a novel Differentiable Physics-based System Identification (DPSI) framework that
+arXiv:2411.00554v3 [cs.RO] 18 Feb 2025
+
+
+
+
+                                         enables a robot arm to infer the physics parameters of elastoplastic materials and the environment using simple
+                                         manipulation motions and incomplete 3D point clouds, aligning the simulation with the real world. Extensive experiments
+                                         show that with only a single real-world interaction, the estimated parameters, Young’s modulus, Poisson’s ratio, yield
+                                         stress and friction coefficients, can accurately simulate visually and physically realistic deformation behaviours induced
+                                         by unseen and long-horizon manipulation motions. Additionally, the DPSI framework inherently provides physically
+                                         intuitive interpretations for the parameters in contrast to black-box approaches such as deep neural networks. The
+                                         project is fully open-sourced via GitHub.
+
+
+                                         Keywords
+                                         Elastoplastic material manipulation, system identification, differentiable physics, deformable material manipulation
+
+
+
+                                         Introduction                                                     dynamics even more unpredictable. As a result, achieving
+                                                                                                          high-precision manipulation for such materials with motion
+                                         Despite the recognised importance of robotic manipulation
+                                                                                                          planning or data-driven techniques is challenging due to the
+                                         of deformable materials, this topic remains underexplored,
+                                                                                                          high computational cost and the lack of techniques to capture
+                                         particularly when it comes to high-precision manipulation
+                                                                                                          the dynamics accurately and efficiently.
+                                         of volumetric elastoplastic materials. A primary challenge
+                                         in this area arises from the materials’ infinite degrees            To close this gap, this research proposes a Differentiable
+                                         of freedom (DoFs), leading to highly unpredictable               Physics-based System Identification (DPSI) framework for
+                                         deformation dynamics.                                            the robotic manipulation of volumetric elastoplastic mate-
+                                                                                                          rials. Our framework can efficiently estimate key physics
+                                            The intrinsic complexity of these dynamics inhibits the
+                                                                                                          parameters governing material deformation dynamics using
+                                         direct application of conventional robotic motion planning
+                                                                                                          minimal and simple manipulation motions (in less than 5
+                                         methods, which typically require explicit physics models for
+                                                                                                          minutes with a good initial guess). The estimated physics
+                                         all concerned objects (Latombe 2012). Learning approaches,
+                                                                                                          parameters enable accurate material simulation for long-
+                                         such as reinforcement learning (RL), often involve training
+                                                                                                          horizon predictions of real-world elastoplastic deformation
+                                         an agent to learn to interpret its perception and take actions
+                                                                                                          behaviours.
+                                         through inefficient trial & error in a realistic physics-based
+                                         simulation (Collins et al. 2021; Kroemer et al. 2021), which        The workflow of the proposed DPSI framework can be
+                                         is both challenging and largely unavailable when it comes to     summarised as follows. As shown in Figure 1, a robot
+                                         deformable materials.                                            equipped with an in-hand 3D camera (Zivid) and three
+                                                                                                          end-effectors is deployed to manipulate the elastoplastic
+                                            In contrast to the well-studied rigid body dynamics in
+                                                                                                          object (e.g., play dough). Before manipulation, the robot
+                                         robotics, where motions can be predicted and controlled
+                                                                                                          takes multi-view point clouds of the object to minimise
+                                         using well-defined equations of motion and deterministic
+                                                                                                          occlusions. These point clouds are used to create the initial
+                                         models (Featherstone 2014), deformable materials do not
+                                         follow such straightforward patterns. Directly applying
+                                         these methods is problematic because it is extremely
+                                         difficult and often infeasible to accurately model and           1 School of Engineering, Cardiff University, Cardiff, UK
+                                                                                                          2 School of Computer Science and Informatics, Cardiff University, Cardiff,
+                                         perceive real-world elastoplastic materials and measure the
+                                                                                                          UK
+                                         underlying physics parameters that govern their motions
+                                         and deformations (Arriola-Rios et al. 2020; Yin et al.           Corresponding author:
+                                         2021). Additional challenges such as time-varying material       Ze Ji, School of Engineering, Cardiff University, Cardiff, CF24 3AA, UK
+                                         properties (saturation, dryness, etc.) make the deformation      Email: jiz1@cardiff.ac.uk
+
+
+                                         Prepared using sagej.cls [Version: 2017/01/17 v1.20]
+2                                                                                                                                             Journal Title XX(X)
+
+
+    Real-world manipulation system                     Motion planning, differentiable trajectory optimisation, manipulation policy learning
+
+                                                  Simple real-world manipulation
+
+
+
+
+                                                                                                Differentiable point-cloud loss
+                           3D-printed
+                           end-effector                        Insufficient data
+  High-resolution                                      Noisy, incomplete observations
+ 3D in-hand camera                                         Reconstruction errors
+                                          Z       Differentiable physics simulation
+
+
+                                    X         Y
+                                                                                                                                    Generalise to unseen
+                                                          Physically meaningful            Gradients
+                                                                                                                                   end-effectors, motions,
+                             Deformable
+                               object                          parameters                                                         and object configurations
+    End-effectors
+
+
+Figure 1. The proposed system identification framework enables a robot to interact with elastoplastic material via simple
+manipulation motions (orange box) and then identify the physics parameters of the real-world manipulation dynamics. The
+parameters are found using gradients computed, through differentiable simulation, from a differentiable point-cloud-based similarity
+function between the real and simulated observations of the manipulated material (blue and red boxes). These parameters then
+enable accurate simulations that allow the real-world grounding of motion planning, trajectory optimisation or policy learning
+techniques (cyan box).
+
+
+particle system for the material point methods (MPM)-based                    to occlusions caused by the end-effector or environment.
+simulation. The robot then performs a manipulation motion                     This means that only the point clouds before and after a
+on the object and captures point clouds of the deformed                       manipulation motion are practical to obtain and informative
+state. Physics simulations of the same manipulation are                       enough to observe the full geometry of the deformed object
+run with the same initial state and motion, whose resultant                   in real-world experiments. In addition, real-world point
+particle states are compared to the real-world deformed                       clouds tend to suffer from inaccurately estimated camera
+state through variants of the Chamfer distance (CD) and the                   matrices and sensory noises.
+earth mover’s distance (EMD) loss. The parameters of the                         Small data, short & simple motions: Using extensive and
+simulated physics models are updated after every simulation                   diverse manipulation motions to collect real-world defor-
+to minimise the loss. To facilitate fast optimisation, we                     mation data is time-consuming and costly. Existing studies
+use a differentiable simulator built on the TaiChi auto-                      demand a significant number of real-world interactions or
+differentiation mechanism, which allows automatic gradient                    complete sequences of simulation videos to identify object
+computation from the losses and gradient-based optimisation                   deformations under various motions, yet still resulting in
+for the physics parameters (Hu et al. 2019, 2020).                            simulations with insufficient accuracy for real-world appli-
+   Our approach achieves unprecedented simulation-to-real                     cations (Lin et al. 2022; Shi et al. 2023; Li et al. 2023;
+alignment accuracy, characterised by the integration of the                   Kaneko 2024). Our goal is to recover physics parameters
+following novel features.                                                     that enable accurate predictions of long-horizon, unseen and
+   High-fidelity physics: Unlike previous methods that either                 complicated elastoplastic material manipulation dynamics,
+employ non-physics-based models (e.g., neural networks)                       using minimal simple and short real-world interactions.
+or highly simplified material geometry representations                           Joint parameter estimation: We aim to jointly estimate
+(e.g., sparse keypoints), we use high-fidelity physics-based                  the physics parameters provided by physics models. Besides
+simulation powered by the MPM (Jiang et al. 2016), which                      Newton’s laws, we employ the fixed corotated elastic energy
+simulates materials as Lagrangian particles and keeps track                   model (Stomakhin et al. 2012), the von Mises plasticity
+of their positions and velocities. It achieves faster simulation              model (Jones 2009) and the dynamic friction model in
+by computing the motions, deformation gradients, and                          our simulation. These lead to six key parameters: Young’s
+frictional contacts on a background Eulerian grid (Stomakhin                  modulus E, Poisson’s ratio ν, yield stress σ y , material
+et al. 2013; Jiang et al. 2016; Gao et al. 2017; Hu et al.                    density ρ, and the friction coefficients of the table ηt and
+2018). MPM-based simulations provide highly efficient and                     end-effectors ηm (assuming the three end-effectors share
+realistic simulation with high physical plausibility by closely               the same coefficient). The first four parameters primarily
+following real-world physics laws such as Newton’s laws and                   govern the deformation responses, while the last two handle
+elastic and plastic energy conservation models.                               frictional contacts. These parameters are heavily intertwined
+   Incomplete & noisy observations: Unlike existing works                     in governing the behaviours of the manipulated object and
+that rely on synthetic videos with complete sequences of                      there is no intuitive solution to identify one of them without
+perfect observations (Murthy et al. 2020; Li et al. 2023;                     estimating the effects of other parameters. Therefore, we
+Kaneko 2024), our framework uses 3D point clouds to                           seek to identify these parameters simultaneously.
+observe real-world object geometries. Capturing the full                         Differentiable physics: Identifying the physics parame-
+depth of an object during manipulation is impractical due                     ters in their discretised spaces via search or evolutionary
+
+
+Prepared using sagej.cls
+Yang, Ji and Lai                                                                                                               3
+
+
+algorithms is computationally slow due to the exponentially       enable high-precision simulation of real-world manipulation
+growing number of possible combinations as the discreti-          dynamics for volumetric elastoplastic objects.
+sation becomes finer. While gradient-based optimisation
+methods offer faster convergence toward the minimum, it
+is infeasible with most physics simulations because many          Deformable object modelling
+computation steps are not differentiable and these simulators     Simulators are essential for advancing robotic manipula-
+do not support derivative computations. In this work, we          tion, providing a fast, low-cost alternative to real-world
+explore the feasibility of optimising system parameters using     testing (Featherstone 2014; Collins et al. 2021). In recent
+gradients computed by differentiating loss functions through      years, arguably the most efficient and accurate simulation
+a physics simulator written by DiffTaiChi, a programming          for 3D deformable objects is achieved by the material point
+language tailored for GPU-accelerated parallel computation        method (MPM) (Jiang et al. 2016). Like most well-known
+and automatic differentiation (Hu et al. 2019, 2020). Diff-       methods for simulating continuum matter, such as position-
+Taichi generates derivative functions for simulation steps via    based dynamics (PBD) and smoothed particle hydrodynam-
+source code transformation that retains arithmetic intensity      ics (SPH) (Yin et al. 2021), MPM represents the object as
+and parallelism. It uses a memory-efficient tape to record        Lagrangian particles and keeps track of their positions and
+the order of computation kernels for forward simulation and       velocities. Unlike pure Lagrangian methods, MPM achieves
+traverses their derivative functions in the backward order to     faster simulation by computing the motions, deformation
+generate gradients through the computation graph. We build        gradients, and frictional contacts on a background Eulerian
+DPSI upon DiffTaiChi and explore the feasibility of directly      grid (akin to the finite element method), governed by elastic
+optimising several physics parameters jointly with gradients      and plastic energy functions and Newton’s laws in the form
+computed by differentiating point-cloud-based loss functions      of partial differential equations (Stomakhin et al. 2013; Jiang
+through the high-fidelity physics simulator.                      et al. 2016; Gao et al. 2017; Hu et al. 2018). MPM has
+   Substantial experiments demonstrate that our main              been proven superior to other methods in terms of efficiency
+contribution, DPSI, can achieve highly accurate simulation-       and visual effects for objects that undergo large deforma-
+to-reality alignment for elastoplastic materials manipulated      tions, fractures, and self-collision (Hu et al. 2018). Despite
+by unseen, long horizon and complex motions using minimal         its advantages, accurately identifying physics parameters
+simple and short interactions, and noisy and incomplete           for real-world robotic manipulation of elastoplastic objects
+observations. Results show that when multiple solutions and       remains an open challenge.
+parameter uncertainty exist, DPSI can provide physically
+intuitive parameter interpretations that can guide further
+system identification, model improvement, and motion              Deformable object system identification
+adaptation. Statistics on the computation costs also indicate     Unlike rigid bodies (Jaques et al. 2022; Heiden et al. 2022;
+promising practical deployment of the DPSI framework.             Chen et al. 2022), identifying the physics properties of
+   The rest of the article reviews related literature, presents   deformable objects is more complex than for rigid bodies,
+formally our method and experiment results, and discusses         primarily due to the difficulty in measuring key parameters
+limitations and future directions.                                like material properties and friction coefficients (Arriola-
+                                                                  Rios et al. 2020; Yin et al. 2021). Previous research has
+Related work                                                      mostly focused on linear and planar deformable objects, such
+                                                                  as ropes and cloths (Sundaresan et al. 2022; Yang et al. 2022;
+Deformable object manipulation                                    Caporali et al. 2024).
+Both model-free and model-based approaches have been                 Early works that sought to identify 3D volumetric material
+taken for manipulating deformable materials. Existing             properties have much simpler assumptions and scenarios.
+model-free methods often lack manipulation precision due          For instance, one of the earlier works uses gradient-based
+to the absence of physics laws that describe the motion           optimisation to retrieve the stiffness of a spring system
+and deformation under complex contacts (McConachie et al.         representing elastic deformable objects (Lloyd et al. 2007),
+2020; Cherubini et al. 2020; Shi et al. 2023, 2024; Shen et al.   while another work uses an exhaustive search method to find
+2024). Physics-model-based methods, while more accurate,          the value of Poisson’s ratio for an elastic form object (Güler
+struggle with aligning the simulated dynamics with the real       et al. 2017). They focus on single parameter identification for
+world and often rely on simplified geometric representations      volumetric elastic deformable objects with reduced Dofs that
+for higher computational efficiency, sacrificing manipulation     under-represent the geometries and deformation behaviours
+precision (Navarro-Alarcon et al. 2016; Yang et al. 2023;         of real-life objects.
+Shetab-Bushehri et al. 2023). With or without a model,               Recent efforts like GradSim (Murthy et al. 2020) have
+many of them use simulations that offer a cost-effective          used differentiable physics and rendering to identify five
+way to test manipulation methods and allow the collection         parameters for elastic objects with much higher DoFs from
+of massive data for learning-based approaches (Arriola-Rios       single-view simulation videos, demonstrating the feasibility
+et al. 2020; Collins et al. 2021; Yin et al. 2021). However,      of differentiable system identification with synthetic videos.
+inaccurate dynamics predictions and control precision are         Two following works, PAC-NeRF (Li et al. 2023) and
+unacceptable for many tasks such as surgery, assembly and         LPO (Kaneko 2024) propose to jointly reconstruct object
+disassembly. Therefore, akin to the way humans efficiently        geometries (shapes, positions and colours) and physical
+learn about object and environment physics properties, this       properties by using a voxel neural radiance field (Sun et al.
+work proposes to actively identify system parameters that         2022) that performs differentiable rendering and allows
+
+
+Prepared using sagej.cls
+4                                                                                                                 Journal Title XX(X)
+
+
+gradients to be back-propagated from the image space to the           of interaction experiences with the real objects, D, the
+Eulerian grid.                                                        minimisation problem can be written as follows:
+    Compared to these works that focused on simulations,
+our study tackles the more challenging task of system iden-                                  1 X
+                                                                                      min        d(XTreal , XTsim )                 (1)
+tification for real-world objects through robot interactions.                         sim
+                                                                                      θ     |D|
+                                                                                                  D
+Similarly, we also employ the material point method (Hu
+                                                                         The rest of this section will discuss the differentiable
+et al. 2018) and DiffTaiChi (Hu et al. 2020) for differentiable
+                                                                      simulation dynamics f sim , the reconstructed object state,
+physics simulation and study the system identification task
+                                                                      X rec , the reconstructed end-effector trajectory, τ rec , and the
+without known object geometries. However, we aim to align
+                                                                      loss functions, d(XTreal , XTsim ).
+simulations with real-world dynamics with minimal robot
+interactions, using only incomplete, occluded, and noisy
+point cloud data.
+                                                                      Differentiable dynamics modelling
+                                                                      Material point method (MPM): This work employs the
+                                                                      mean-least-square material point method (MLS-MPM) to
+Method
+                                                                      simulate the deformable object manipulation dynamics.
+Overview                                                              MPM is a meshless, hybrid computation scheme that enables
+                                                                      efficient computation and preserves high physical fidelity
+The proposed differentiable physics-based system identifi-
+                                                                      for various materials, especially for elastoplastic materials
+cation (DPSI) framework, as shown in Figure 2, can be
+                                                                      that undergo large deformation, while the MLS-MPM arises
+divided into the following modules: differentiable dynamics
+                                                                      from a novel weak form discretisation of the conservation
+modelling, real-to-sim object and trajectory reconstruction,
+                                                                      equations and replaces the shape functions in the force
+and the loss functions. This section starts with a formal
+                                                                      computation with MLS approximators, leading to faster and
+problem description and elaborates on each of these modules.
+                                                                      more realistic simulation of sharp separation of particles and
+                                                                      two-way coupling with rigid objects that traditional MPM
+Problem statement                                                     cannot simulate.
+We define the physics parameter identification problem for               We modified the standard procedures in one simulation
+real-world deformable materials as follows. Denote X0real             step of the MLS-MPM as shown below to incorporate end-
+and XTreal as the observations of a deformable object before          effector control following Xian et al. (2023). The readers
+and after a manipulation trajectory τ real of time duration           are referred to the original paper for more details about
+T is applied, denote S0real as the observation of the real-           MPM (Stomakhin et al. 2013) and MLS-MPM (Hu et al.
+world end-effector before the manipulation, the stochastic            2018).
+real-world forward dynamics can be written as follows:
+                                                                         1. Compute particle deformation gradient using the MLS
+                                                                            approximation equation.
+        XTreal ∼ preal (XTreal |X0real , θ real , τ real , S0real )      2. Applied plasticity to recompute deformation gradients
+                                                                            and particle stress using the elastic energy model
+where θ real is the set of real-world parameters that govern             3. Particle to grid. Use the affine particle-in-cell
+the behaviours of the dynamical process. As it is unlikely                  transform (Jiang et al. 2015) to transfer the
+to obtain preal and θ real explicitly, we use an approximate,               velocities and masses of the Lagrangian particles
+deterministic and differentiable dynamics model, f sim , to                 to the background Eulerian grid nodes. In our
+simulate such a dynamical process, written as follows:                      implementation, we assume equal volume and mass
+                                                                            for the particles.
+               XTsim = f sim (X0rec , θ sim , τ rec , S0rec )            4. Update end-effector positions given control inputs.
+                                                                         5. Compute grid node momenta and velocities with
+where θ sim is the set of adjustable parameters that govern the             gravity applied.
+behaviours of the simulated deformation and contact process,             6. Signed-distance field (SDF)-based collision detection
+X0rec is the reconstructed initial observation of the real                  with rigid objects (end-effector and boundaries) and
+object, XTsim is the resultant observation of the reconstructed             frictional contact computation.
+object after manipulated by the reconstructed motion τ rec ,             7. Grid to particle. Use the affine particle-in-cell
+and S0rec is the initial observation of the simulated end-                  transform to transfer the velocities and affine
+effector. In our work, we assume the end-effectors are rigid                coefficients from the grid nodes to the particles.
+bodies, meaning the observations of the real or simulated                   Perform SDF-based collision detection and frictional
+end-effectors are coordinates of their frames relative to the               contact computation again to minimise particle
+world frame, i.e., S ∈ R3 , which can be readily retrieved                  penetration.
+from the robot platform or simulator. As we are interested in            8. Update particle positions with the new velocities.
+point cloud observations from the real world and particles in
+the simulation, all object observations will be 3D point sets,        Elastoplasticity: We assume strain elastoplasticity for the
+i.e., X ∈ RN ×3 where N is the number of points or particles.         studied objects, meaning that the strain-stress relationship
+   With these notations, the optimisation problem could be            of the material is described using the deformation gradient
+formulated as the minimisation of some distance function              that can be decomposed into elastic and plastic parts
+between the real-world and simulated observations after               , F = FE FP , and the first Piola-Kirchoff stress, P,
+manipulation. As the parameters are optimised with a dataset          as P = ∂Ψ/∂FE , where Ψ(FE ) is the elastic energy
+
+
+Prepared using sagej.cls
+Yang, Ji and Lai                                                                                                                        5
+
+
+
+
+Figure 2. The overall workflow of the proposed differential physics-based system identification (DPSI) framework. Modules in each
+colour are elaborated in individual subsections of the Method section. Green: differentiable dynamics modelling and the physics
+parameters. Orange: real-to-sim object reconstruction. Blue: real-to-sim trajectory reconstruction. Pink: optimisation and evaluation
+loss functions.
+
+
+density function. In this study, we use the fixed corotated         assumption. The projection process of the trial stress
+model (Stomakhin et al. 2012) as the energy function                outside of the yield region can be described succinctly
+for its robustness under large deformation, although other          as ϵ̃ϵE,n − ϵ E,n = δγ s̃sE,n /||s̃sE,n ||, where ϵ̃ϵE,n = log(F̃E,n )
+constitutive models may be used for different needs. The            and ϵ E,n = log(FE,n ) are the trial and modified Hencky
+fixed corotated elastic energy density function is                  strains, s̃sE,n = ϵ̃ϵE,n − tr(ϵ̃ϵE,n )/3 I is the trial deviatoric
+                                                                    stress, and δγ s̃sE,n /||s̃sE,n || is the modifying term based
+                                              λ E                   on the solution given in Gao et al. (2017).
+           Ψ(FE ) = µ||FE − RE ||2F +           (J − 1)2     (2)                                                         √ In particular,
+                                              2                     based on the von Mises yield criterion, 3J2 − σ y ≤ 0,
+where J E = det(FE ), and λ and µ are the Lamé parameters,         where σ y is the yield stress and J2 is the second deviatoric
+such that                                                           stress invariant, it was derived that δγ = ||s̃sE,n || − σ y /2µ.
+                                                                    With the fact that the singular vectors of the trial elastic
+                                      E                             deformation gradient do not change, the return mapping
+                            λ=                               (3)
+                                   2(1 + ν)                         operation is done on the eigenvalues of the trial Hencky
+                                                                    stress, thus on the eigenvalues of the trial elastic deformation
+                                      Eν
+                           µ=                                (4)    gradient. Then, we can obtain the result of the return
+                                (1 + ν)(1 − 2ν)                     mapping by taking the exponential of the modified deviatoric
+                                                                                          E,n
+where E is Young’s modulus and ν is Poisson’s ratio. Thus,          stress: ΣE,n = eϵ           and then the modified deformation
+the stress can be calculated as                                     gradient: FE,n = ŨE,n ΣE (ṼE,n )T .
+                                                                       Note that the Hencky strain formation is only used in
+           ∂Ψ                                                       plastic response computation. At each simulation step, we
+  P=          = 2µ(FE − RE )(FE )T + λ(J E − 1)J E (5)              compute the trial deformation gradient using the MLS
+          ∂FE
+                                                                    approximation equation, apply plastic response, and then
+where RE is the rotation matrix that comes from the polar           compute the new stress with Equation 5.
+decomposition of the deformation gradient, FE = RE SE ,             Frictional contacts: Collision detection is done by checking
+where SE is a symmetric matrix. In practice, they are               the distance of the particles to the surface of the rigid objects
+computed from the singular value decomposition of FE                using pre-computed signed distance fields (SDFs). For each
+as FE = UE ΣE (VE )T = UE (VE )T VE ΣE (VE )T , and                 rigid object (table, and three end-effectors in our case), we
+then RE = UE (VE )T and SE = VE ΣE (VE )T (Baker                    employ the procedure described in Park et al. (2019) to
+2005).                                                              generate SDFs for watertight meshes. We assume that the
+   For the n-th simulation step, we compute a trial elastic         frictional contacts only happen in two cases: between the
+deformation gradient, FE,n ˜ . If no plastic deformation            particles and the table, or between the particles and the
+                    P,n
+appears, meaning F      = FP,n−1 , then we assign FE,n =            end-effector. We also assume uniform friction coefficient
+F̃ . However, if the yield criterion is violated, F̃E,n needs
+  E,n                                                               distribution over the contact surface of the table and the end-
+to be modified according to the plasticity model. This process      effectors. When a particle or grid node and an object are in
+of modifying F̃E,n is called the return mapping process,            contact, we follow Stomakhin et al. (2013) to determine the
+which determines how the object would respond plastically.          velocity of the particle and grid nodes using dynamic friction
+   In this work, we follow Gao et al. (2017) to use the             with sticky impulse.
+von Mises model (Jones 2009) to compute the return                     Specifically, for each particle, we calculate the local
+mapping, which takes on the associative plastic flow                normal →  −n and the velocity vobj of the rigid object at the
+
+
+Prepared using sagej.cls
+6                                                                                                              Journal Title XX(X)
+
+
+particle position. Then, we project the particle velocity v          Real-world perception: We create a multi-view point-
+into the object reference frame to have vrel = v − vobj . No         cloud capture and fusion process to obtain the real-world
+collision is applied if the particle is separating from the          observation of the deformable object X0real and XTreal . In
+object, i.e., vn = vrel · →
+                          −n ≥ 0. Define the tangential portion      particular, for each object state, the robot arm moves to six
+of the relative particle velocity as vt = vrel − →   −n vn . For     poses around the object for the camera to take a point cloud
+                                                         ′
+sticky impulse, we set the relative particle velocity vrel   after   of the scene. The point clouds are fused and then cropped to
+the collision to 0 if ||vt || ≤ −µvn , where µ is the friction       contain only the points of the object.
+coefficient. If the sticky impulse is overcome, dynamics                These observations are noisy and incomplete in three
+                                ′
+friction is applied, such that vrel = vt (1 + µvn /||vt ||). After   senses. Firstly, due to camera calibration error, the fusion
+the collision, the new particle velocity in the world frame          result always exhibits a ∼ ±3 mm discrepancy. Secondly,
+is calculated as v ′ = vrel
+                          ′
+                              + vobj . We represent the friction     due to joint limits, the robot arm cannot reach poses that
+coefficients for the table and the manipulators separately as        allow the camera to capture the bottom part of the object.
+µt and µm .                                                          To simplify the problem, we assume that the angle between
+Differentiable programming: Several programming tools                the object boundary and the table surface is equal to or
+are available for creating differentiable simulations, such          greater than 90◦ , which allows the camera to capture as
+as PyTorch (Sundaresan et al. 2022; Arnavaz et al. 2023),            much as possible the bottom part of the object. We then
+DiffTaiChi (Hu et al. 2020), Jax (Schoenholz and Cubuk               project all points to its bottom to form a closed surface. Note
+2020) and neural-network-based simulators (Heiden et al.             that the initial configuration of the object can be manually
+2021). We build our simulator based on DiffTaiChi due to             shaped to satisfy this assumption of contact angle but the
+its automated differentiation mechanism, GPU-accelerated             end configuration of the object after being manipulated is
+parallel computation, fast computation kernel evaluation,            out of manual control, which tends to have more occlusions.
+intuitive Python APIs, rich community support and various            Lastly, we only take the observations before and after
+promising applications (Huang et al. 2021; Lin et al. 2022;          applying the manipulation motions, without providing the
+Xian et al. 2023).                                                   intermediate observations during the manipulation, because
+   In particular, for each numerical computation step,               it is impractical to do so when too much occlusion occurs
+DiffTaiChi flattens its computation branches (e.g., boundary         during manipulation.
+and collisions) and replaces mutable local variables with            Reconstruction pipeline: To simulate the object as a set
+extra local storage variables, producing straight-line codes         of particles, we design a pipeline to reconstruct the object
+without mutable variables. It then uses standard source code         particle system X rec from the given fusion point cloud,
+transform to generate the derivative function based on the           as shown by the orange boxes in Figure 2. Firstly, we
+adjoint method. To compute gradients with a loss function,           down-sample the processed fusion point cloud and create
+DiffTaiChi records the order of computation kernels and the          a watertight mesh using the ball-pivoting (BP) algorithm
+scalar variables in the forward simulation direction, and then       (Bernardini et al. 1999). The artificial bottom surface points
+it computes the gradients for the concerned variables by             prevent the BP algorithm from creating a non-flat bottom
+evaluating the derivative functions in the reversed simulation       mesh surface. To sample particles, we create a set of voxels
+direction (Hu et al. 2020). We build a simulator based               that fill in the reconstructed mesh surface uniformly given
+on this programming language to allow automatic gradient             a resolution (1080 × 1080). Lastly, we fill particles into
+computation for the physics parameters.                              the voxels with a given density (4 × 106 particles/m3 ). We
+   In summary, the elastic and plastic models describe               assume that the particles are uniformly distributed within the
+the deformation behaviours of the object using Young’s               mesh.
+modulus E, Poisson’s ratio ν and yield stress σy , the                  For the end-effectors, we assume they are rigid bodies. In
+computation of the particle and grid velocities will involve         simulation, we keep track of the coordinate of its frame and
+another parameter, the object density ρ, and the frictional          a pre-computed SDF for collision detection.
+contact processes are controlled by respective friction
+coefficients: table friction coefficient µt and manipulator          Real-to-sim trajectory reconstruction
+friction coefficient µm . We optimise these six parameters to        Manipulation motions: As we are interested in recovering
+align the simulation to the real-world dynamics.                     real-world dynamics with small data and short, simple
+                                                                     motions, we design experiments in two contact complexity
+Real-to-sim object reconstruction                                    levels, for which we create two poking motions and two
+Real-world platform: To collect real-world data, we set up           poking-shifting motions for optimisation and in-distribution
+a deformable object manipulation system where a Kuka                 validation, and three longer motions for out-of-distribution
+IIWA LBR 14 industrial arm (Kuka 2024) is equipped with              validation. These motions are summarised in Table 1 in terms
+a Zivid One+ medium camera (Zivid 2024) for perceiving               of consecutive trajectory segments in the world frame.
+the object, and one of the three end-effectors, namely a                The first contact level focuses on identifying the
+rectangular cuboid, a cylinder roller and a bullet-shaped            parameters that primarily govern the deformation of the
+object for collecting interaction experiences with different         object (Young’s modulus, Poisson’s ratio, yield stress and
+contact geometries, as shown at the bottom-left of Figure 1.         material density) using two poking motions, which press the
+We use plasticine (non-hardening modelling clay) as the              object down by a certain distance. The second level further
+main material for our experiments and cloud slime and soil
+for generalisation experiments. The clay and cloud slime are
+purchased from Amazon* .                                             ∗ Modelling Clay. Cloud Slime Kit
+
+
+
+
+Prepared using sagej.cls
+Yang, Ji and Lai                                                                                                                            7
+
+
+                                                                                              Duration      Real Num.   Sim. Num.
+                Optimisation motions (short and simple)
+                                                                                               (sec.)       waypoints   waypoints
+                           Poking-1               −z 0.015 m, +z 0.03 m                         0.86              38        87
+                Lv. 1
+                           Poking-2               −z 0.02 m, +z 0.03 m                          0.93              40        94
+                           Poking-shifting-1      −z 0.02 m, −x 0.03 m, +z 0.03 m               1.52              68       152
+                Lv. 2
+                           Poking-shifting-2      −z 0.02 m, +x 0.03 m, +z 0.03 m               1.50              54       153
+                Validation motions (unseen, longer, more complex contacts)
+                                                  −z 0.025 m, +x 0.025 m, +z 0.025 m,
+                Flattening (cylinder)             −x 0.025 m, −z 0.025 m, −x 0.025 m,           3.74           275         378
+                                                  +z 0.025 m
+                                                  +y 0.025 m, −z 0.025 m, +z 0.025 m,
+                Triple-poking (round)             −y 0.025 m, −z 0.025 m, +z 0.025 m,           4.55           328         460
+                                                  −y 0.025 m, −z 0.025 m, +z 0.025 m
+                Poking-180-rotating (rectangle)   −z 0.025 m, about +z 180◦ , +z 0.025 m        6.23           504         625
+Table 1. Waypoint designs and statistics of the interaction motions. For collecting optimisation data, there are two motions for each
+of the two levels of contact complexity. For out-of-distribution validation, one motion per end-effector is designed. Directions of the
+waypoints are relative to the robot base frame, as shown in Figure 1. Each waypoint of the real trajectories takes an uneven time
+interval, while each waypoint in simulation takes exactly 0.01 second.
+
+
+
+includes the friction coefficients, using two poking-shifting                Time duration constrained reconstruction: To simulate end-
+motions, which press down the object and make horizontal                     effector motions, the real-world trajectory generated by
+shifting movements. For out-of-distribution validation, three                MoveIt! is inconvenient as it has uneven time differences
+longer motions with more drastic contact processes are                       between consecutive waypoints and the simulation can
+created. Each motion uses a different end-effector. The triple-              only handle a constant step size dt. Thus, for a motion
+poking motion is designed for the round end-effector to                      segment between a pair of waypoints, we reconstruct its
+validate the long-term deformation prediction with small                     simulation counterpart to have constant velocity by dividing
+fraction influences. The flattening motion is designed to                    the travelled distance by the real-world time duration which
+validate the long-term deformation and frictional contact                    is provided by the motion planner, and then we discretise the
+prediction under large linear movements, using the cylinder                  segment with a constant dt. In this study, we set dt = 0.01
+end-effector. The pressing-180-rotating motion is designed                   second for better simulation stability. A larger dt will result
+to validate the long-term deformation and frictional contact                 in a too-high compounding error during simulation stepping,
+prediction under large rotational movements using the                        while a too-small dt will demand too much computation.
+rectangle end-effector.                                                      The statistics of the real and reconstructed motions are
+   All motions start from a configuration where the end-                     summarised in Table 1. It can be seen that the validation
+effector tip is positioned at the top centre of the object. ROS              motions are much longer than the optimisation ones. The
+(Quigley et al. 2009) and the MoveIt!-based (Görner et al.                  MoveIt! trajectories and the reconstructed ones are saved as
+2019) OMPL planner (Sucan et al. 2012) are used to plan                      .npy files and will be open to the public upon acceptance.
+real-world motion trajectories τ real . For calculating each
+motion plan, we pass a series of waypoints to the MoveIt!                    Loss functions
+planner by discretising each segment of the motion with an                   We use four loss functions to calculate the difference
+interval of 0.002 m or 5◦ .                                                  between the simulated and real object states. As we are
+   A challenging phenomenon that occurs during our data                      dealing with points and particles, it is natural to select point-
+collection process is that the object tends to stick to the end-             based metrics. Therefore, we employ the two most common
+effectors after contact is made. If we allow this to happen                  distance metrics for point sets, namely, the Chamfer distance
+and assume that the object always drops down eventually, the                 (CD) and the earth mover’s distance (EMD). Given two point
+optimisation process will be extremely difficult due to a large              sets X0 and X1 , the CD and EMD are defined as follows.
+uncertain dynamics process of the object dropping from the
+air. For example, the object may bounce out of the workspace
+                                                                                                          1 X
+or even off the table. This further exacerbates the difficulty                       dCD (X0 , X1 ) =                min ||x
+                                                                                                                           x − y ||2 +
+of optimising with only the start and end observations of                                                |X0 |       y ∈X1
+                                                                                                               x ∈X0
+the object. However, it is beyond the capability of current                                               1 X
+perception hardware and thus a future research direction.                                                            min ||x
+                                                                                                                           x − y ||2
+                                                                                                         |X1 | y     x ∈X0
+                                                                                                              y ∈X1
+To simplify the problem, we take a simple workaround by
+covering the end-effector with a thin layer of flour before
+each manipulation motion is executed. We sink the effector                                           1 X
+                                                                               dEM D (X0 , X1 ) =               min       ||x
+                                                                                                                            x − ϕ(x
+                                                                                                                                  x)||2
+into the flour and flick it gently to ensure that it is only                                        |X0 | x ϕEM D :X0 →X1
+                                                                                                          x ∈X0
+covered by a thin layer of flour. This greatly prevents the
+sticking phenomenon from happening. Note that the end-                       where x and y denote the 3D coordinates of the points,
+effector friction coefficient we are optimising for is then the              ϕEM D denotes a one-to-one injective mapping that only
+one covered by flour instead of the original value.                          exists when |X0 | ≤ |X1 |. In practice, a linear assignment
+
+
+Prepared using sagej.cls
+8                                                                                                             Journal Title XX(X)
+
+
+algorithm is used to calculate ϕEM D . We also find that           understand how the physics parameters are related to
+the three average operations reduce the magnitudes of the          the loss value distributions. The second step investigates
+gradients of the physics parameters to an order of 4 to 5,         the in-distribution performance of the proposed DPSI
+which is undesired for optimisation; therefore, we use the         framework, i.e., whether it can produce realistic simulations
+distances without averaging the values over the point sets.        for unseen object configurations with the same motions
+   To calculate the loss between the real and simulated end        used in parameter identification. The loss landscape and
+configurations, one can use the original fusion point cloud        in-distribution performance analyses are carried out at two
+XTreal or the reconstructed particle systems XTrec as the          levels of contact complexity. At each level, the performances
+target observations. Thus, there are two variants for each         are compared across four loss functions and five optimisation
+loss: dP CD−CD (XTreal , XTsim ), dP RT −CD (XTrec , XTsim ),      datasets (see data collection description below). The last
+dP CD−EM D (XTreal , XTsim ),      dP RT −EM D (XTrec , XTsim ).   step explores the out-of-distribution generalisability of the
+                         rec
+When reconstructing XT , we decrease the particle density          DPSI by inspecting the simulation accuracy of three unseen
+for filling the voxels slowly until |XTrec | ≤ |XTsim | is         longer motions using identified parameters from the contact
+satisfied. When computing losses involving the real-world          complexity level 2 experiment.
+point clouds, we downsample it with a voxel radius of 0.005        Data collection: For each optimisation motion (i.e.,
+so that the number of points in it is about 16 of the number       Poking-1, Poking-2, Poking-shifting-1, Poking-shifting-2),
+of particles in the reconstructed system. This is because a        we collect datapoints by executing the motions on the objects
+point cloud only contains points on the surface, while the         with different end-effectors. Each datapoint contains the
+reconstructed particle system is non-hollow.                       multi-viewpoint point clouds of the object before and after a
+   Finally, although the CD and EMD losses are very                manipulation motion. For each of the two complexity levels,
+common in calculating point set distance, they are not             five optimisation datasets are created to examine the data
+intuitive to visualise and understand. Also, as revealed by        hungriness of the proposed DPSI framework.
+the experiment results shown in Figures 4 and 5, the CD and           With level (Lv.) 1 as an example, the first dataset is created
+EMD losses focus on different spatial aspects of two point         with both motions (Poking-1 and Poking-2). Each motion
+sets, which make them biased for result analysis across all        is performed twice using three different end-effectors.
+loss functions. To make results easier to analyse and compare      Therefore, 6 datapoints are created for each motion, and
+in a more unbiased way, we further calculate the heightmaps        a total of 12 datapoints are created for both motions. The
+of the fusion point cloud and the simulated particles, denoted     second dataset for Lv. 1 is similar, except that only 1
+as ITreal and ITsim . Specifically, we discretise a 0.11 ×         datapoint is created from each motion-effector pair, resulting
+0.11m2 square area centred at the centre of the object into        in 3 datapoints for each motion, and a total of 6 datapoints
+a 32 × 32 grid. For each cell of the grid, we find the point or    for both motions. The other three datasets for Lv. 1 are more
+particle in the x-y range with the highest z value and assign      straightforward, with only one datapoint collected for each
+that value as the height of that cell. To compare the distance     dataset. The three datapoints are created using the three end-
+between two heightmaps, we simply take their summed pixel          effectors individually, performing the second motion from
+difference as follows.                                             Lv. 1 (i.e. Poking-2). We name these datasets as 12-mix, 6-
+                          XX                                       mix, 1-rectangle, 1-round, and 1-cylinder, respectively. Data
+                                       real    sim
+           dHeightmap =            ||IT,ij  − IT,ij ||2            collection for Lv. 2 is similar, except that the two motions
+                            i   j                                  of Poking-1 and Poking-2 are replaced by Poking-shifting-
+   In practice, we use the fusion point cloud without              1 and Poking-shifting-2, respectively. The datasets will be
+downsampling to compute ITreal . However, a particle density       open-sourced upon the acceptance of the article.
+that is too low will result in void cells when generating             For in-distribution validation, with each contact complex-
+ITsim , and we found that a density value of 4 × 106               ity level, we collect two extra datapoints from the second
+particles per cubic metre is good enough for generating            motion (i.e., Poking-2 and Poking-shifting-2) with all three
+32 × 32 heightmaps. The heightmap distance is only used            end-effectors, resulting in 12 validation datapoints. For out-
+for evaluation purposes because we found it leads to very          of-distribution validation, where we collect two datapoints
+poor optimisation results when used as a loss function.            with each of the three long-horizon motions, resulting in 6
+                                                                   datapoints.
+Results                                                               For each datapoint, the real-world object is initially
+                                                                   roughly shaped into a convex shape. We then acquire its
+This section presents the design of the experiment and the         point cloud by fusing the captured multi-view data. Next,
+result analyses including the optimisation and generalisation      we calculate the coordinates of the top centre of the object,
+performances of the DPSI framework in identifying the              where the end-effector tip will be moved to, and the motion
+physical characteristics of elastoplastic matter through           will always be executed from there. We perform the same
+simple robot manipulation.                                         point cloud capturing and fusion process after a motion
+                                                                   is executed. Each datapoint takes no more than 2 minutes
+Experiment design                                                  to collect, with most of the time spent on capturing point
+The performance of the DPSI framework is examined                  clouds.
+in three steps: loss landscape analysis, in-distribution           Optimisation & validation: At each contact level, for
+performance analysis and out-of-distribution generalisation        each pair of loss function and dataset, gradient descent
+analysis. The first step visualises the four loss functions        is carried out with the Adam algorithm (Kingma and Ba
+(PCD-CD, PRT-CD, PCD-EMD, and PRT-EMD) to help                     2015) with three random seeds for 100 iterations (gradient
+
+
+Prepared using sagej.cls
+Yang, Ji and Lai                                                                                                                    9
+
+
+updates). For each datapoint, the simulation loads the initial        other hand, the losses at level 2 contact complexity exhibit
+particle configuration, simulates the motion and produces             similar distributional patterns along all parameter axes. In
+the resultant particle state, which is used to compute losses         addition, at level-2 contact complexity, the PRT CD loss is
+and gradients. Each optimisation iteration goes over all              more sensitive (exhibiting more drastic value changes) along
+datapoints within a dataset and takes the average gradients to        the ν axis than other losses (see the second row of the level-
+update the parameters. In-distribution validation is done after       2 landscapes against E and ν). In contrast, the values of
+every gradient update with the validation dataset, simulating         the PRT CD and both EMD losses are more sensitive along
+all datapoints and calculating the losses.                            the σ y axis (the last three rows of the level-2 landscapes
+   Table 2 displays the step sizes and the value ranges of            against σ y and ρ). The level-2 landscapes against the friction
+the parameters of interest for gradient updates. To determine         coefficients (µt and µm ) show that all losses distribute very
+the appropriate step sizes, we randomly sample 20 sets                similarly over these two parameters. Overall, the EMD losses
+of parameter values and compute the statistical means and             seem to be more sensitive to all the parameters, as their loss
+standard deviations of the gradients for each parameter               landscapes tend to be less flat.
+based on the 12-mix dataset. We then randomly initialise                 These observations indicate that, with the adopted von
+the parameters, run the Adam optimiser for 100 gradient               Mises plasticity model, whose plastic deformations are
+updates with uniformly randomly generated gradients using             governed by the yield stress (σσ y ) of the material, the CD and
+the statistical means and deviations with different step              EMD losses may focus on different aspects of the point sets,
+sizes, and select the step size that allows the randomised            as they tend to disagree with each other distributionally along
+parameters to converge in about 70 gradient updates. The              the σ y axis. Also, we may expect the EMD losses to perform
+value ranges of the parameters are selected according to              better in parameter identification because they exhibit higher
+either the definitions of the physics models (Jones 2009;             sensitivity against most parameters.
+Stomakhin et al. 2013) or values reported by various research            Secondly, by comparing the landscapes horizontally,
+on manual parameter identification experiments with similar           Figure 3 shows the distributional patterns of most (not all)
+real-world materials, such as soil and clay (StructX 2014-            loss landscapes are quite similar across the five datasets.
+2024; Waheed and Asmael 2023). However, a too-high                    This means that the loss values, and thus the optimisation
+value of Young’s modulus E was found to cause numerical               processes, are not sensitive to the number of datapoints used
+instability in the simulation with the particles exploding            in computation. This observation allows us to expect the
+away. Thus, an empirical upper bound for E was determined             recovery of physics parameters with small data, even with
+by slowly increasing it until the simulation became unstable.         a single interaction experience.
+                                                                         Thirdly, many of the loss distributions display large areas
+  Parameter      E (kPa)   ν    ρ (kg/m3 )   σ y (kPa)   ηt   ηm      of flat regions, where the loss values are very similar. This
+  Step size      4000      0.01 10           500         0.01 0.01    indicates many optimisation saddle points and that multiple
+  Min value      10000     0.01 1000         1000        0.01 0.01    parameter value combinations may serve as plausible
+  Max value      300000    0.48 2000         20000       2.0 2.0      solutions, describing the same physical characteristics.
+Table 2. step sizes and the ranges of values for the parameters:      Whether this is an issue from an inaccurate physics model
+Young’s modulus E , Poisson’s ratio ν , yield stress σ y , material   or a general fact of the real-world dynamics remains to be
+density ρ, and the friction coefficients of the table ηt and end-
+                                                                      determined.
+effector ηm .
+
+                                                                      In-distribution performances
+Loss landscape analysis                                               This subsection investigates the in-distribution performance
+The loss landscapes, including point-cloud and particle               of the parameter identification task through gradient descent
+chamfer distance (PCD CD, PRT CD), point-cloud and                    at two levels of contact complexity. For each level,
+particle earth mover’s distance (PCD EMD, PRT EMD),                   experiments are conducted with the four loss functions
+are computed over three pairs of physics parameters:                  and five datasets. To evaluate the performances thoroughly,
+(E, ν), (σσ y , ρ) and (µg , µe ). For each pair, we set other        the four loss functions and a heightmap-based distance
+parameters to fixed values and compute the losses with the            function are used to evaluate the differences between the real
+parameters of interest discretised into 30 intervals. Figure 3        and simulated manipulation results using the in-distribution
+displays the loss landscapes computed at the two contact              validation dataset.This enables the observation of the
+complexity levels and five datasets. To facilitate distribution-      influences on other distance functions from minimising
+level comparison, the loss landscapes are centralised to              each objective. In particular, this subsection investigates the
+have zero means (subtracting the mean of the matrix). The             following questions.
+following observations can be drawn.
+   Firstly, we compare the landscapes in Figure 3 vertically to           • Can the loss functions be minimised (does optimisa-
+examine the sensitivity of the loss functions against different             tion converge)?
+parameters. At contact complexity level 1, it shows that the              • Do the loss functions agree with each other in such
+CD and EMD losses exhibit quite similar value changing                      system identification tasks?
+directions along the E, ν and ρ axes, while quite the opposite            • If local minima appear and multiple solutions exist, do
+directions along the σ y axis. This can be observed from                    they produce visually distinct manipulation results?
+the vertically reversed colour distributions between the first            • How does the number of datapoints affect optimisa-
+and last two rows of landscapes against σ y and ρ. On the                   tion?
+
+
+Prepared using sagej.cls
+10                                                                                                                     Journal Title XX(X)
+
+
+                                                                                  Level 2 contact complexity
+                                                                                       12-       6-         1-    1-   1-
+                                                                                       mix       mix       rec. round cyl.
+                                                                                                            ν
+                                                                            PCD
+                                                                            CD
+
+                                                                            PRT
+                                                                            CD
+                                                                                E
+                                                                            PCD
+                                                                            EMD
+                 Level 1 contact complexity
+                                                                            PRT
+                           12-   6-      1-    1-   1-                      EMD
+                           mix   mix    rec. round cyl.
+                                          ν                                                                 ρ
+           PCD                                                              PCD
+           CD                                                               CD
+
+           PRT                                                              PRT
+           CD                                                               CD
+               E                                                                  σy
+           PCD                                                              PCD
+           EMD                                                              EMD
+
+           PRT                                                              PRT
+           EMD                                                              EMD
+                                          ρ                                                                μm
+           PCD                                                              PCD
+           CD                                                               CD
+
+           PRT                                                              PRT
+           CD                                                               CD
+                  σy                                                            μt
+           PCD                                                              PCD
+           EMD                                                              EMD
+
+           PRT                                                              PRT
+           EMD                                                              EMD
+
+Figure 3. Loss landscapes (centralised to have zero means) at level-1 (left) and level-2 (right) contact complexity over pairs of
+physics parameters. Darker colours represent higher loss values. Parameters: Young’s modulus (E ) against Poisson ratio (ν ), yield
+stress (σ y ) against material density (ρ) for both levels, and table friction coefficient (µt ) against manipulator friction coefficient (µm )
+for level 2. Other parameter values are fixed while computing the losses over one pair of parameters. Each column presents the
+losses computed with a different dataset. Each row presents the values of a different loss function. PCD: point cloud. PRT: particle
+system. CD: Chamfer distance. EMD: earth mover’s distance.
+
+
+     • Does DPSI produce parameter values that are                       validation loss curves (dotted lines) tend to stabilise and
+       physically realistic and interpretable? Are they close            converge, which indicates that DPSI can effectively converge
+       to the parameter values reported in relevant literature           to local minima. The last four rows in Figure 4 and
+       and studies?                                                      the last six rows in Figure 5 reveal that the parameters
+                                                                         converge to different solutions. Table 3 also shows that
+Quantitative results: We start by analysing the quantitative             multiple parameter solutions exist for a low validation
+results of the parameter identification task. The changes of             heightmap distance at both levels of experiments. These
+the validation losses and parameter values over the course of            observations mean the parameter identification task at both
+optimisation at both contact complexity levels are shown in              contact complexity levels does converge but has multiple
+Figure 4 and 5. The best parameter values corresponding to               local minima and solutions, aligned with the large flat regions
+the lowest validation heightmap loss among the three random              observed from the loss landscapes.
+seeds are summarised in Table 3.                                            However, the parameter distributions in Figure 5 clearly
+   First of all, we start by observing the tendency of                   show that some parameters converge to much smaller
+convergence. The top five rows in Figure 4 and 5 show that,              and distinct value regions than those found in the level-
+at both contact complexity levels, most of the individual                1 experiments. More specifically, the values of Young’s
+
+Prepared using sagej.cls
+      Yang, Ji and Lai                                                                                                                        11
+
+
+                                          PCD CD              PRT CD              PCD EMD                PRT EMD
+                                         12-mix            6-mix               1-rec.            1-round              1-cyl.
+                                 9554
+                      PCD
+                      CD
+                                 8777
+                                 6415
+                      PRT
+                      CD
+                                 5939
+                                 1376
+                      PCD
+                      EMD
+                                 1182
+                                 7128
+                      PRT
+                      EMD
+                                 5292
+                                 2376
+0.2        0.4                   0.6         0.8               1.0
+                      Height
+                 Timesteps
+                      Map
+                              1990
+                               3e5
+                      Young's
+                      Modulus
+                      E (kPa)
+                                   1e4
+                                   0.5
+                      Poisson's
+                      Ratio
+                      ν
+                                     0
+                                   2e4
+                      Yield
+                      Stress
+                      σy (Pa)
+                                   1e3
+                                   2e3
+                      Material
+                      Density
+                      ρ (kg/m3 )
+                                   1e3
+      Figure 4. Validation losses (top five rows) and parameter values (last four rows) over 100 gradient updates at level-1 contact
+      complexity. Each column presents the results of optimising with a different dataset. Each row shows the changes of an evaluation
+      metric or a parameter, denoted on the left. In each figure, different colours indicate the results of minimising a different loss function,
+      as labelled by the legend on the top. For the top five rows, each colour has three dotted lines corresponding to the results of three
+      random seeds and a solid line corresponding to their means. For the last four rows, each colour has three solid lines corresponding
+      to the results of three random seeds.
+
+
+      modulus (E), Poisson’s ratio (ν) and yield stress (σ        σy)           Also, some parameter values are closer to empirical
+      become more converged, while they are more dispersed in                studies of soft/hard/saturated clay in the level-2 experiments.
+      the level-1 results. Interestingly, the material density (ρ)           For example, Young’s modulus values are closer to the
+      remains quite dispersed at both contact complexity levels.             reported range of 5000 to 54000 kPa, the material density
+      This is not surprising because, compared to the level-                 seems to be closer to 1400 kg/m3 , and Poisson’s ratio is
+      1 motions, the higher contact complexity induced by the                closer to the reported range of 0.4 to 0.5 (Waheed and
+      shifting parts of the level-2 motions naturally poses a stricter       Asmael 2023; StructX 2014-2024). However, the recovered
+      selection range for the physics parameter values.                      yield stress values are higher than the reported values for
+                                                                             clays (210 to 600 kPa) (Rehman et al. 2018) because the
+
+
+      Prepared using sagej.cls
+      12                                                                                                                  Journal Title XX(X)
+
+
+
+                                          PCD CD              PRT CD              PCD EMD                PRT EMD
+                                         12-mix            6-mix               1-rec.            1-round              1-cyl.
+                                 19206
+                      PCD
+                      CD
+                                 16480
+                                 14647
+                      PRT
+                      CD
+                                 10558
+                                  2716
+                      PCD
+                      EMD
+                                  1720
+                                 25220
+                      PRT
+                      EMD
+                                 11072
+                                  3880
+0.2        0.4                   0.6         0.8               1.0
+                      Height
+                 Timesteps
+                      Map
+                              2575
+                               3e5
+                      Young's
+                      Modulus
+                      E (kPa)
+                                   1e4
+                                   0.5
+                      Poisson's
+                      Ratio
+                      ν
+                                     0
+                                   2e4
+                      Yield
+                      Stress
+                      σy (Pa)
+                                   1e3
+                                   2e3
+                      Material
+                      Density
+                      ρ (kg/m3 )
+                               1e3
+                               2.0
+                      Manipulator
+                      Friction
+                      μm
+                                   0.0
+                                   2.0
+                      Table
+                      Friction
+                      μt
+                                   0.0
+      Figure 5. Validation losses (top five rows) and parameter values (last six rows) over 100 gradient updates at level-2 contact
+      complexity. Each column presents the results of optimising with a different dataset. Each row shows the changes of an evaluation
+      metric or a parameter, denoted on the left. In each figure, different colours indicate the results of minimising a different loss function,
+      as labelled by the legend on the top. For the top five rows, each colour has three dotted lines corresponding to the results of three
+      random seeds and a solid line corresponding to their means. For the last four rows, each colour has three solid lines corresponding
+      to the results of three random seeds.
+
+
+
+
+      Prepared using sagej.cls
+Yang, Ji and Lai                                                                                                                            13
+
+
+                                                                                             Dataset
+                   Contact                                                                                                  Avg. Height
+                               Loss    Metric/Parameter            12-mix        6-mix        1-rec.    1-round    1-cyl.
+                  complexity                                                                                                 map (mm)
+                                        Min. height map (mm)       2267.44       2176.21      1973.81   2183.30   2327.01    2185.55
+                                        Young’s modulus (kPa)       300000        10000        300000   300000    294991
+                               PCD
+                                        Poisson’s ratio              0.480        0.480         0.480    0.480     0.348
+                               CD
+                                        Yield stress (kPa)          20000         12367         1000     7527      20000
+                                                              3
+                                        Material density (kg/m )     1000          1380         1225      1000      1000
+                                        Min. height map (mm)       2287.21       2293.42      2285.98   2311.87   2290.71    2273.83
+                                        Young’s modulus (kPa)       189900       300000        179373   196393     20335
+                               PRT
+                                        Poisson’s ratio              0.165        0.010         0.223    0.010     0.178
+                               CD
+                                        Yield stress (kPa)           7373         10286         7016     12358      2466
+                     Level              Material density (kg/m3 )    1157          1088         1210      1000      1797
+                       1                Min. height map (mm)       2024.78       2039.95      2040.51   2186.90   2272.50    2112.93
+                                        Young’s modulus (kPa)       265420       237337        270940   300000    193790
+                               PCD
+                                        Poisson’s ratio              0.445        0.439         0.419    0.480     0.436
+                               EMD
+                                        Yield stress (kPa)           1403          1036         1382      5839     10138
+                                                              3
+                                        Material density (kg/m )     1487          1379         1482      1000      1009
+                                        Min. height map (mm)       2000.36       1999.14      1980.35   1999.34   2016.10    1999.06
+                                        Young’s modulus (kPa)       300000       300000        300000   300000    271247
+                               PRT
+                                        Poisson’s ratio              0.453        0.480         0.480    0.478     0.442
+                               EMD
+                                        Yield stress (kPa)           1000          1000         1059      1000      1000
+                                                              3
+                                        Material density (kg/m )     1542          1670         1214      1518      2000
+                               *Validation height map (mm) with hand-picked parameters: 2122.59
+                                        Min. height map (mm)       3163.64       3091.73      3622.58   3423.00   3125.04    3285.20
+                                        Young’s modulus (kPa)       47700         42136         91785   132840     28679
+                                        Poisson’s ratio              0.444        0.451         0.364    0.095     0.403
+                               PCD
+                                        Yield stress (kPa)          11407         10479          7839    15590     14514
+                               CD
+                                        Material density (kg/m3 )    1810          1919          1819     1000      1880
+                                        Table friction               0.725        0.696         1.816    0.696     0.715
+                                        Manipulator friction         1.495        1.448         1.264    1.037     0.704
+                                        Min. height map (mm)       3088.31       2865.14      3104.15   3031.56   2999.36    3017.70
+                                        Young’s modulus (kPa)       66514         47786         28023    24068    256786
+                                        Poisson’s ratio              0.331        0.376         0.317    0.309     0.451
+                               PRT
+                                        Yield stress (kPa)           1904          1809          8363     8063      1537
+                               CD                             3
+                                        Material density (kg/m )     1267          1284          1926     1965      1225
+                                        Table friction               0.473        0.488         0.414    0.419     0.487
+                     Level              Manipulator friction         0.494        0.604         0.249    0.293     0.084
+                       2                Min. height map (mm)       2933.23       2667.43      2959.43   2895.74   2979.04    2886.97
+                                        Young’s modulus (kPa)       48459         14959        135207   113474     12017
+                                        Poisson’s ratio              0.392        0.400         0.374    0.339     0.369
+                               PCD
+                                        Yield stress (kPa)           1417          1176          1359     1340     10921
+                               EMD                            3
+                                        Material density (kg/m )     1319          1409          1313     1331      1995
+                                        Table friction               0.544        0.525         0.508    0.453     0.434
+                                        Manipulator friction         0.805        1.308         0.194    0.381     0.878
+                                        Min. height map (mm)       2598.28       3060.10      2847.69   2760.83   3172.49    2887.88
+                                        Young’s modulus (kPa)       27779         10000        222856   144827     10000
+                                        Poisson’s ratio              0.359        0.330         0.435    0.383     0.303
+                               PRT
+                                        Yield stress (kPa)           1008          9635          1000     1000      7377
+                               EMD                            3
+                                        Material density (kg/m )     1396          2000          1492     1445      2000
+                                        Table friction               0.487        0.373         0.311    0.543     0.411
+                                        Manipulator friction         1.013        1.478         0.015    0.625     1.433
+                               *Validation height map (mm) with hand-picked parameters: 2985.5688
+Table 3. The parameter values corresponding to the lowest validation heightmap distance in each optimisation case at both contact
+complexity levels. Bolded texts denote the three lowest losses at each level. It can be seen that the PRT EMD loss tends to produce
+the best results and DPSI can find parameters that outperform hand-picked parameters (from the geotechnical literature) with even
+just one interaction datapoint.
+
+
+
+reported values were found to make the material collapse                          compared to the other losses (observe the blue lines that
+in simulation. Based on the empirical values from Waheed                          deviate from others in Figure 5). This is aligned with the
+and Asmael (2023); StructX (2014-2024) and the loss                               analyses of the loss landscapes at both contact complexity
+landscapes, we hand-pick a set of parameter values and                            levels, where reversed distributional patterns of the CD and
+calculate the validation losses at both levels. As denoted in                     EMD losses were observed. Furthermore, the EMD losses
+Table 3, the resultant performances are reasonable but not as                     tend to produce smaller validation heightmap distances at
+good as the performances of the DPSI method.                                      both levels as shown by the green and red lines in Figure 4
+   Secondly, the top five rows in Figure 4 reveal that, in most                   and 5 and the average heightmap distances in Table 3,
+cases, the CD and EMD losses have a negative correlation.                         indicating better sim2real alignment. This again is aligned
+For example, the red curves of the first column show that                         with the analysis of the level-2 loss landscapes, where only
+minimising the PRT EMD loss reduces both EMD losses and                           the PCD CD loss distributes significantly differently along
+the heightmap distance, but increases both CD losses. Also,                       the σ y axis.
+Table 3 shows that optimising the CD losses tends to produce                         Thirdly, the results show that it is possible to obtain
+large yield stress values (σσ y ), while optimising the EMD                       comparable performances with just one datapoint at both
+losses tends to produce small ones. Similar observations                          contact complexity levels. This can be concluded by
+can be made from the level-2 results, but only the PCD                            comparing the results horizontally: 1) most validation curves
+CD validation losses tend to exhibit opposite tendencies                          of the top five rows in Figs. 4 and 5 with 1-datapoint
+
+
+Prepared using sagej.cls
+14                                                                                                            Journal Title XX(X)
+
+
+show highly similar tendencies with the 6-mix and 12-mix
+datasets, and 2) the last four rows in Figs. 4 and last six rows
+in Figure 5 also show that the parameters found with different
+datasets mostly converge to similar value regions. Moreover,
+Table 3 shows that the lowest validation heightmap distances
+at level-1 contact complexity and the third lowest at level-
+2 are achieved by optimising with the 1-rec. and 1-round
+datasets. These results are aligned with the analysis of the
+loss landscapes, where similar loss distributions are observed
+among different datasets.
+Qualitative results: We now examine the manipulation
+processes simulated using the best physics parameters
+corresponding to the lowest validation heightmap losses
+presented in Table 3. Figure 8 shows the resultant particles
+and heightmaps after the manipulation of objects at two            Figure 6. Selected examples from Figure 8b to show that the
+contact complexity levels with three end-effectors (two            CD losses produce darker-coloured heightmaps while the EMD
+object configurations are included for each contact level and      losses produce lighter-coloured and wider heightmaps, which
+                                                                   can be intuitively explained by the optimised yield stress values
+end-effector).                                                     and their potential difference in spatial focus.
+   Firstly, all the simulated particles and heightmaps post-
+manipulation are highly similar to the ground truths across
+the loss functions and datasets. This shows that minimising
+any of the four loss functions with any of the five datasets
+can indeed reproduce visually plausible manipulation results
+close to the real-world system. It indicates that DPSI is
+not data-hungry and it is robust to the choice of common
+point-based loss objectives. These characteristics are highly
+preferred in robotic applications, as they lead to smaller
+data collection costs, simpler observation preprocessing, and
+simpler loss function engineering.
+   Secondly, by examining the details of the heightmaps
+more carefully, it shows that optimising the CD losses tends
+to produce heightmaps with darker colours (which represent
+greater heights of the object) while optimising the EMD
+losses tends to produce heightmaps where the objects look
+slightly bigger and wider. This is especially true at level-1
+contact complexity, where the heightmaps in the first two
+rows for each object configuration in Subfigures 8a and 8b
+are generally darker than those in the last two rows (see
+figure 6 for enlarged examples). At level 2, the PRT CD
+                                                                   Figure 7. Selected examples from Figure 8d to show the
+loss sometimes changes its focus on the x and y directions,        physically realistic associations between object movements and
+producing lighter-colour heightmaps (see the second rows of        three physics parameters, demonstrating the physical plausibility
+the heightmaps associated with the rectangle and round end-        of different physics parameter values.
+effectors in Subfigures 8c and 8d). This observation indicates
+that optimising the CD losses tends to produce particles that
+match the height of the ground truth shapes, i.e., in the z        the friction coefficients and the material density – the three
+direction, while optimising the EMD losses tends to match          key parameters that determine how much the object will be
+the x and y directions.                                            moved in the shifting motion direction. The parameters in
+   This may be caused by the fact that these losses distribute     Table 3 and their corresponding visualisations exhibit the
+differently along the yield stress axis (the CD and EMD            following physically plausible relationships (see Figure 7 for
+losses at level 1, the PRT CD loss at level 2). According          a few examples),
+to physics intuitions, a smaller yield stress will cause the
+object to yield more easily and respond more drastically to           1. with similar weights (ρ), the object is moved at a
+the poking forces, hence the more spreading in the x and                 longer distance when the manipulator frictions (µm )
+y directions and more compressing in the z direction, and                is greater (compare the parameters and visualisations
+vice versa. One can see that a greater yield stress value in             between the results from the PCD EMD loss with the
+Table 3 corresponds to a darker heightmap in Figure 8, and               12-mix and 1-rec. datasets)
+vice versa.                                                           2. with similar manipulator frictions (µm ), the object
+   Thirdly, though the particles and heightmaps are very                 is moved further when the table friction (µt ) is low
+similar, they are produced by quite different parameter                  (compare the parameters and visualisations between
+combinations. From the results at contact level 2 in                     the PCD CD loss with the 1-round dataset and the PRT
+Subfigures 8c and 8d, one can observe a correlation between              EMD loss with the 12-mix dataset)
+
+Prepared using sagej.cls
+Yang, Ji and Lai                                                                                                                   15
+
+
+ (a) Level-1 contact, object configuration 1                       (b) Level-1 contact, object configuration 2
+
+
+
+
+ (c) Level-2 contact, object configuration 1                       (d) Level-2 contact, object configuration 2
+
+
+
+
+Figure 8. The particles and heightmaps of the objects after applying the second motions at contact level 1 (a-b) and 2 (c-d),
+simulated with the best set of physics parameters. Darker colours of the heightmaps indicate greater heights of the object. For each
+combination of the loss function and dataset at each level, three trajectories on two object configurations are simulated (3 effectors
+× 2 datapoints). There are three groups in each subfigure, with the ground truth point clouds and heightmaps placed in the leftmost
+column. In each group, a row shows the results corresponding to a loss function and a column results corresponding to a dataset.
+
+
+    3. with similar friction values, the object is moved further    of the models and the materials, there is hardly any fixed
+       when it is lighter (compare the results from the PCD         set of parameter values that can simulate a material in
+       EMD loss with the 12-mix and the 1-cyl. datasets)            every condition. These parameters will always have some
+   These relationships between parameters and visualisations        differences in different conditions (e.g., heat, light, humidity,
+align with our understanding of real-world physics,                 etc.) and they change over time (e.g., drying). Therefore,
+demonstrating that DPSI can produce physically plausible            the fact that DPSI can estimate the parameters with only
+and interpretable parameter values. Moreover, the variations        one interaction makes it highly promising for fast parameter
+in parameter values suggest that, aside from the mismatch           re-identification that can be performed online to recalibrate
+
+
+Prepared using sagej.cls
+16                                                                                                                  Journal Title XX(X)
+                                                                  (a) Triple-poking, object configuration 1
+simulation accuracy efficiently, eliminating the need to keep
+track of previously identified parameter values.
+   Fourthly, the visualisations in Figure 8 also reveal
+limitations and potential improvement directions of the
+physics model. By comparing with the ground truths, the
+simulated contact areas of the objects always deform more
+sharply with insufficient elastic returning. The real objects,
+                                                                  (b) Triple-poking, object configuration 2
+on the other hand, tend to respond more elastically after
+being plastically deformed, hence the higher and smoother
+surfaces shown in the ground truths. This is more obvious
+for contact areas with sharp edges, such as the four edges
+of the rectangle end-effector or the sharp sides of the
+cylinder end-effector. In addition, at level-2 cases, with
+the effectors shifting horizontally, some simulated particles
+are unrealistically displaced and stay floating. In the real      (c) Flattening, object configuration 1
+world, the displaced parts would fall because of gravity.
+What’s more, the shifting motion in the real world causes
+the whole object to tilt in the moving direction, while in
+the simulation the contact impact tends to remain in a much
+smaller region around the contact area. These inconsistencies
+can be caused not only by inaccurate modelling, but
+also by various computation approximations, such as time
+integration method, simulation step size, contact handling,       (d) Flattening, object configuration 2
+etc.
+Summary: In short, this subsection presents a detailed
+examination of the in-distribution performances of DPSI
+with motions at two levels of contact complexity. By
+analysing the validation loss curves, the parameter values
+and their manipulation visualisations, we can answer the
+proposed questions:
+                                                                  (e) Poking-180-rotating, object configuration 1
+
+     • The loss functions can be minimised, demonstrating
+       the feasibility of DPSI even in the presence of noisy
+       and incomplete point cloud observations.
+     • The loss functions produce similar visualisations, but
+       do not always agree with each other on the found
+       parameter values. The CD and EMD losses seem to
+       focus on quite different spatial aspects of the point      (f) Poking-180-rotating, object configuration 2
+       sets. They distribute differently along the yield stress
+        σ y ) axis and produce different yield stress values.
+       (σ
+       However, it seems that, as the optimisation motion
+       becomes more complex, the loss functions agree more
+       on the parameter solutions.
+     • There are many local minima and possible parameter
+       solutions, but they produce visually and physically
+       similar manipulation results with physically intuitive                                                                     Height
+       interpretability.                                           Time                                                           Maps
+     • The number of datapoints has a minor influence             Figure 9. The long-horizon manipulation motions. Every
+       on the optimisation performances both quantitatively       subfigure visualises from top to bottom the real manipulation
+       and qualitatively, indicating that DPSI is not data-       process and its simulations with the top two best DPSI-recovered
+       hungry even in the presence of real-world perception       parameters and hand-picked parameters.
+       challenges.
+     • Discussions on the visualisations and parameter values
+       show that DPSI can produce physics parameter values        complex contact dynamics with the best parameters (Table 3)
+       with physically realistic and interpretations.             found at the level-2 contact complexity identification task.
+                                                                     To recall, there are three unseen motions. The triple-
+                                                                  poking motion moves the round end-effector to poke the
+Generalisation                                                    object at three different locations along the y axis. The
+This subsection will look at the out-of-distribution perfor-      flattening motion moves the cylinder end-effector to press
+mance of DPSI by visualising the manipulation processes           and flatten the object towards the positive and negative
+of three unseen and much longer motions that induce more          x directions. The poking-180-rotating motion moves the
+
+
+Prepared using sagej.cls
+Yang, Ji and Lai                                                                                                                  17
+
+
+rectangle end-effector to press the object down and then
+rotate 180 degrees about the z axis. The triple-poking motion
+is less relevant to the friction coefficients, while the last
+two motions involve complex frictional contacts. Table 4
+summarises the heightmap distances of the simulated results
+of the unseen motions (each with two object configurations).
+Figure 9 visualises the trajectories of the real manipulation
+trajectory and its simulations with the top two best DPSI-
+found parameters and the hand-picked parameters. The
+animation videos of them are included in Supplementary
+materials. Figure 12 presents the resultant particles and
+their heightmaps of each motion and object configuration
+simulated by the DPSI-found parameters. The following
+observations can be drawn.
+   First, in Figure 9, (as well as the animation video), it
+can be seen that, for all motion and object configuration
+pairs, the real and simulated trajectories are highly similar.
+Figure 12 also shows that, although discrepancies exist, the
+simulated particles and their heightmaps of the manipulation
+results are also highly similar across the loss functions
+and datasets. This visual similarity proves that DPSI
+can recover physics parameters from simple interactions
+that allow the accurate simulation of unseen, longer, and
+more complex manipulation motions, exhibiting robustness
+against perception and data challenges. Moreover, we note
+that it is the single-datapoint cases that achieve 11 out of
+18 top-three lowest heightmap losses across the three unseen       Figure 10. Selected examples from Figure 12 to show the
+motions as shown in Table 4, where 2 achieved by the hand-         physically realistic associations between the manipulation results
+picked parameters and 5 by the 12mix and 6mix datasets.            and the found parameter values. Comparisons to the ground
+   Secondly, the found physics parameters retain their             truths reveal the modelling limitations (insufficient elastic
+physical meanings and interpretability for the unseen and          returning).
+more complex motions. Evidence supporting this can be
+found in Figure 12 produced by different parameters (see
+Figure 10 for selected examples).
+     • The first example is that when the yield stress (σ    σy)
+       is smaller, the resultant heightmaps of the unseen
+       motions tend to be lighter, meaning the objects are
+       more compressed down.
+     • Another example is that, when moving the cylinder
+       end-effector along the x axis after pressing down
+       the object, a higher manipulator friction coefficient
+       (ηm ) causes larger whole-body displacement of the
+       object, while a smaller value causes the effector to
+       slip away and compress down the particles along its
+       moving direction. This is shown more clearly in the
+       bottom-right case (cylinder end-effector) of Figure 12,
+       where the resultant object bodies that are more
+       concentrated to the heightmap centres correspond
+       to larger manipulator friction coefficients, while the
+       objects whose upper part of the heightmaps are
+       flattened correspond to smaller one.
+     • The last example is that, for the poking-180-rotating
+       motion results shown at the top of Figure 12, when
+       the objects are more rotated by the end-effector, at          Time
+
+       least two of the following three conditions can be          Figure 11. Selected frames from two trajectories in Figure 9
+       verified true from Table 3 at the same time: a relatively   to show modelling limitations (floating particles and insufficient
+       small material density, a relatively small table friction   spreading of contacts). The areas around the green cycles show
+       coefficient, and a relatively large manipulator friction    that the second part of the flattening motion does not tilt the
+       coefficient. This is physically intuitive as any two of     object up, and there are floating particles in the poking-180-
+                                                                   rotating motion.
+       the three conditions would make the object easier to
+       move.
+
+Prepared using sagej.cls
+18                                                                                                                     Journal Title XX(X)
+
+
+           Motion          Object    Num. datapoint        12            6         1 (rec.)   1 (round)   1 (cyl.)   Avg. over losses
+                                     PCD CD             2384.72       2302.12      2394.64    3827.77     2288.37        2639.52
+                           Config.   PRT CD             3318.00       2845.03      2316.25    2309.38     4499.31        3057.59
+                           1         PCD EMD            2700.57       2306.85      2971.97    3346.45     2255.47        2716.26
+           Poking-180                PRT EMD            2290.37       2299.37      3605.89    2361.34     2357.05        2582.81
+                                     Avg. over dataset  2673.42       2438.34      2822.19    2961.24     2850.05           -
+                                     Hand-picked parameters: *2132.04
+           rotating                  PCD CD             5367.10       5345.52      5473.18    4822.09     5770.72        5355.72
+                           Config.   PRT CD             4218.07       4227.91      5802.93    5766.13     *3994.08       4801.82
+                           2         PCD EMD            4187.56       4469.51      4300.81    4026.08      5467.30       4490.25
+                                     PRT EMD            4175.07       4768.15      4323.36    4226.68      4978.39       4494.33
+                                     Avg. over dataset  4486.95       4702.77      4975.07    4710.25     5052.62           -
+                                     Hand-picked parameters: 5283.87
+                                     PCD CD             2956.06       2919.90      3028.85    3089.34     2949.11        2988.65
+                           Config.   PRT CD             2960.77       2971.96      2962.99    2963.06     *2798.67       2931.49
+                           1         PCD EMD            2895.86       2875.01      2839.52    2863.56      3003.25       2895.44
+           Triple-                   PRT EMD            3100.87       3035.49      2852.95    3034.08      3059.61       3016.60
+                                     Avg. over dataset  2978.39       2950.59      2921.08    2987.51     2952.66           -
+                                     Hand-picked parameters: 2983.62
+           poking                    PCD CD             *4175.07      4768.15      4323.36    4226.68     4978.39        4630.09
+                           Config.   PRT CD             4395.60       4399.77      4731.59    4685.70     4245.47        4491.62
+                           2         PCD EMD            4430.33       4495.40      4417.59    4426.74     4379.40        4429.89
+                                     PRT EMD            4529.65       4304.59      4300.22    4272.90     4536.17        4388.70
+                                     Avg. over dataset  4508.76       4467.01      4499.59    4505.60     4444.43           -
+                                     Hand-picked parameters: 4517.24
+                                     PCD CD             2443.54       2536.84      2153.18    2244.94     2403.77        2356.45
+                           Config.   PRT CD             2020.59       1988.33      2496.75    2547.35     1860.49        2182.70
+                           1         PCD EMD            2149.35       *1835.63     2233.75    2196.98     2545.52        2192.25
+           Flattening                PRT EMD            2275.80       2439.66      2407.77    2287.72     2539.93        2390.18
+                                     Avg. over dataset  2222.32       2200.12      2322.86    2319.25     2337.43           -
+                                     Hand-picked parameters: 2051.06
+                                     PCD CD             5325.90       5378.31      4752.87    4756.35     5743.95        5191.48
+                           Config.   PRT CD             5622.73       5387.05      5282.32    5119.63     5817.57        5445.86
+                           2         PCD EMD            5058.42       4697.61      5798.36    5891.09     5190.65        5327.23
+                                     PRT EMD            4996.47       5460.32      5686.20    5152.61     5493.27        5357.77
+                                     Avg. over dataset  5250.88       5230.82      5379.94    5229.92     5561.36           -
+                                     Hand-picked parameters: *4483.75
+Table 4. The lowest pixel-wise heightmap distances (in mm) achieved by the three unseen motions (each with two object
+configurations), simulated by the best parameters found at the level 2 contact complexity identification task. Bolded texts denote
+the top three lowest losses. Underlined texts denote the losses achieved by the cases which have achieved the top-three lowest
+in-distribution validation performances.
+
+
+
+   Thirdly, the found solutions are not globally optimal.                    edges, can be seen from all visualisations where the primary
+Despite the visual similarity, Table 4 shows that the best                   contact areas of the object rarely return to heights close to
+generalisation results are not always achieved by the cases                  the real object (compare also the enlarged heightmaps in
+with the best in-distribution validation performances, as the                Figure 10). Floating displaced particles can be observed from
+underlined and bolded texts rarely coincide. In addition,                    the poking-180-rotating motion visualisations, where many
+though the hand-picked parameters do achieve the best                        particles are carried away during rotations. The insufficient
+results in two out of six object simulations, they are not                   spreading of the influence of contacts can be recognised
+the best fit for every scenario. This again suggests the                     from the first object configuration of the flattening motion
+importance of re-fitting the parameters on the fly for every                 visualisations where the object is not tilted enough in the
+new scenario as there are hardly two objects that are identical              second half of the trajectory. See Figure 11 for enlarged
+especially for elastoplastic materials. Qualitatively, from                  examples.
+the heightmaps and trajectories in Figures 12 and 9, one                        In summary, the results and discussions above strongly
+can also recognise certain visual discrepancies between the                  support the argument that DPSI can recover physics
+real objects and their simulation counterparts, indicating a                 parameters that produce the accurate simulation of unseen,
+certain degree of mismatch between the found parameters                      longer, and more complex deformable object manipulation
+and the actual solutions. This could be improved by further                  dynamics by optimising with very few real-world noisy and
+diversifying the data (and the motions that produce them)                    incomplete point-cloud data collected by simple and short
+used for optimisation. Other directions for improvement may                  interacting motions.
+include better observational noise removal or better physics
+model selection/approximation.
+   Finally, the modelling limitations observed in the in-
+                                                                             Cloud slime & soil materials
+distribution visualisation still exist in the unseen motion                  This subsection reports the DPSI performances with cloud
+visualisations (Figures. 9 and 12). The insufficient elastic                 slime and soil materials. Note that we use the same
+returning at contact areas, especially with sharp manipulator                elastoplastic physics models in simulation. To do so, we
+
+
+Prepared using sagej.cls
+Yang, Ji and Lai                                                                                                                 19
+
+
+(a) Object configure 1                                            (b) Object configure 2
+
+
+
+
+Figure 12. The particles and heightmaps of the objects after applying the long-horizon unseen motions, simulated with the best set
+of physics parameters found at the level 2 contact complexity experiments. Darker colours of the heightmaps indicate greater heights
+of the object. For each motion, two object configurations are manipulated with three end-effectors. The results for each trajectory
+are grouped with the ground truth placed on the left. In each group, a row shows the results corresponding to a loss function and a
+column results corresponding to a dataset.
+
+
+collect a single interaction data point for each material           (a) Cloud slime
+using the cylinder end-effector and the poking-shifting-2
+motion, optimise the parameters with the PRT EMD loss
+from a randomised initialisation for 100 iterations with
+three random seeds, and validate the results on another data
+collected with the flattening motion and the cylinder end-
+effector. The real manipulation trajectory of the flattening
+motion and its simulations based on the found parameters are
+shown in Figure 13. The recovered parameters are presented
+                                                                    (b) Soil
+in Table 5.
+   Figure 13 shows that DPSI manages to recover parameters
+that simulate cloud slime and soil as closely as possible
+despite the mismatch of the physics models and the target
+materials. Especially in the case of soil, Table 5 shows
+that DPSI finds large table friction coefficients and small
+end-effector friction coefficients to simulate the effect of
+the soil being flattened, although these are likely not close
+                                                                                                                               Height
+to the actual values. This suggests that DPSI will seek to            Time                                                     Maps
+find parameters that make the deformations of the simulated
+                                                                    Figure 13. Comparison of the real manipulation trajectories and
+object as realistic as possible regardless of whether the           the resultant height maps for the cloud slime and soil materials
+physics models are a good match for the real materials. On          and their simulation counterparts based on the recovered
+the other hand, this also suggests that the manual selection of     physics parameters. In each subfigure, the second to last rows
+the physics models is important for DPSI to produce the best        correspond to the results with three random seeds.
+deformation simulation.
+
+Cause and treatment to local minima                                 examine the random seed sensitivity of DPSI. The results are
+As shown by the loss landscapes and the optimisation results,       shown by the black dotted lines in Figure 14.
+although DPSI can find good solutions, it could get stuck              First of all, these dotted lines show consistent results with
+in local minima. Therefore, we performed extra experiments          the previous conclusions: they converge to stable (though
+to optimise the PRT EMD loss with the three 1-datapoint             different) loss and parameter values, still reveal the negative
+datasets at contact level 1 with eight more random seeds to         relationship between the CD and EMD losses, and can
+
+
+Prepared using sagej.cls
+20                                                                                                                                                    Journal Title XX(X)
+
+                                                                                                               PCD CD           PRT CD           PCD EMD            PRT EMD
+                Random seed 1.0                  1         2                              3
+                                                                                                                                                       PRT EMD (Random Init)
+                Young’s modulus (kPa)         300000    106971                         117831
+                Poisson’s ratio                 0.4      0.33                           0.03                                1-rec.           1-round             1-cyl.
+     Cloud      Yield stress (kPa)            13836      3907                          10469
+     slime                  0.8 (kg/m3 )
+                Material density               1000      1000                           1491            PCD       9409
+                                                    1.0
+                Table friction                 1.18      0.13                           0.54            CD
+
+
+
+
+                                                    Success rate
+                Manipulator friction            2.0      0.01                           0.58                      8982
+                                                                   0.5
+                Random seed 0.6                  1           2           3
+                       Success rate
+
+
+                Young’s modulus (kPa)         10000       88963       10696                                       6499
+                Poisson’s ratio                0.32 0.00.0 0.33 0.5 0.08 1.0                            PRT
+     Soil       Yield stress (kPa)             9333        1000       10037
+                                                               Timesteps                                CD
+                            0.4 (kg/m3 )
+                Material density               2000        1653        1823                                       5974
+                Table friction                  2.0        1.08        1.83
+                Manipulator friction           0.01        0.01        0.01                                       1397
+Table 5. Physics parameters recovered by the DPSI method for                                            PCD
+                    0.2                                                                                 EMD
+Cloud slime and Soil materials with three random seeds.
+                                                                                                                  1195
+                                                                                                                  6984
+             E (kPa)      ν 0.0 ρ (kg/m3 )    σ y (kPa)                  ηt          ηm
+                                      0.0     0.2                              0.4                0.6   PRT         0.8          1.0
+             30000        0.4          1330   1000                       0.7         0.7
+                                                                                      Timesteps         EMD
+Table 6. Hand-picked physics parameter values based on the                                                        5397
+loss landscapes, published literature and open-source website
+in geo-technical engineering (Rehman et al. 2018; Waheed and                                                      2309
+Asmael 2023; StructX 2014-2024). The yield stress value is                                              Height
+slightly higher than the reported values because the reported
+                                                                                                        Map
+values were found to cause the material collapse in simulation.                                                   2029
+                                                                                                                   3e5
+                                                                                                        Young's
+                                                                                                        Modulus
+achieve comparable performances with results from larger                                                E (kPa)
+datasets. On the other hand, it can be seen that the main cause                                                     1e4
+of converging to different solutions is the different initial                                                       0.5
+                                                                                                        Poisson's
+parameter values, which were determined by the pseudo-                                                  Ratio
+random process controlled by different random seed values.                                              ν
+This is not surprising as gradient-descent algorithms with                                                            0
+complex physics problems are known to be sensitive to the                                                           2e4
+choice of the initial solution (Hu et al. 2020; Antonova et al.                                         Yield
+                                                                                                        Stress
+2023).                                                                                                  σy (Pa)
+   To further test the assumption, we perform the same
+                                                                                                                    1e3
+experiments with the four loss functions using the same                                                             2e3
+set of seeds but manually initialise the solutions using the                                            Material
+hand-picked parameters in Table 6 selected according to the                                             Density
+                                                                                                        ρ (kg/m3 )
+material/geotechnical engineering literature (Rehman et al.
+2018; Waheed and Asmael 2023; StructX 2014-2024). These                                                             1e3
+hand-picked parameter values are less accurate in terms of                                              Figure 14. Validation losses (top five rows) and parameter
+validation loss as shown in Table 3. However, the (highly                                               values (last four rows) over 100 gradient updates at level-1
+overlapped) solid lines in Figure 14 show that with this initial                                        contact complexity from optimising the loss functions with an
+solution, DPSI converges with near-zero variances across                                                extra set of 8 random seeds. Solid lines (highly overlapped)
+eight random seeds, except for optimising the PCD CD loss                                               are results with the same initial solution while dotted lines show
+with the 1-rec. dataset. This confirms that the differentiation                                         results of optimising the PRT EMD loss with randomised initial
+process of the DPSI system is largely deterministic and                                                 solutions. Each column presents the results of optimising with a
+                                                                                                        different dataset. Each row shows the changes of an evaluation
+the found solutions rely largely on the initial solutions, the                                          metric or a parameter, denoted on the left. In each figure,
+optimisation algorithm and the loss functions. Moreover,                                                different colours indicate the results of optimising a different loss,
+with a good guess of the initial values, DPSI could converge                                            as labelled by the legend on the top.
+very quickly (within 20 iterations shown by the red/green
+solid lines).
+                                                                                                        we can analyse the differences between CD and EMD losses
+                                                                                                        with hollow or filled point sets.
+Remark on CD & EMD losses
+                                                                                                           Hollow or filled point sets: For the CD losses, it can
+As mentioned previously, the CD and EMD losses seem to                                                  be seen by comparing the blue and orange solid lines in
+focus on different spatial aspects of the object’s geometry,                                            Figure 14. The blue solids in the first two rows indicate that
+leading to deformations that match either the horizontal or                                             optimising the CD loss with a hollow point cloud target can
+the vertical directions. With the results of optimising the four                                        achieve smaller losses in both CD loss metrics. However, the
+losses with the same initial solutions shown in Figure 14,                                              third to fifth rows in Figure 14 show that optimising CD with
+
+Prepared using sagej.cls
+Yang, Ji and Lai                                                                                                                 21
+
+
+a filled particle system target (PRT CD loss) outperforms               Figure 15 shows that, with a hollow target, CD distributes
+PCD CD in terms of both EMD loss metrics and the height              the spatial information of the points within over the surface
+map distance. On the other hand, optimising the EMD loss             points, which is problematic. Take the shape in Figure 15
+with a filled particle system target (red lines) exhibits the        as an example, the particles above the target surface will
+same pattern, consistently showing inferior performances             be forced down, while the particles below the target surface
+in terms of the CD loss metrics while outperforming the              will be pushed up, which is not supposed to happen. On the
+PCD EMD losses (green lines) in terms of both EMD loss               other hand, the EMD loss does not suffer from this effect
+metrics and the height map distance. Therefore, the results          because it corresponds the particles to the closest points from
+indicate that optimising with a filled particle system target        the target surface only. With a non-hollow target point set,
+generated from a reconstructed watertight mesh is better than        the CD loss produces different correspondences in the two
+optimising with a hollow point cloud target.                         computation directions, which results in a mixture of correct
+   The cause behind it is the inaccurate point-to-point              and wrong spatial relations, while the EMD loss is more
+correspondences generated with a hollow point set. As                likely to find the best match spatially due to the one-to-one
+shown by Figure 15, a hollow point set either averages               correspondence generated by a linear assignment algorithm.
+the spatial information of an area of particles over a thin             In short, this analysis leads to the conclusion that the PRT
+layer of target points in computing the CD loss or ignores           EMD loss, which computes point correspondences between
+the information of a large body of particles within the              the filled simulation particle system and a non-hollow target
+particle body in computing the EMD loss. On the contrary,            point cloud, is the most ideal choice for capturing the correct
+with a non-hollow target, the point correspondences connect          spatial differences between point sets.
+spatially closer points and do not disregard information
+within the object body.                                              Remark on computation cost
+   CD or EMD: Figure 14 shows that either with a hollow              In this subsection, we report the running time and GPU
+or non-hollow target, the EMD losses (green and red lines)           memory needed for forward and backward computations for
+consistently outperform the CD losses (blue and orange               the DPSI framework with different particle densities and
+lines) in terms of the EMD and height map distance metrics           motions. The statistics are summarised in Table 7, which
+while being inferior in terms of the CD metrics. Again, we           were obtained using a Nvidia GeForce RTX 4090 GPU.
+believe that this is another consequence of the different ways          It can be seen that the computation time and memory
+CD and EMD compute the point correspondences.                        increase as the number of simulation particles and the
+                                                                     length of motion increase. Because of the pre-compilation of
+                                                                     kernels when they are first called in a TaiChi programme, the
+                                                                     first forward and backward passes always take much longer
+                                                                     and the later repetitive calls are much faster, as denoted by
+                                                                     ”CP. Foward time (s)”.
+                                                                        With particle numbers around 2000 to 4000, a DPSI
+                                                                     optimisation run that consists of 100 iterations of forward-
+                                                                     backward computations using 1 datapoint can be done
+                                                                     in about 10 minutes. As shown by Figures 4 and 5,
+                                                                     most runs converge within 50 iterations, which means that
+                                                                     a plausible solution can be found by DPSI in about 5
+                                                                     minutes. With a good initial guess of the parameters, as
+                                                                     shown by the dotted lines in Figure 14, this runtime can
+                                                                     be further reduced to around 2 minutes. In addition, the
+                                                                     memory consumption for these simulations is within 3 GB,
+                                                                     which permits implementations on portable and small GPUs.
+                                                                     With no more than 2 minutes for the 3D reconstruction
+                                                                     pipeline, a parameter identification process could take less
+                                                                     than 5 minutes to complete. These statistics confirm that
+                                                                     DPSI meets the criteria in computational costs for practical
+                                                                     deployment. It also suggests again that it is practical to
+                                                                     perform parameter identification with DPSI at any time
+                                                                     without the need to rely on previously found parameters or
+                                                                     slow manual measuring techniques.
+
+                                                                     Conclusion
+                                                                     This work addresses the important problem of closing
+                                                                     the gap between simulated and real-world manipulations
+                                                                     of elastoplastic objects. In particular, we propose a
+Figure 15. Correspondence examples for the CD and EMD                differentiable physics-based system identification framework
+computations with hollow and filled point sets as targets. Colours   (DPSI) that can identify physics parameters through gradient
+indicate corresponding points. Note the CD loss is directional.      descent algorithms. Substantial experiments demonstrate
+
+
+Prepared using sagej.cls
+22                                                                                                              Journal Title XX(X)
+
+
+that the proposed framework can identify parameters                   areas of contact with sharp edges of objects, the insufficient
+that reproduce quantitatively and qualitatively realistic             spread of force impact that causes the deformation to stay
+elastoplastic object manipulation dynamics in the presence            near the local contact area, and the artefacts of floating
+of real-world perceptual and data collection challenges.              displaced particles. Though these inaccuracies may be
+These challenges include 1) simple and short motions, 2)              negligible for coarse manipulations that appear more often
+incomplete trajectories, 3) object occlusions, 4) point cloud         in our daily lives, they would lead to unacceptable solutions
+noises, and 5) small data. The proposed framework is the first        for high-precision manipulation tasks such as surgery, soft
+example of system identification with differentiable physics-         object assembly, etc. In addition, various approximations
+based, particle-based simulation for robotic volumetric               in the MLS-MPM and programming implementations also
+elastoplastic object manipulation. It serves as the foundation        contribute to the simulation inaccuracy. As such, future
+for faster and more accurate real-world deployments of                research is needed to develop more accurate physics models,
+deformable object manipulation.                                       numerical approximations, and coding implementations to
+   In addition, with the use of physics-based dynamics                simulate object deformations.
+models, the identified parameters are physically meaningful.             Secondly, an important assumption of this work is that
+The experiments reveal that different parameter values found          the deformation behaviour of the target material in need of
+through optimisation can be interpreted in a way that is              parameter identification can be simulated by the selected
+aligned with our understanding and intuitions about real-             elastoplasticity model. Thus, it should be noted that when
+world physics. Therefore, the DPSI framework not only                 the target material’s behaviour is largely underrepresented
+gives users confidence in the simulation controlled by the            by the selected physics model, DPSI would not be able
+physics models and these parameters but also provides                 to produce very realistic simulations. In other words, the
+users with intuitive angles to identify the limitations of the        manual selection of the elastoplasticity model is of high
+reconstructed manipulation dynamics.                                  importance for the proposed DPSI framework. For example,
+                                                                      our results with soil reveal that DPSI found parameters to
+Limitations and future research                                       make simulations appear as close to the real materials as
+Several limitations can be observed from the experiments              possible, but the use of the von Mises plasticity model will
+conducted in this work. The most obvious would be the                 make it difficult to recover parameter values that accurately
+under-representativeness of the physics models that describe          reflect realistic soil or foam behaviours, which are better
+the underlying manipulation dynamics. As discussed in the             captured by the Drucker–Prager model.
+Results section, there is a lack of elastic returning effect at the      Thirdly, an important lesson learnt from the results is
+                                                                      that increased complexity of motion and contact mode
+                                                                      leads to fewer local minima and better system identification
+   Motion       Particle density          4x107   6x107    8x107      accuracy. The number of local minima indicates that the
+                Number of particles       1946    2808     3926       collected data is insufficient to fully induce the correct
+                CP. Forward time (s)      9.56    9.83     9.23       values of the concerned parameters. Thus, in the future,
+                Forward time (s)          1.45    1.61     2.17       we envision a better framework that incorporates learning-
+  Poking-1      Forward GPU (GB)          ∼1.6    ∼1.8     ∼1.9       based approaches to allow the automatic selection of diverse
+                CP. Backward time (s)     24.69   24.71    24.42
+                                                                      tools and interaction motions to achieve more efficient and
+                Backward time (s)         2.27    2.39     2.56
+                Backward GPU (GB)         ∼1.7    ∼1.8     ∼1.9       accurate parameter identification.
+                100 FB-Iterations (min)   6.71    7.18     8.37          Another limitation comes from the means of capturing
+                Number of particles       3880    5836     7738       real-world observations. In this work, we employ the multi-
+                CP. Forward time (s)      11.09   14.63    23.97      view fusion point clouds as the observation space, which
+   Poking-      Forward time (s)          2.87    7.06     16.78      suffers from noise and the inaccurate estimate of the camera
+  shifting-1    Forward GPU (GB)          ∼1.9    ∼2.2     ∼2.5       extrinsic matrix. In the future, new methods should be
+                CP. Backward time (s)     26.15   27.67    27.34
+                Backward time (s)         4.31    5.42      5.79
+                                                                      developed to reduce point cloud noises and improve the
+                Backward GPU (GB)         ∼1.9    ∼2.2     ∼2.5       precision of camera calibration. Lastly, the simulated scene
+                100 FB-iterations (min)   12.47   21.30    38.10      in this work is limited to an end-effector, a table surface,
+                Number of particles       3059    4688     6271       and a target elastoplastic object. Efforts are needed to extend
+                CP. Forward time (s)      14.02   15.19    15.94      the framework to support more realistic and complex contact
+                Forward time (s)          6.08    6.54     7.88       dynamics. More experiments are also needed to examine the
+  Flattening    Forward GPU (GB)          ∼1.8    ∼1.9     ∼2.1       feasibility of large-scale simulation in terms of efficiency and
+                CP. Backward time (s)     31.95   34.83    34.93
+                                                                      accuracy.
+                Backward time (s)         10.14   12.29    13.03
+                Backward GPU (GB)         ∼1.8    ∼1.9     ∼2.1
+                100 FB-iterations (min)   27.53   31.90    35.35
+Table 7. Computational costs (time and GPU memory                     ACKNOWLEDGMENT
+consumption) of the TaiChi-based differentiable simulator used
+in the DPSI framework with a Nvidia GeForce RX 4090 GPU.              This work was supported by the Engineering and Physical
+The costs of simulations with three motions and particle densities    Sciences Research Council (grant No. EP/X018962/1). The
+are reported. CP.: compile-time costs. The first time a program is    authors would like to thank Samuel Moeller (Engineer
+run takes extra time to compile TaiChi kernels. 100 FB-iterations     support staff at the School of Engineering, Cardiff
+(min): the runtime of 100 forward and backward computations in        University) and Dr Prasad Rayamane for their help with 3D
+minutes.
+                                                                      printing The end-effectors.
+
+
+Prepared using sagej.cls
+Yang, Ji and Lai                                                                                                                         23
+
+
+References                                                               Hu Y, Fang Y, Ge Z, Qu Z, Zhu Y, Pradhana A and Jiang C
+                                                                             (2018) A moving least squares material point method with
+Antonova R, Yang J, Jatavallabhula KM and Bohg J (2023)
+                                                                             displacement discontinuity and two-way rigid body coupling.
+     Rethinking optimization with differentiable simulation from a
+                                                                             ACM Transactions on Graphics (TOG) 37(4): 1–14.
+     global perspective. In: Conference on Robot Learning. PMLR,
+     pp. 276–286.                                                        Hu Y, Li TM, Anderson L, Ragan-Kelley J and Durand F
+                                                                             (2019) Taichi: a language for high-performance computation
+Arnavaz K, Nielsen MK, Kry PG, Macklin M and Erleben K
+                                                                             on spatially sparse data structures. ACM Transactions on
+     (2023) Differentiable depth for real2sim calibration of soft
+                                                                             Graphics (TOG) 38(6): 201.
+     body simulations. In: Computer Graphics Forum, volume 42.
+     Wiley Online Library, pp. 277–289.                                  Huang Z, Hu Y, Du T, Zhou S, Su H, Tenenbaum JB and Gan
+                                                                             C (2021) Plasticinelab: A soft-body manipulation benchmark
+Arriola-Rios VE, Guler P, Ficuciello F, Kragic D, Siciliano B and
+                                                                             with differentiable physics. In: ICLR.
+     Wyatt JL (2020) Modeling of deformable objects for robotic
+     manipulation: A tutorial and review. Frontiers in Robotics and      Jaques M, Asenov M, Burke M and Hospedales T (2022) Vision-
+     AI 7: 82.                                                               based system identification and 3d keypoint discovery using
+                                                                             dynamics constraints.       In: Firoozi R, Mehr N, Yel E,
+Baker K (2005) Singular value decomposition tutorial. The Ohio
+                                                                             Antonova R, Bohg J, Schwager M and Kochendorfer M (eds.)
+     State University 24: 22.
+                                                                             Proceedings of The 4th Annual Learning for Dynamics and
+Bernardini F, Mittleman J, Rushmeier H, Silva C and Taubin G
+                                                                             Control Conference, volume 168. PMLR, pp. 316–329.
+     (1999) The ball-pivoting algorithm for surface reconstruction.
+                                                                         Jiang C, Schroeder C, Selle A, Teran J and Stomakhin A (2015) The
+     IEEE transactions on visualization and computer graphics
+                                                                             affine particle-in-cell method. ACM Transactions on Graphics
+     5(4): 349–359.
+                                                                             (TOG) 34(4): 1–10.
+Caporali A, Kicki P, Galassi K, Zanella R, Walas K and Palli
+                                                                         Jiang C, Schroeder C, Teran J, Stomakhin A and Selle A (2016) The
+     G (2024) Deformable linear objects manipulation with online
+                                                                             material point method for simulating continuum materials. In:
+     model parameters estimation. IEEE Robotics and Automation
+                                                                             ACM SIGGRAPH 2016 courses. ACM New York, NY, USA,
+     Letters .
+                                                                             pp. 1–52.
+Chen S, Werling K, Wu A and Liu CK (2022) Real-time model
+                                                                         Jones RM (2009) Deformation theory of plasticity. Bull Ridge
+     predictive control and system identification using differentiable
+                                                                             Corporation.
+     simulation. IEEE Robotics and Automation Letters 8(1): 312–
+     319.                                                                Kaneko T (2024) Improving physics-augmented continuum neural
+                                                                             radiance field-based geometry-agnostic system identification
+Cherubini A, Ortenzi V, Cosgun A, Lee R and Corke P
+                                                                             with lagrangian particle optimization. In: Proceedings of
+     (2020) Model-free vision-based shaping of deformable plastic
+                                                                             the IEEE/CVF Conference on Computer Vision and Pattern
+     materials. The International Journal of Robotics Research
+                                                                             Recognition. pp. 5470–5480.
+     39(14): 1739–1759.
+                                                                         Kingma DP and Ba J (2015) Adam: A method for stochastic
+Collins J, Chand S, Vanderkop A and Howard D (2021) A review
+                                                                             optimization.      In: International conference on learning
+     of physics simulators for robotic applications. IEEE Access 9:
+                                                                             representations.
+     51416–51431.
+                                                                         Kroemer O, Niekum S and Konidaris G (2021) A review of robot
+Featherstone R (2014) Rigid body dynamics algorithms. Springer.
+                                                                             learning for manipulation: Challenges, representations, and
+Gao M, Tampubolon AP, Jiang C and Sifakis E (2017) An adaptive
+                                                                             algorithms. Journal of machine learning research 22(30): 1–
+     generalized interpolation material point method for simulating
+                                                                             82.
+     elastoplastic materials. ACM Transactions on Graphics (TOG)
+                                                                         Kuka (2024) Kuka lbr iiwa.                https://www.kuka.
+     36(6): 1–12.
+                                                                             com/en-de/products/robot-systems/
+Görner M, Haschke R, Ritter H and Zhang J (2019) Moveit!
+                                                                             industrial-robots/lbr-iiwa.                  Accessed: 2024-
+     task constructor for task-level motion planning. In: 2019
+                                                                             01-15.
+     International Conference on Robotics and Automation (ICRA).
+                                                                         Latombe JC (2012) Robot motion planning, volume 124. Springer
+     IEEE, pp. 190–196.
+                                                                             Science & Business Media.
+Güler P, Pieropan A, Ishikawa M and Kragic D (2017) Estimating
+                                                                         Li X, Qiao YL, Chen PY, Jatavallabhula KM, Lin M, Jiang
+     deformability of objects using meshless shape matching. In:
+                                                                             C and Gan C (2023) PAC-neRF: Physics augmented
+     2017 IEEE/RSJ International Conference on Intelligent Robots
+                                                                             continuum neural radiance fields for geometry-agnostic system
+     and Systems (IROS). IEEE, pp. 5941–5948.
+                                                                             identification. In: The Eleventh International Conference on
+Heiden E, Denniston CE, Millard D, Ramos F and Sukhatme
+                                                                             Learning Representations. URL https://openreview.
+     GS (2022) Probabilistic inference of simulation parameters
+                                                                             net/forum?id=tVkrbkz42vc.
+     via parallel differentiable simulation. In: 2022 International
+                                                                         Lin X, Huang Z, Li Y, Tenenbaum JB, Held D and Gan C
+     Conference on Robotics and Automation (ICRA). IEEE, pp.
+                                                                             (2022) Diffskill: Skill abstraction from differentiable physics
+     3638–3645.
+                                                                             for deformable object manipulations with tools. In: ICLR.
+Heiden E, Millard D, Coumans E, Sheng Y and Sukhatme GS
+                                                                         Lloyd B, Székely G and Harders M (2007) Identification of
+     (2021) Neuralsim: Augmenting differentiable simulators with
+                                                                             spring parameters for deformable object simulation. IEEE
+     neural networks. In: 2021 IEEE International Conference on
+                                                                             transactions on visualization and computer graphics 13(5):
+     Robotics and Automation (ICRA). IEEE, pp. 9474–9481.
+                                                                             1081–1094.
+Hu Y, Anderson L, Li TM, Sun Q, Carr N, Ragan-Kelley J and
+                                                                         McConachie D, Dobson A, Ruan M and Berenson D (2020)
+     Durand F (2020) Difftaichi: Differentiable programming for
+                                                                             Manipulating deformable objects by interleaving prediction,
+     physical simulation. In: ICLR.
+                                                                             planning, and control. The International Journal of Robotics
+
+
+Prepared using sagej.cls
+24                                                                                                                 Journal Title XX(X)
+
+
+    Research 39(8): 957–982.                                           Waheed MQ and Asmael NM (2023) Evaluation of elasticity
+Murthy JK, Macklin M, Golemo F, Voleti V, Petrini L, Weiss                 modulus of clayey soil from undrained shear strength. In: E3S
+    M, Considine B, Parent-Lévesque J, Xie K, Erleben K,                  Web of Conferences, volume 427. EDP Sciences, p. 01028.
+    Liam Paull FS and Derek Nowrouzezahrai SF (2020)                   Xian Z, Zhu B, Xu Z, Tung HY, Torralba A, Fragkiadaki K
+    gradsim: Differentiable simulation for system identification           and Gan C (2023) Fluidlab: A differentiable environment for
+    and visuomotor control. In: International conference on                benchmarking complex fluid manipulation. In: ICLR.
+    learning representations.                                          Yang B, Lu B, Chen W, Zhong F and Liu YH (2023) Model-free 3-d
+Navarro-Alarcon D, Yip HM, Wang Z, Liu YH, Zhong F, Zhang                  shape control of deformable objects using novel features based
+    T and Li P (2016) Automatic 3-d manipulation of soft objects           on modal analysis. IEEE Transactions on Robotics 39(4):
+    by robotic arms with an adaptive deformation model. IEEE               3134–3153.
+    Transactions on Robotics 32(2): 429–441.                           Yang Y, Stork JA and Stoyanov T (2022) Learning differentiable
+Park JJ, Florence P, Straub J, Newcombe R and Lovegrove S                  dynamics models for shape control of deformable linear
+    (2019) Deepsdf: Learning continuous signed distance functions          objects. Robotics and Autonomous Systems 158: 104258.
+    for shape representation. In: Proceedings of the IEEE/CVF          Yin H, Varava A and Kragic D (2021) Modeling, learning,
+    conference on computer vision and pattern recognition. pp.             perception, and control methods for deformable object
+    165–174.                                                               manipulation. Science Robotics 6(54): eabd8803.
+Quigley M, Conley K, Gerkey B, Faust J, Foote T, Leibs J, Wheeler      Zivid (2024) Zivid one plus 3d cameras. https://www.zivid.
+    R and Ng AY (2009) Ros: an open-source robot operating                 com/zivid-one-plus. Accessed: 2024-01-15.
+    system. In: ICRA workshop on open source software, volume 3.
+    Kobe, Japan, p. 5.
+Rehman Zu, Khalid U, Farooq K and Mujtaba H (2018) On yield
+    stress of compacted clays. International Journal of Geo-
+    Engineering 9: 1–16.
+Schoenholz S and Cubuk ED (2020) Jax md: a framework
+    for differentiable physics. Advances in Neural Information
+    Processing Systems 33: 11428–11441.
+Shen B, Jiang Z, Choy C, Savarese S, Guibas LJ, Anandkumar A
+    and Zhu Y (2024) Action-conditional implicit visual dynamics
+    for deformable object manipulation. The International Journal
+    of Robotics Research 43(4): 437–455.
+Shetab-Bushehri M, Aranda M, Mezouar Y and Özgür E (2023)
+    Lattice-based shape tracking and servoing of elastic objects.
+    IEEE Transactions on Robotics .
+Shi H, Xu H, Clarke S, Li Y and Wu J (2023) Robocook: Long-
+    horizon elasto-plastic object manipulation with diverse tools.
+    In: CoRL.
+Shi H, Xu H, Huang Z, Li Y and Wu J (2024) Robocraft:
+    Learning to see, simulate, and shape elasto-plastic objects in
+    3d with graph networks. The International Journal of Robotics
+    Research 43(4): 533–549.
+Stomakhin A, Howes R, Schroeder CA and Teran JM (2012)
+    Energetically consistent invertible elasticity. In: Symposium on
+    Computer Animation, volume 1.
+Stomakhin A, Schroeder C, Chai L, Teran J and Selle A (2013) A
+    material point method for snow simulation. ACM Transactions
+    on Graphics (TOG) 32(4): 1–10.
+StructX (2014-2024) Structx. URL https://structx.com/
+    home.html.
+Sucan IA, Moll M and Kavraki LE (2012) The open motion
+    planning library. IEEE Robotics & Automation Magazine
+    19(4): 72–82.
+Sun C, Sun M and Chen HT (2022) Direct voxel grid optimization:
+    Super-fast convergence for radiance fields reconstruction. In:
+    Proceedings of the IEEE/CVF conference on computer vision
+    and pattern recognition. pp. 5459–5469.
+Sundaresan P, Antonova R and Bohgl J (2022) Diffcloud:
+    Real-to-sim from point clouds with differentiable simulation
+    and rendering of deformable objects. In: 2022 IEEE/RSJ
+    International Conference on Intelligent Robots and Systems
+    (IROS). IEEE, pp. 10828–10835.
+
+
+Prepared using sagej.cls
+Yang, Ji and Lai                                                                                                                      25
+
+                                                                         PCD CD            PRT EMD    Height Map     Negated Height Map
+Appendix                                                           (a) Optimisation losses
+                                                                                     1-rec.          1-round         1-cyl.
+A Optimisation results with height map  loss                                10628
+                                    1.0
+                                                                   PCD
+
+
+
+
+                                                 Success rate
+As mentioned in the main text, optimising the parameters           CD 10057
+                                                   0.5
+using the height map loss results in unsatisfactory                          9486
+performances. Here we compare the optimisation and                           6448
+                                                   0.0
+validation losses of minimising the height map0.0lossTimesteps
+                                                            0.5
+                                                           with    1.0
+                                                                   PRT
+those of minimising the PCD CD and PRT EMD losses in               CD        5635
+Figure 16.                                                                   4822
+   The green curves show that minimising the height                          1043
+map loss results in an increase of the height map loss             PCD
+                                                                   EMD        944
+with both optimisation and validation datasets, which is
+counterintuitive. To verify that the counter effect is not                    844
+due to mistaken loss computations, we further optimise the                   7212
+negated height map loss (by effectively using the negated          PRT
+                                                                   EMD       5716
+gradients from the height map loss), which resulted in worse
+performances (red curves). In addition, the height map loss                  4220
+is found to perform worse than the PCD CD loss, which was                    1861
+found to be the worst in all point-based loss functions (see the   Height
+                                                                   Map 1605
+blue curves in Figures 4 and 5. Therefore, we discarded the
+results from the main article to reduce complications during                 1348
+the result analysis.                                               (b) Validation losses
+                                                                                     1-rec.          1-round         1-cyl.
+   The possible cause of this phenomenon could be the loss
+                                                                             9972
+of spatial information and geometric precision during height       PCD
+map computations. While height maps appear to be visually          CD
+more intuitive to humans, it is computed by collecting the                   8982
+highest z values of the points within an area defined by the
+                                                                             6402
+height map resolution. As such, the gradients from the height      PRT
+map loss are only relevant to the z values of the highest          CD
+                                                                             6026
+points in each cell, having no connections with the points
+that are lower in each cell nor with the horizontal aspect of                1445
+the selected points.                                               PCD
+                                                                   EMD
+                                                                             1195
+B Skill planning with the MPM simulator                                      6984
+To demonstrate the feasibility of planning with the MPM            PRT
+                                                                   EMD
+simulator, we create a simple greedy exhaustive search
+algorithm that selects 10 actions to manipulate a piece of clay              5397
+to match a target height map using the cylinder end-effector.                2406
+The process is summarised in Algorithm 1.                          Height
+                                                                   Map
+   In short, the algorithm starts with an initial object                     2029
+configuration in the simulator and performs exhaustive
+searches to find 8 consecutive actions that result in the lowest   Figure 16. Optimisation and validation losses over 100 gradient
+height map distance from the target height map. An action          updates at level-1 contact complexity from optimising the PRT
+effectively applies one of the two poking-shifting motions         CD, PRT EMD, Height Map and Negated Height Map loss
+at one of the nine locations surrounding the object. As            functions. Each row shows the changes of an evaluation metric
+shown by Figure 17, the neighbouring locations are 0.03            or a parameter, denoted on the left. In each figure, different
+meters away from each other in the x and y directions.             colours indicate the results of minimising a different loss function,
+                                                                   as labelled by the legend on the top. Each colour has three
+The height from which the skill motion starts is set to the
+                                                                   dotted lines corresponding to the results of three random seeds
+highest z value of the object before each action. For each         and a solid line corresponding to their means.
+action, the algorithm queries the simulator for the height
+map loss values of the manipulation results of applying the
+two poking-shifting motions at the nine locations (hence 18        examples showcase the feasibility of planning with the
+forward simulations). An empty action that does not move           MPM simulator. Each plan takes roughly 7.5 minutes to
+the end-effector is also considered in each search. The action     finish on a 4090 GPU, where each iteration (search over
+with the lowest loss is selected and the algorithm proceeds to     19 actions) takes roughly 0.9 minute. This is not yet real-
+the next action search with a new object state from the last       time but promising considering the high dimensionality of
+action. The algorithm returns a plan of 8 actions.                 deformable object states.
+   Figures 18 and 19 visualise two plans returned by
+the algorithm that successfully manipulate the clays to a
+shape close to their respective target height maps. These
+
+Prepared using sagej.cls
+26                                                                                                           Journal Title XX(X)
+
+
+     Poking-shifting-1              Object centre (topo view)
+
+
+
+
+                                   0.03 m
+                                            0.03 m
+     Action composition: skill, effector.(x, y), effector.z
+
+     Poking-shifting-2
+
+                                                                     Algorithm 1: Greedy exhaustive search
+                                                                     Initialise object particle system
+                                                                     Initialise MPM simulator: ENV
+                                                                     Load target height map
+                                                                     Load DPSI-found parameters: ENV.set parameters(θθ sim )
+                                                                     Effector init pos ← ENV.get object centre()
+                                                                     New state ← ENV.get state()
+                                                                     Plan = []
+                                                                     For n = 0 to Number of actions:
+Figure 17. Action composition for the skill planning algorithm       | Evaluate all skills and start locations
+with the cylinder end-effector. An action applies one of the two     | Min loss ← ∞
+poking-shifting motions at one of the nine neighbouring locations    | For i = 1 to 2:
+surrounding the object from the highest z value of the object.       | | For j = −1 to 1:
+                                                                     | | | For k = −1 to 1:
+                                                                     | | | | Load skill trajectory: skilli
+                                                                     | | | | Effector init pos’ = Effector init pos.copy()
+                                                                     | | | | Effector init pos’.x + = 0.3 × j
+                                                                     | | | | Effector init pos’.y + = 0.3 × k
+                                                                     | | | | Effector init pos’.z = ENV.get object height()
+                                                                     | | | | ENV.set state(New state)
+                                                                     | | | | ENV.set agent pos(Effector init pos’)
+                                                                     | | | | ENV.simulate(skilli )
+                                                                     | | | | Loss = ENV.get loss()
+                                                                     | | | | If Loss < Min loss:
+                                                                     | | | | | Min loss ← Loss
+                                                                     | | | | | Best actionn ← (i, j, k)
+                                                                     | | | | | Final state ← ENV.get state()
+                                                                     | Evaluate empty action
+                                                                     | ENV.set state(New state)
+                                                                     | ENV.set agent pos(Effector init pos’)
+                                                                     | ENV.simulate(empty action)
+                                                                     | Loss = ENV.get loss()
+                                                                     | If Loss < Min loss:
+                                                                     | | Min loss ← Loss
+                                                                     | | Best actionn ← (empty action)
+                                                                     | | Final state ← ENV.get state()
+                                                                     | Plan.append(Best actionn )
+                                                                     | New state ← Final state
+                                                                     Return Plan
+
+
+
+
+Figure 18. Visualising a plan returned by the exhaustive search
+algorithm that takes 8 actions to flatten a piece of clay to match
+a target height map (bottom right). All height maps are plotted
+under the same colour/value distribution shown by the colour bar.
+
+
+
+
+Prepared using sagej.cls
+Yang, Ji and Lai                                                     27
+
+
+
+
+Figure 19. Visualising a plan returned by the exhaustive search
+algorithm that takes 8 actions to flatten a piece of clay to match
+a target height map (bottom right). All height maps are plotted
+under the same colour/value distribution shown by the colour bar.
+
+
+
+
+Prepared using sagej.cls
+

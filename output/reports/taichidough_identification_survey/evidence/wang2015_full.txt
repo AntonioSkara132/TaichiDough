@@ -1,0 +1,910 @@
+                                            Deformation Capture and Modeling of Soft Objects
+                    Bin Wang∗†                      Longhua Wu∗                           KangKang Yin†                     Uri Ascher‡               Libin Liu‡           Hui Huang∗§§
+                ∗                                                                         †                                                      ‡
+                    Shenzhen VisuCA Key Lab / SIAT                                            National University of Singapore                       University of British Columbia
+
+
+
+
+Figure 1: Our system can capture and model deformation behavior of generic soft objects from kinematic data alone. We can then synthesize
+new motions that satisfy user-specified constraints and respond to dynamic perturbations. Top: left - a dinosaur walking; middle - a pot
+holder jumping; right - a coat hanger skipping. Bottom: lotus leaves moving in an artificial wind field.
+
+
+Abstract                                                                                                               Our system enables realistic motion reconstruction as well as syn-
+                                                                                                                       thesis of virtual soft objects in response to user stimulation. Valida-
+We present a data-driven method for deformation capture and mod-                                                       tion experiments show that our method not only is accurate, but also
+eling of general soft objects. We adopt an iterative framework that                                                    compares favorably to existing techniques. We also showcase the
+consists of one component for physics-based deformation tracking                                                       ability of our system with high quality animations generated from
+and another for spacetime optimization of deformation parameters.                                                      optimized deformation parameters for a variety of soft objects, such
+Low cost depth sensors are used for the deformation capture, and                                                       as live plants and fabricated models.
+we do not require any force-displacement measurements, thus mak-
+ing the data capture a cheap and convenient process. We augment                                                        CR Categories: I.3.7 [Computer Graphics]: Three-Dimensional
+a state-of-the-art probabilistic tracking method to robustly handle                                                    Graphics and Realism—Animation
+noise, occlusions, fast movements and large deformations. The s-
+pacetime optimization aims to match the simulated trajectories with                                                    Keywords: motion capture, deformation modeling, FEM
+the tracked ones. The optimized deformation model is then used to
+boost the accuracy of the tracking results, which can in turn improve
+the deformation parameter estimation itself in later iterations. Nu-                                                   1     Introduction
+merical experiments demonstrate that the tracking and parameter
+optimization components complement each other nicely.                                                                  Physics-based deformable models enable realistic animation of a
+                                                                                                                       wide range of objects and phenomena [Nealen et al. 2006]. Es-
+Our spacetime optimization of the deformation model includes not                                                       timating model parameters, however, still heavily relies on either
+only the material elasticity parameters and dynamic damping coef-                                                      manual tuning or tedious measurements [Terzopoulos et al. 1987].
+ficients, but also the reference shape which can differ significantly                                                  Such approaches can hardly scale to complex models with nonlin-
+from the static shape for soft objects. The resulting optimization                                                     ear or heterogeneous material distributions. Moreover, these meth-
+problem is highly nonlinear in high dimensions, and challenging                                                        ods usually employ static shapes, i.e., the static equilibrium under
+to solve with previous methods. We propose a novel splitting al-                                                       gravity that can be easily observed, as the original reference shapes
+gorithm that alternates between reference shape optimization and                                                       of the deformation models. This approximation does not work for
+deformation parameter estimation, and thus enables tailoring the                                                       very soft objects, for instance long plant leaves, as they deform
+optimization of each subproblem more efficiently and robustly.                                                         significantly due to gravity. In addition, dynamic properties such
+                                                                                                                       as damping coefficients have seldom been considered previously,
+    ∗ email: {wangbin, wulh}@siat.ac.cn                                                                                even though they play a critical role in achieving realistic behavior,
+    † email: kkyin@comp.nus.edu.sg                                                                                     in particular for soft objects.
+    ‡ email: {ascher, libinliu}@cs.ubc.ca
+    § Corresponding author: Hui Huang (hhzhiyan@gmail.com)                                                             Data-driven methods have recently been quite successful in con-
+                                                                                                                       structing physics-based deformable models for cloth, human organs
+                                                                                                                       and faces [Otaduy et al. 2012]. However, they often require mea-
+ACM Reference Format                                                                                                   suring the dense force-displacement relationships. Such measuring
+Wang, B., Wu, L., Yin, K., Ascher, U., Liu, L., Huang, H. 2015. Deformation Capture and Modeling of Soft
+Objects. ACM Trans. Graph. 34, 4, Article 94 (August 2015), 12 pages. DOI = 10.1145/2766911
+                                                                                                                       processes and hardware have to be tailored to specific types of ob-
+http://doi.acm.org/10.1145/2766911.                                                                                    jects being modeled, and thus are hard to generalize. We wish to
+Copyright Notice                                                                                                       build a system that can learn from real-world measurements as well,
+Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted
+without fee provided that copies are not made or distributed for profit or commercial advantage and that
+                                                                                                                       and is applicable to generic objects without requiring any expensive
+copies bear this notice and the full citation on the first page. Copyrights for components of this work owned          or specialized hardware for force actuation or measurement.
+by others than ACM must be honored. Abstracting with credit is permitted. To copy otherwise, or republish,
+to post on servers or to redistribute to lists, requires prior specific permission and/or a fee. Request permis-
+sions from permissions@acm.org.                                                                                        In this paper, we propose a novel data-driven deformation cap-
+SIGGRAPH ‘15 Technical Paper, August 09 – 13, 2015, Los Angeles, CA.
+Copyright 2015 ACM 978-1-4503-3331-3/15/08 ... $15.00.
+                                                                                                                       ture and modeling framework for generic soft objects. Our system
+DOI: http://doi.acm.org/10.1145/2766911                                                                                builds deformable models from pure kinematic motion trajectories,
+                                                                                                                   ACM Transactions on Graphics, Vol. 34, No. 4, Article 94, Publication Date: August 2015
+94:2       •      B. Wang et al.
+
+
+
+
+                    +
+
+
+    (a) Static shape    (b) Point cloud sequence             (c) Tracking         (d) Reference shape        (e) Material               (f) Simulation
+                                                                                      optimization           optimization
+
+    Figure 2: Schematic overview of our data-driven framework that iterates between deformation tracking and parameter optimization.
+
+
+triggered by simple user interactions and captured by cheap depth                         steadily. Such capture systems often take multi-view video record-
+sensors. The elimination of force measurement and employmen-                              ings as input [Bradley et al. 2008; de Aguiar et al. 2008; Vlasic
+t of cheap sensors call for algorithms that can robustly deal with                        et al. 2008; Li et al. 2012], but single-view capture systems are also
+low quality kinematic input. We thus first employ a physics-based                         gaining more popularity due to their low cost and simple setups [Li
+probabilistic tracking method that is robust to noise, occlusions, fast                   et al. 2009; Wei and Chai 2010; Tevs et al. 2012; Wei et al. 2012;
+movements and large deformations. Then we formulate the defor-                            Helten et al. 2013; Schulman et al. 2013].
+mation parameter estimation as a spacetime optimization problem,
+aiming to match the simulated trajectories with the tracked ones up                       These methods demonstrate various ways of dealing with partial
+to noise and modeling inaccuracies.                                                       observation, occlusion, noise and outliers, such as involving user-
+                                                                                          s in the loop [Wei and Chai 2010], using geometry templates [Li
+Our deformable models include not only the material elasticity pa-                        et al. 2009; Schulman et al. 2013], coupling tracking with detec-
+rameters and the dynamic damping coefficients, but also the refer-                        tion [Wei et al. 2012], utilizing physics constraints [Choi and Szym-
+ence shape which introduces high dimensionality into the spacetime                        czak 2009], or fusing measurements from multiple sensors [Helten
+optimization problem. When coupled with significant nonlinearity                          et al. 2013]. We have been particularly inspired by the probabilistic
+and noisy input, our problem becomes too challenging for previ-                           tracking method proposed by Schulman et al. [2013]. It can deal
+ous methods to solve effectively. We thus propose a novel splitting                       with highly noisy point clouds captured using cheap sensors. Fur-
+algorithm that divides the large optimization problem into subprob-                       thermore, our finite element method (FEM) simulator can be easily
+lems that are solved separately and iteratively. Then the reference                       plugged into such a physics-based tracking framework. Wuhrer et
+shape optimization can take advantage of the dynamics simulation                          al. [2013] also used linear FEM for template-based tracking of de-
+by applying virtual forces, resulting in a much faster solver than                        forming surfaces. However, they use earlier tracking frames as the
+conventional optimization methods.                                                        reference shapes for the later frames, and thus their estimated ma-
+We further employ an iterative scheme that alternates between the                         terial parameters are not physically meaningful. By contrast, we
+physics-based deformation tracking and physics-based parameter                            stress that our total estimation process will also recover a reference
+estimation, yielding a maximum-likelihood solution that converges                         shape rather than assume one is observed or known.
+at a reasonable speed. This scheme not only makes the final re-
+sults less dependent on the initial tracking accuracy with default                        Deformation Modeling         It is a common challenge in computer
+deformation parameters, but also facilitates motion inference of un-                      animation and physics-based simulation to assign material parame-
+observable parts of the deformable objects and in turn improves the                       ters accurately in order to yield desired deformation behavior. Man-
+fidelity of parameter identification.                                                     ual parameter tuning cannot scale to complex models with nonlin-
+In summary, our main contributions include:                                               ear or inhomogeneous material distributions. With recent improve-
+                                                                                          ments in sensing technologies, the data-driven approach of mod-
+    • an iterative tracking and parameter estimation framework that                       eling and reconstructing deformation parameters from real world
+      only requires kinematic motion capture with simple user in-                         measurements has offered great potential for computer graphics
+      teractions and cheap depth sensors;                                                 applications, such as fabrics, soft objects, and human organs and
+                                                                                          faces [Pai et al. 2001; Schoner et al. 2004; Becker and Teschner
+    • a novel splitting scheme that can solve the high-dimensional                        2007; Wang et al. 2011; Miguel et al. 2012; Bickel et al. 2009].
+      and non-convex spacetime optimization for both the deforma-                         Bickel et al. [2009] fit material parameters with an incremental
+      tion parameters and the reference shape;                                            loading strategy to better approximate the nonlinear strain-stress re-
+    • an augmented physics-based probabilistic tracking method                            lationships. Wang et al. [2011] proposed a piecewise linear elastic
+      that can reconstruct fast and highly deformable movements                           model to reproduce the nonlinear, anisotropic stretching and bend-
+      from extremely noisy and incomplete point clouds.                                   ing of cloth. Miguel et al. [2012] directly optimized the nonlinear
+                                                                                          stress-strain curves based on measurements. A common weakness
+                                                                                          with previous methods is they require a dense force displacement
+2      Related Work                                                                       field and known reference shapes. While Bhat et al. [2003] avoided
+                                                                                          the need for force capture by using video tracking of cloth, they stil-
+Animation Capture       We use “animation capture” to refer to sev-                       l assumed a trivial cloth reference shape. By contrast, our method
+eral terminologies introduced in different application context and                        requires neither force displacement capture nor a priori reference
+research communities, including performance capture, object track-                        shapes, making it significantly more convenient.
+ing and animation reconstruction. With the recent advances in
+commercial-grade scanners, depth sensors and video cameras, and                           The spacetime optimization framework has been utilized quite of-
+the cohort research efforts on data-driven animation, the robustness                      ten for editing and control of deformable animations [Barbič et al.
+of such animation capture methods and systems has been improving                          2012; Hildebrandt et al. 2012; Li et al. 2014], and occasionally for
+ACM Transactions on Graphics, Vol. 34, No. 4, Article 94, Publication Date: August 2015
+                                                                                Deformation Capture and Modeling of Soft Objects                  •      94:3
+
+material estimation as well [Lee et al. 2012; Li et al. 2014]. Model        ther divided into two subsets, the material parameters and damping
+reduction techniques are needed to achieve interactive rates. Our           coefficients, and the reference shape. Due to the different nature
+problem is too challenging for these methods to solve effectively as        of these two subsets of static unknowns, we again split the opti-
+we also wish to recover the reference shape, which introduces many          mization routine into two solvers that can thus take advantage of
+more unknowns that depend nonlinearly on the dynamic positions,             different techniques in order to achieve better robustness and over-
+and our input point cloud data is much nosier than key frames or            all performance. These solvers are alternated in an iterative fashion
+medical images. We propose a novel splitting scheme to efficiently          (Figure 2(d-e)), just like the outer optimization loop.
+and robustly solve our spacetime optimization problem.
+                                                                            4     Elastic Deformation Modeling
+Fabrication-oriented       Deformation       Design      Fabrication-
+oriented design has recently been gaining attention in the computer         We employ the widely adopted co-rotated linear FEM to handle
+graphics community. In such design scenarios, physical objects              large deformations of soft objects [Müller et al. 2002]. To speed
+are not always available for measurements, and specific and strict          up the computation, we use coarse volumetric tetrahedral mesh-
+fabrication constraints must be respected. Bickel et al. [2010] used        es to conduct the FEM simulation in both tracking and optimiza-
+a spatial combination of basis material layers to achieve anisotrop-        tion tasks. The low-resolution volumetric mesh and the high-
+ic, inhomogeneous and nonlinear deformation behavior. Chen et               resolution surface mesh are coupled through a mesh embedding
+al. [2014] and Derouet-Jourdan et al. [2013] optimized for the              technique [Kim and Pollard 2011].
+reference shapes to attain desired static shapes. They require either
+                                                                            Throughout this article we denote the nodal positions in the refer-
+known material properties [Chen et al. 2014] or known boundary
+                                                                            ence shape by X. The material parameters will be denoted by p
+conditions [Derouet-Jourdan et al. 2013]. Similar techniques are
+                                                                            once they are defined below. The dynamic, deformed positions at a
+also effective in controlling deformable characters [Coros et al.
+                                                                            time instant t are denoted by x = x(t). We use the subscript −e to
+2012] and balloon shapes when inflated [Skouras et al. 2012]. In
+                                                                            refer to quantities associated with each tetrahedral element. Then
+addition to material distributions, mechanical actuation can also
+                                                                            the element-wise stress-strain relationship using Hooke’s law and
+be optimized to control the deformable motions [Skouras et al.
+                                                                            Cauchy’s linear strain tensor is as follows:
+2013]. Our work shares the same goal of reproducing desired
+deformation behavior. However, we directly optimize for both
+                                                                                                   σ = E = EBe (xe − Xe ),
+material properties and reference shape, which to the best of our
+knowledge no existing work has attempted so far.                            where Be = Be (Xe ) is a 6 × 12 matrix that depends on Xe
+                                                                            nonlinearly. The 6 × 6 matrix E only depends on Young’s modulus
+3   Overview                                                                E and Poisson’s ratio ν for isotropic materials.
+                                                                            Denoting the per-element rotation matrix obtained from polar de-
+Figure 2 shows our data-driven deformation capture and modeling             composition by Re = Re (xe (t), Xe ), the element-wise elastic
+framework. The system starts from capturing both the static shape           forces using the co-rotated linear model [Müller and Gross 2004]
+and the deformable motion of a soft object. The static shape, the e-        can then be expressed as
+quilibrium geometry under gravity, is first scanned and reconstruct-
+ed as a triangular mesh (Figure 2(a)). Then the dynamic motion,                       fe (E, ν, Xe , xe (t)) = Re Ke (ReT xe (t) − Xe ),                   (1)
+introduced by an initial deformation, is captured in real time us-
+ing three depth sensors from different viewpoints (Figure 3(a)) and          where
+stored as a time sequence of point clouds (Figure 2(b)).                                                 Ke = Ve BeT EBe                                   (2)
+The core of our algorithm is an iterative scheme that alternates be-        is the 12 × 12 element stiffness matrix and Ve is the element vol-
+tween a deformation tracking component and a parameter optimiza-            ume. Note that fe depends nonlinearly on Xe through both Ke
+tion component. Using the static shape as a template, a physics-            and Re . We discuss in the Appendix how to calculate the Jacobian
+based probabilistic method is employed to track the dynamic point           of fe with respect to Xe , as this is needed for the reference shape
+cloud sequence (Figure 2(c)). The output of this component is rep-          optimization described in Section 6.
+resented as 3D coordinates of a tetrahedral mesh, which tightly en-
+closes the surface template in the static shape. Next the parameter         Next, we construct the equations of motion by assembling contri-
+estimation component optimizes for the elastic material parameters,         butions from all the FEM elements. The motion of our deformable
+the damping coefficients, and the reference shape as well. The ref-         objects is described by Newton’s 2nd law, which relates forces to
+erence shape refers to the geometry subject to zero external forces         accelerations. Assembling the element-wise force contributions fe
+and can be significantly different from the static shape, especially        given in Eq (1), we obtain the following ordinary differential equa-
+for soft objects (see Figure 4). Furthermore, the optimized defor-          tions in time t:
+mation parameters can in turn enhance the accuracy of the physics-
+based tracking component (see Figure 8), which can consequently                             M ẍ + D ẋ + RK(RT x − X) = fext .                            (3)
+improve the deformation parameter estimation in the next iteration.
+                                                                            Here the sparse stiffness matrix K is assembled from the element-
+We emphasize that here we have two distinctive sets of unknowns.            wise Ke defined in Eq (2). The non-zero components for each row
+The first is the dynamic set of deformed positions, i.e., volumetric        of Ke are determined by the underlying topology structure of the
+mesh vertex coordinates that move in a time sequence. The second            volumetric model. The mass matrix M reflects the lumped mass at
+is the static set of parameters that vary in space, viz. the materi-        each node [Kim and Pollard 2011], which is derived from a uniform
+al distribution and the reference shape. These unknowns are fewer           density estimated by measuring the total mass and volume of the
+in number, but they are not as well structured as the dynamic po-           object in advance. We use Rayleigh damping D = αM + βK to
+sitions. Importantly, they are the ones that cause the nonlinearity         model the effects of friction and air drag. Finally, fext stands for
+difficulties in our optimization problem. Therefore the reconstruc-         external forces and equals gravity in our simulation. The solution
+tion of unknowns is optimized in space and time separately and              x of Eq (3) depends on the unknown parameters p = (E, ν, α, β),
+iteratively (Figure 2(c-e)). The static set of parameters can be fur-       as well as on X.
+                                                                        ACM Transactions on Graphics, Vol. 34, No. 4, Article 94, Publication Date: August 2015
+94:4       •      B. Wang et al.
+
+                                                                                          c. We enforce a prior on s that penalizes potential energy of the
+                                                                                          deformable objects. The correspondence between the point cloud
+                                                                                          and the mesh vertices, however, is not known and is treated as latent
+                                                                                          variables zkn , which indicate if nodal value sk of the surface mesh
+                                                                                          has contributed to the observation cn . Assuming that cn is nor-
+                                                                                          mally distributed around sk as cn ∼ N (sk , Σk ) with an isotropic
+                                                                                          covariance matrix Σk = σ 2 I, we seek the most probable vertex
+                                                                                          positions given the measurements:
+
+                                                                                                                  s = arg max p(s|c).
+                                                                                                                             s
+          (a) Motion capture                         (b) Point cloud
+                                                                                          To solve this MAP estimation problem, the EM algorithm is em-
+                                                                                          ployed. In the first (E) half-step, the total log joint probability low-
+                                                                                          er bound log p(s, c) is computed based on the expectation over the
+                                                                                          latent variables p(zkn |s, c). In the second (M) half-step, the lower
+                                                                                          bound is maximized with respect to the vertex positions:
+
+                                                                                                         s = arg max [log p(c|s) + log p(s)].                 (4)
+                                                                                                                    s
+
+                                                                                          The second term in Eq (4) corresponds to the potential energy of
+                                                                                          the deformable object, which can be optimized through simulating
+                                                                                          the physics-based deformable model. The first term reflects how
+          (c) Surface mesh S                    (d) Volumetric mesh T                     well the model explains the measurements. To reduce the error, we
+                                                                                          introduce an artificial external force on each mesh vertex to move
+Figure 3: Our capture and tracking setup: three Kinect sensors                            them closer to their corresponding sample points in the point cloud:
+are placed around the object (a) and the deformation point cloud                                                   X
+sequence (b) is captured at 30Hz; a surface mesh S with 15368                                              fk = η       p(zkn )Σ−1
+                                                                                                                                 k (cn − sk ).             (5)
+vertices (c) is used as a template to track captured point clouds and                                                n
+
+its corresponding volumetric mesh T with 9594 nodes (d) is used                           Here η is a scaling factor to control the magnitude of the artifi-
+for FEM simulations.                                                                      cial force, similar to the stiffness of virtual springs. Thus, our de-
+                                                                                          formable object simulation in the context of tracking consists of
+                                                                                          solving Eq (3) with the external forces fext given by the vector as-
+5      Physics-based Probabilistic Tracking                                               sembled from the contributions fk defined in Eq (5). Hereafter we
+                                                                                          denote the resulting solution s at time instance t by x̂t .
+The tracking algorithm needs to handle noisy input with occlusions,                       Interested readers are referred to [Schulman et al. 2013] for more
+fast movements, and large deformations. We thus augment a robust                          derivation details. The main difference in our implementation is
+physics-based tracking algorithm [Schulman et al. 2013] that for-                         that we simulate the volumetric mesh using co-rotated linear FEM,
+mulates the deformation tracking as a maximum a posteriori (MAP)                          while Schulman et al. [2013] simulate mass-spring systems with
+estimation problem, and solves it with the expectation maximiza-                          the Bullet engine. More specifically, we use mesh embedding to
+tion (EM) algorithm. Physics-based tracking of deformable objects                         transfer the virtual forces from the surface mesh to the tetrahedral
+offers three main advantages in our context:                                              mesh, and map the displacements from the tetrahedral mesh back
+    • physical constraints, e.g., elasticity and collisions, can be han-                  to the surface mesh. Multiple EM iterations are required to align
+      dled by the simulation implicitly and efficiently;                                  the mesh template and the point cloud sufficiently well when large
+                                                                                          discrepancy appears between them, therefore we run the motion
+    • the incorporation of soft body simulation is essentially free                       simulation until convergence for each EM iteration.
+      here as we need it for the modeling and synthesis anyway;
+    • physical parameters, e.g., material configuration, can be opti-                     6    Deformation Parameter Estimation
+      mized to improve the tracking in an iterative fashion.
+                                                                                          We propose a data-driven method to estimate the unknown static
+More specifically, a fine surface mesh S (Figure 3(c)) of the object                      physical parameters p = (E, ν, α, β) and the reference shape X.
+is constructed first. Subsequently, it is used as a template for the                      Our problem is formulated as a spacetime optimization, where the
+tracking from point clouds in time, i.e., the assimilation of the point                   following objective function F measures the deviation between the
+cloud observations with the dynamics described by appropriate e-                          simulated and captured trajectories:
+quations of motion. A coarser version of this surface mesh is passed
+to TETGEN [Si 2011] to generate a lower resolution volumetric
+                                                                                                                            X
+                                                                                                         min F (p, X) =        kxt − x̂t k2 .           (6)
+mesh T (Figure 3(d)), which encloses S for the FEM simulation.                                             p,X
+                                                                                                                                 t
+To deform the triangular surface mesh S from the simulated tetra-
+hedral elements of T, we employ the mesh embedding technique                              Here we use the sum of squared distances across all frames t as a
+proposed in [Capell et al. 2002; Kim and Pollard 2011].                                   fitting measure, where x̂t is the output of the tracking component,
+                                                                                          and xt is the simulated positions at frame t in Eq (3).
+We use three Kinect sensors (Figure 3(a)) to capture the point
+clouds of the deformation sequence (Figure 3(b)). For a frame                             This spacetime optimization problem is large, nonlinear and non-
+consisting of N points at a given time instant, we denote by                              convex. The evaluation of the objective function is expensive, and
+c = c1:N , 1 ≤ n ≤ N the point coordinates in the point cloud,                            the evaluation of gradients is far worse still, with all the frames from
+and by s = s1:K , 1 ≤ k ≤ K the vertex positions in the surface                           the motion trajectories. Conventional techniques simply cannot
+mesh S. Our task is to infer the values of s given the point cloud                        solve it effectively. Therefore we propose a novel splitting scheme
+ACM Transactions on Graphics, Vol. 34, No. 4, Article 94, Publication Date: August 2015
+                                                                                       Deformation Capture and Modeling of Soft Objects                   •      94:5
+
+
+
+
+                (a)                            (b)                             (c)                             (d)                             (e)
+
+Figure 4: Reference shape optimization for a taro plant example: (a) the static shape (textured) and its optimized reference shape (gray); (b)
+captured static shape (textured) and simulated static shape (pink) with optimized reference shape; (c) simulated static shape without using
+optimized reference shape; (d) and (e) are another view of (b) and (c), respectively.
+
+
+Algorithm 1 Splitting Optimization                                                   For a volumetric model with N nodes, the dimension of the search
+  Warm start p0 = (E0 , ν0 , α0 , β0 );                             . (§6.3)
+                                                                                     space for X is 3N . Conventional optimization techniques are sim-
+  repeat                                                                             ply not fast enough for this high dimensional problem in our con-
+     Find X that satisfies static equilibrium;                      . (§6.1)
+                                                                                     text, thus we adopt the virtual force idea again [Schulman et al.
+     Update p to decrease trajectory deviation ;                    . (§6.2)
+                                                                                     2013], which has led to Eq (5), to approximate the optimization of
+  until Minimization of F converges.                                                 X by an artificial-time simulation. Specifically, we apply the cur-
+                                                                                     rent force residual as virtual forces to each node, and rely on the
+                                                                                     mock-physics simulation to update the reference shape. The sim-
+                                                                                     ulation is stopped when the force residual is sufficiently small in
+which alternately and iteratively optimizes X and p. The first half-                 norm and the simulation stabilizes around an equilibrium. Readers
+step solves for the high-dimensional variable X given the material                   can also draw similarity between the virtual force idea and the well-
+parameters p and the captured trajectories; this can be carried out                  known active contours method from the computer vision communi-
+rapidly using physics-based simulation with a simpler objective to                   ty [Kass et al. 1988]. The major advantage of the simulation-based
+maintain equilibrium for the static shape. Then the subsequent half-                 method is its robustness and speed. Furthermore, since optimizing
+step computes the material parameters p (whose dimension is much                     Eq (6) alone cannot guarantee the equilibrium constraint of Eq (7),
+smaller than that of X) as the minimizer of the least squares prob-                  we need to optimize for the reference shape for each iteration of the
+lem Eq (6) with X fixed. The advantage of the splitting scheme lies                  splitting optimization algorithm.
+essentially in the utilization of a far simpler and more efficient pro-
+cedure for solving for the large number of unknowns in X alone.                      Figure 4(a) presents the reference shape we recovered from a taro
+                                                                                     plant model: it looks intuitive and reasonable. The simulated stable
+The overall splitting scheme is described in Algorithm 1. Within                     state under gravity using our derived reference shape can match the
+each iteration of the algorithm, we first run the reference shape op-                captured static shape with high accuracy; see both Figures 4(b) and
+timization (Section 6.1) to guarantee that the current deformation                   4(d). In contrast, upon comparing Figures 4(b) vs. 4(c) and Fig-
+parameters p and their corresponding reference shape X satisfy                       ures 4(c) vs. 4(e), obvious sagging is observed when directly using
+the physical constraints. Then we simulate the whole trajectory                      the captured static shape as the reference shape to do the simulation.
+and update the parameters p along the direction which can further
+decrease the trajectory deviation, using a standard downhill search                  To achieve fast and stable simulation for the above physics-based
+method (Section 6.2). We run the scheme iteratively until it con-                    optimization method, we use an implicit ODE solver when updating
+verges sufficiently. A crucial procedure for obtaining a good initial                the reference shape. To this end we need to compute the Jacobian
+guess is described in Section 6.3.                                                                                                              ∂f
+                                                                                     of the elastic forces with respect to the reference shape ∂X  . The
+                                                                                     derivation of this Jacobian is quite involved; see Appendix.
+6.1   Reference Shape Optimization
+                                                                                     6.2    Deformation Parameter Fitting
+Taking the static shape as the reference shape is quite common in
+modeling and simulation of deformable objects. For objects with
+                                                                                     We require motion trajectories of the soft object to estimate its de-
+soft material or thin-long features, however, the difference between
+                                                                                     formation parameters p that includes the elasticity parameters and
+the two simply cannot be neglected if faithful reconstruction is de-
+                                                                                     damping coefficients. We trigger the motion by simple interactions
+sired. We choose static shapes with no external contacts or self-
+                                                                                     such as twisting and pulling, after which the soft object typically
+contacts, hence the gravity is the only factor that causes the dif-
+                                                                                     oscillates around and gradually settles down at its initial static e-
+ference between the static shape and the reference shape. We then
+                                                                                     quilibrium. Such motion and deformation can be reproduced by
+simplify Eq (3) accordingly to optimize for the reference shape that
+                                                                                     simulating the fitted deformable model with appropriate material
+best explains the observed static shape.
+                                                                                     properties starting from the same initial state. Considering that the
+More specifically, we denote the static shape as xs and drop the                     reference shape X can be separately obtained by the method intro-
+first two terms of Eq (3):                                                           duced in the previous section, the objective function in Eq (6) can
+                                                                                     be rewritten as:
+                      RK(RT xs − X) = M g.                              (7)                                        X
+                                                                                                          F (p) =     kxtk − x̂tk k2                   (9)
+This suggests an objective to achieve the least force residual:                                                          t,k
+                                                            2
+       min F (X) = min RK(R x − X) − M g
+                                       T   s
+                                                                .       (8)          where t is the frame index and k is the node index.
+                         X
+
+                                                                                ACM Transactions on Graphics, Vol. 34, No. 4, Article 94, Publication Date: August 2015
+94:6       •      B. Wang et al.
+                                                                            6.57e+07                                                     Objective Function Value in Meters
+                                                                                                                                                                                          0          20         40               60             80         10
+                                                                                                                             7.0
+
+                                                                            8.89e+06
+
+
+
+                                                                            1.20e+06
+                                                                                                                             6.4
+
+
+
+
+                                                                                                                  log (E2)
+                                                                            1.63e+05
+
+
+                                                                                                                             5.8
+                                                                            2.20e+04
+
+                 (a)                           (b)                      E
+
+                                                                                                                             5.2
+Figure 5: Visualization of Young’s moduli E for a taro plant (a) and
+a synthetic dinosaur model (b), obtained by blending the estimated
+values at the marked control points.
+                                                                                                                             4.6
+                                                                                                                                   4.6                    5.2                                 5.8                    6.4                                7.0
+                                                                                                                                                                                              log (E1)
+
+To minimize F (p), we employ the gradient-free Nelder-Mead
+algorithm, a.k.a., the downhill simplex method [Nocedal and                               Figure 6: The landscape of the objective function F (p) of a syn-
+Wright 2006]. Gradient-based optimization methods require a                               thetic bar with two material control points. The striped area marks
+rather complicated calculation of derivatives, involving the adjoint                      where the FEM simulation with virtual forces is degenerated and
+method [Giles and Pierce 2000; McNamara et al. 2004]. This in                             cannot obtain a solution for X.
+turn depends on the noisy trajectories x̂ that do not strictly satisfy
+physical constraints.
+                                                                                                                                          Natural Frequency                                   Bend              Twist                         Stretch
+For a homogeneous material, the vector p = (E, ν, α, β) is on-                                         0.15                                                             0.15                                                     0.15
+
+                                                                                                        0.1                                                              0.1                                                      0.1
+ly four dimensional. However, homogeneous materials typically
+                                                                                          Amplitude
+
+
+
+
+                                                                                                                                                            Amplitude
+
+
+
+
+                                                                                                                                                                                                                     Amplitude
+                                                                                                       0.05                                                             0.05                                                     0.05
+
+cannot faithfully model real world soft objects, as their material                                       0                                                                0                                                           0
+
+
+distributions are usually more complex. Our optimization algorith-                                    −0.05                                                        −0.05                                                     −0.05
+
+                                                                                                       −0.1                                                             −0.1                                                     −0.1
+m above can handle multiple materials without much change, al-                                        −0.15                                                        −0.15                                                     −0.15
+                                                                                                              0       200           400      600    800                        0    200        400       600   800                        0    200   400        600   800
+though the more material parameters we use (i.e., the larger p is),                                               Iteration Number                                                 Iteration Number                                           Iteration Number
+the slower the convergence. Xu et al. [2015] tackled this problem
+by introducing a reduced material space. We adopt a different ap-                         Figure 7: Frequency comparison using the synthetic bar example
+proach that strategically places a few control points on the geome-                       with Young’s modulus set to 6.8e+05 (ground truth), 4.0e+06 and
+try, and then linearly blends the material parameters of these control                    5.0e + 04, respectively. The red dashed lines represent the natural
+points to obtain the material specification for each tetrahedron. Fig-                    frequency of the first eigen mode, while the other lines show three
+ure 5 illustrates the control point placements and Young’s moduli E                       captured trajectories projected onto the first mode.
+for two models. For the taro example, control points are placed a-
+long the axial direction and the normalized axial distances are used
+as blending weights. For the synthetic dinosaur model, we manual-
+ly placed seven control points on the extremities, and the blending                       the first mode for a synthetic bar with three different E values.
+weights are calculated using harmonic coordinates. Similar to skin-
+ning, we could also involve artists in placing the control points and
+                                                                                          Therefore,√ if the estimated E value is closer to the ground truth, the
+painting the blending weights for more complex structures.
+                                                                                          frequency λ1 derived from modal analysis should be close to that
+                                                                                          of the captured data. We uniformly sample a total of fifty E values
+6.3    Warm Start                                                                         in the range of [1e4, 1e7], and compute their corresponding refer-
+                                                                                          ence shape X as described in Section 6.1. With known E and X,
+Figure 6 shows a typical landscape of our objective function F (p),
+                                                                                                    √ K and perform the general eigen-decomposition to
+                                                                                          we can derive
+which contains degenerated areas, large plateaus, and narrow val-                         estimate λ1 and φ1 . Then we extract the displacements from the
+leys with multiple local minima. Searching for the true solution of                       captured trajectories and project them onto the estimated first mode
+the Young moduli E on such a landscape is extremely costly and                            φ1 , as depicted by the solid lines in Figure 7. The corresponding vi-
+error prone, especially for models of multiple materials, due to the                      bration frequency of the real data ω1 is then estimated by averaging
+curse of dimensionality. The efficiency and robustness of the pa-                         the periods of multiple cycles of the projected displacements.      We
+                                                                                                                                                    √
+rameter estimation can be greatly improved, if it starts from a good                      use the value E that produces the best match between λ1 and ω1
+initial guess in the vicinity of the solution valley. Here we propose                     as the initial guess to further improve upon using the optimization
+an effective warm start strategy that utilizes modal analysis.                            method described in Section 6.2. Interestingly, Li et al. [2014] re-
+In modal analysis, small deformation displacements u = x − X ∈                            cently exploited a related frequency matching idea to directly con-
+Rn are represented using linear combinations of natural vibration                         struct the stiffness matrix by uniformly scaling the eigenvalues to
+modes of the structure as u = Φz, where each column of Φ =                                match the first non-zero eigenmode frequency with a user-defined
+[φ1 , φ2 , . . . , φk ] represents one deformation mode and z ∈ Rk                        animation period.
+are their corresponding amplitudes. The modes can be obtained
+by solving the generalized eigenvalue problem Kφi = λi M φi ,                             To handle cases of multiple materials, we utilize coordinate descent
+and represent the natural characteristic displacements that the e-                        to sequentially and cyclically update the estimation for each mate-
+lastic object can undergo √     [Sifakis and Barbic 2012]. The natural                    rial parameter. Furthermore, as linear modal coordinates are inade-
+vibration frequency λi is implicitly determined by Young’s mod-                           quate for large deformations, we perform the eigen-analysis in the
+ulus through the stiffness matrix K. Intuitively speaking,√softer                         rotation-strain space. Interested readers are referred to [Huang et al.
+materials vibrate slower. Figure 7 illustrates the frequency λ1 of                        2011] for more implementation details.
+ACM Transactions on Graphics, Vol. 34, No. 4, Article 94, Publication Date: August 2015
+                                                                                  Deformation Capture and Modeling of Soft Objects                   •      94:7
+
+                                                                                     E                                                       α             β
+        Bar            ground truth        6.8e+5       -          -           -            -           -            -           -         2.0e-2        1.0e-3
+    (1 ctrl pts)   estimated(1 ctrl pts)   6.7e+5       -          -           -            -           -            -           -         1.9e-2        1.6e-3
+                   estimated(8 ctrl pts)   7.2e+5    7.2e+5     6.3e+5      6.7e+5       6.5e+5      6.6e+5       7.0e+5      6.8e+5       2.0e-2        1.3e-3
+        Bar            ground truth        1.0e+5    1.0e+6     1.0e+4      6.8e+5       2.0e+6      7.0e+4       1.0e+7      3.0e+4       2.0e-2        1.0e-3
+    (8 ctrl pts)   estimated(8 ctrl pts)   1.0e+5    1.0e+6     1.2e+4      6.6e+5       2.1e+6      6.6e+4       1.0e+7      1.9e+4       1.9e-2        6.0e-4
+                       ground truth        2.0e+5    1.0e+4     1.0e+5      1.0e+6       1.0e+6      1.0e+6       1.0e+6         -         2.0e-2        1.0e-3
+    Dinosaur
+                   estimated(7 ctrl pts)   2.0e+5    9.9e+3     9.5e+4      1.0e+6       1.0e+6      1.0e+6       1.0e+6         -         1.9e-2        0.4e-3
+
+Table 1: Material optimization and damping coefficients estimation for three synthetic examples: the bar in Figure 9 with one and eight
+material control points, and the dinosaur in Figure 5(b) with seven control points.
+
+
+
+                                                                                             Model
+                                                                                                                  Plant        Beam         Phone holder
+                                                                                     ∆X          Mean(m)         8.88e-5      2.59e-4         1.70e-3
+                                                                                     ∆xs         Mean(m)         6.35e-5      2.22e-5         2.25e-9
+                                                                                     ANM         Time(s)           9.27         3.25           17.99
+                                                                                     Ours        Time(s)          12.51         6.03           21.94
+
+                                                                               Table 2: Comparison of our reference shape optimization with the
+            (a)                    (b)                   (c)                   ANM solver of Chen et al. [2014], in terms of both accuracy and
+                                                                               performance. The 3D models were normalized first before we com-
+                                                                               pute the average differences between the shapes. Courtesy of [Chen
+                                                                               et al. 2014] for the images and data.
+
+                                                                               based point cloud tracking. The subsequent iterations of tracking
+                                                                               use the result of the deformation parameter optimization from the
+                                                                               previous iteration. We compare the tracking results in Figures 8
+                                                                               (g)–(i), using a uniformly soft material, a uniformly hard materi-
+                                                                               al, and the nonuniform optimized material, as shown in Figures 8
+            (d)                    (e)                    (f)                  (a)–(c) respectively. This example demonstrates that the tracking
+                                                                               algorithm can generate visually good tracking results for a large
+                                                                               range of the elasticity parameters, e.g., at the first iteration with
+                                                                               user-specified materials. However, harder materials may not track
+                                                                               the data well in certain regions, as shown in Figure 8(g); while
+                                                                               softer materials tend to over-fit to noise, as shown in Figure 8(h).
+                                                                               This example also clearly demonstrates the advantage of the itera-
+                                                                               tive scheme that alternates the tracking and parameter estimation.
+                                                                               Using the optimized elastic parameters for tracking, both the defor-
+                                                                               mation and the stress field can be reconstructed more reliably.
+            (g)                    (h)                    (i)
+                                                                               Reference Shape Optimization         We validate our reference shape
+Figure 8: Comparison of tracking results using user-specified ma-              optimization method by comparing its results with those of the
+terial properties vs. optimized ones. (a-c) soft, hard and optimized           state-of-the-art method of Chen et al. [2014]. They used an Asymp-
+heterogeneous material distribution as input; (d-f) stress distribu-           totic Numerical Method (ANM) to solve for the reference shape that
+tion for a frame with large deformation from the output; (g-i) track-          can generate a desired target shape under known external forces.
+ing result overlaid with the point cloud data.                                 We compare the difference between the reference shapes ∆X de-
+                                                                               rived from the ANM method and ours, and also the difference be-
+                                                                               tween the simulated static shapes ∆xs , as shown in Table 2. We al-
+7     Results                                                                  so compare the performance of our simulation-based optimization
+                                                                               to the ANM method, and the computation timing is comparable.
+Deformation Capture and Tracking        We use one Artec Eva scan-             This is rather satisfactory as we do not require any specialized opti-
+ner (http://www.artec3d.com/) to firstly construct the static surface          mization solver, given that our mock-physics simulation is needed
+geometry of an object of interest. Then we use three Kinect sen-               for the modeling and simulation and thus comes essentially free. It
+sors, synchronized and calibrated by the Artec Studio, to capture              is also much easier to incorporate other physical constraints, such
+the point clouds of the object’s motion and deformation at 30Hz,               as avoiding interpenetrations, using our method.
+as shown in Figure 3(a). We introduce an initial deformation to the
+soft object by simple manipulations, and then capture the subse-
+quent motion as the object oscillates and returns to its static equi-          Material Parameter Estimation       To validate the accuracy of our
+librium. The captured point clouds are noisy and incomplete due to             material parameter estimation algorithm, we first use synthetic data
+occlusions and limited sensory coverage of the sensors.                        generated by forward simulations with known elasticity parameter-
+                                                                               s. The first is a dinosaur model with seven material control points
+For the first iteration, we simply use the static shape as the reference       as shown in Figure 5(b). The second is a bar model as shown in
+shape and user-specified material properties for the simulation-               Figure 9. We fix one end of the bar on the wall and extend the bar
+                                                                           ACM Transactions on Graphics, Vol. 34, No. 4, Article 94, Publication Date: August 2015
+94:8       •      B. Wang et al.
+
+                                                                        1 Mat             ties which we currently do not model. However, the synthesized
+   25                                                                   2 Mat             motions still convey the characteristic deformation of the plant to a
+                                                                        8 Mat             certain extent. We model all the plants with multiple material con-
+   20                                                                                     trol points. Modeling plants as homogeneous material also works
+                                                                                          but will result in larger objective function values when the opti-
+   15
+                                                                                          mization converges and larger discrepancies between the tracked
+   10                                                                                     and reconstructed trajectories.
+
+     5
+                                                                                          Performance     Table 4 shows the statistics of our deformable mod-
+                                                                                          els and a breakdown of the computational cost as measured on an
+                    50           100            150            200           250          8-core 3.50GHz Intel Xeon E5-2637 desktop. The performance of
+                                                                                          the parameter estimation component correlates with the number of
+                                                                                          tetrahedral elements, the number of material control points, and the
+Figure 9: Convergence characteristics of our deformation pa-                              number of frames in the motion trajectory. Considering the high
+rameter estimation algorithm for a synthetic bar example with                             dimensionality of the parameter space and the inherent difficulty of
+three material configurations (one, two and eight material control                        the spacetime optimization tasks, we deem our optimization algo-
+points). The trajectories contain 750 frames and the volumetric                           rithm robust and reasonably fast.
+mesh has 756 nodes.
+
+horizontally. Three initial deformed configurations, i.e., twisting,
+                                                                                          8    Discussion
+bending, and stretching, are used to generate simulated motion tra-
+jectories, which are subsequently used as input to our optimization                       We have presented the first complete system that can (i) capture
+algorithm. Figure 9 shows the convergence characteristics of three                        deformation of generic soft objects in high fidelity with low-cost
+tests with the ground truth trajectories generated using one, two and                     depth sensors; and (ii) estimate plausible deformation parameters
+eight material control points randomly placed, respectively. Table 1                      from these pure kinematic motion trajectories, without requiring
+further shows the numerical values of the estimated parameters with                       any force-displacement measurements as is common in traditional
+respect to the ground truth. Generally speaking, the more material                        methods. Using the learned deformation models, new motion and
+control points we use in generating the ground truth, the more itera-                     deformation can be synthesized at interactive rates to respond to
+tions it takes to estimate the parameters, but our solutions are all in                   dynamic perturbations or satisfy user-specified constraints.
+the right order of magnitude as the ground truth. We also perform                         The two main components of our framework are the physics-based
+a test to see if our algorithm may overfit homogeneous materials                          deformation tracking and the spacetime optimization of deforma-
+and result in bogus heterogeneity. We deliberately fit eight materi-                      tion parameters. The tracking component builds upon a state-
+al control points to a bar of homogeneous material, i.e., a bar with                      of-the-art tracking algorithm that implicitly handles physical con-
+only one control point. The result in the third row of Table 1 shows                      straints and thus is robust to noisy and partial point cloud measure-
+all the eight fitted values are within ±7% of the ground truth.                           ments. Our motion-based parameter estimation strategy requires
+                                                                                          no tedious force-displacement measurement procedures, and is able
+We also test our algorithm with two real-world objects shown in
+                                                                                          to reconstruct dynamic properties such as damping coefficients as
+Figure 10: a silicon pot holder, and an elastomer hanger. The val-
+                                                                                          well. We run these two components in an iterative fashion so that
+ues for E obtained from our method are 7.0e + 6 and 5.6e + 6,
+                                                                                          the results of parameter optimization can in turn enhance the track-
+respectively. The results are validated through both static loading
+                                                                                          ing performance. Due to self-occlusions and hardware limitation-
+tests and dynamic load releasing tests. More specifically, we fix
+                                                                                          s, the captured point clouds typically are partial and noisy. The
+the objects on one end either horizontally or vertically, and attach
+                                                                                          learned elastic model facilitates more faithful inference of the miss-
+different weights on the other end as shown in Figure 10. Table 3
+                                                                                          ing part of the soft objects, such as the thin stem of the lotus leaf. It
+lists the averaged node distances between the captured and the sim-
+                                                                                          also helps eliminate over-fitting and achieve better stress distribu-
+ulated equilibrium states upon loading of the external weights. For
+                                                                                          tion for large deformations.
+the dynamic test, the external weights are suddenly released and the
+vibrations of the soft objects are simulated and compared with the                        Our system’s ability to recover both reference shape and deforma-
+ground truth video. We encourage the readers to watch this side by                        tion parameters simultaneously is a major novelty of our method.
+side comparison in the accompanying video.                                                Estimating either the rest shape or material properties alone is dif-
+                                                                                          ficult, and doing both together is even more difficult. We were in-
+We have learned material parameters for a few live plants from in-
+                                                                                          spired by the reduced model reference shape optimization of Coros
+duced natural vibrations after being pulled and then released by a
+                                                                                          et al. [2012], but we wanted to optimize the full geometry of the ref-
+user. As the ground truth values of elasticity parameters for plants
+                                                                                          erence shape while simultaneously optimizing material parameters.
+are typically not available [Barbič and Zhao 2011], we evaluate our
+                                                                                          We solve the spacetime optimization problem by a novel splitting
+results by simulating the learned models from estimated initial s-
+                                                                                          scheme that separates the reference shape optimization and the ma-
+tate of the captured motions. Side-by-side comparisons show high
+                                                                                          terial fitting. The reference shape optimization takes advantage of
+fidelity of the simulated motions with respect to the captured mo-
+                                                                                          the dynamics simulation by applying virtual forces, which is not
+tions. We have also synthesized a series of plant motions and de-
+                                                                                          only fast but also robust to noisy data. We reduce the dimensional-
+formations subject to novel external perturbations. The first row of
+                                                                                          ity of the material fitting problem by introducing a user-in-the-loop
+Figure 11 and the second row of Figure 1 show a lotus leaf respond-
+                                                                                          skinning scheme, where users manually mark out a few material
+ing to falling raindrops and swinging in an artificial wind field, re-
+                                                                                          control points. The results clearly show that both our captured and
+spectively. The estimated Young moduli smoothly decrease from
+                                                                                          synthesized deformations are accurate and realistic.
+the center of the leaf to the edge, thus resulting in realistic folding
+of the leaves. The second row of Figure 11 shows a taro plant dis-
+turbed by user interactions. And the last row of Figure 11 shows a                        Limitations and Future Work      Our template-based tracking re-
+dracaena fragrans plant moving in an artificial wind field. Note that                     quires a high quality surface mesh as the initial shape, which we
+dracaena fragrans leaves actually demonstrate anisotropic proper-                         manually create from scanned point clouds. Automatic surface re-
+ACM Transactions on Graphics, Vol. 34, No. 4, Article 94, Publication Date: August 2015
+                                                                                Deformation Capture and Modeling of Soft Objects                 •      94:9
+
+
+
+
+                 20g                       10g                    500g                      200g                 100g                        100g
+
+                         (a)                                              (b)                                                   (c)
+Figure 10: Static loading tests: a silicon pot holder is bent (a) and pulled (b) by external weights; the holder is fixed at one end horizontally
+in (a) and vertically in (b). An elastomer hanger (c) is tilted on one side by external weights.
+                                    Pot Holder (Vertical)         Pot Holder (Horizontal)              Hanger (Vertical)
+                    Weight (g)       0      20         10           0      500      200              0    100 (L) 100 (R)
+                    Mean (m)      1.9e-2 5.6e-2 4.0e-2           7.0e-5 2.8e-2 7.9e-3             1.2e-4   3.3e-2     3.5e-2
+
+Table 3: Averaged node distances between the captured and the simulated equilibrium upon loading of different external weights. Models
+were normalized first before the distance computation.
+                Model            #verts.   #tets.    #nodes        #frames           track (m)        #ctrls      #iter     optimization (h)
+                 Bar               452     3000       756       250 / 250 / 250           -          1/2/8          -        0.2 / 0.5 / 1.5
+               Dinosaur          19537     16270      4867            523                 -             7           -               3
+              Pot holder         12212     7488       2316             81                13             1           2              0.7
+                Hanger           12837     3445       1314             44                9              1           2              0.5
+                Lotus            10802     6174       2197            234                25             2           3              1.0
+           Dracaena fragrans      1876     3244       1203            269                7              3           3              0.2
+              Taro plant          5832     6218       2397            239                38            13           3              2.0
+
+Table 4: Performance statistics measured on an 8-core 3.50GHz Intel Xeon E5-2637 desktop. From left to right, the number of mesh vertices
+(#verts), the number of tetrahedral elements (#tets), the number of volumetric mesh nodes (#nodes), the number of frames of the captured
+point cloud data (#frames), tracking time in minutes (track), the number of material control points (#ctrls), the number of iterations of
+tracking and parameter estimation (#iter), and parameter optimization timing in hours (optimization). For Lotus and Dracaena fragrans, we
+only modeled a single leaf; while for Taro we modeled the whole plant with three leaves.
+
+construction methods, such as Poisson reconstruction, can be used          which causes the optimization to favor softer materials. This prob-
+in the future. The corresponding volumetric mesh is built by TetGen        lem is more severe when the relative volume difference between
+automatically, on which we manually specify boundary conditions            the surface mesh and the enclosing tetrahedral mesh becomes lager.
+such as attachment points.                                                 Thus, a finer discretization can easily return more accurate estima-
+                                                                           tion of the parameters. In the future, it would be interesting to ex-
+Methods using kinematic input rather than force measurements are           plore non-linear FEM models to reduce this dependency of the es-
+fundamentally constrained by the capture frequency in handling s-          timation accuracy on discretization resolution as well as to enhance
+tiff materials. Due to the limitations of our low-cost hardware that       the robustness of the system. Since we have not noticed visual d-
+operates at 30Hz, high frequency vibrations of stiff objects can-          eficiency, we have favored coarse meshes, even though it may be
+not be captured faithfully. Thus our tracking and simulation results       important to use a finer tetrahedral discretizations for medical ap-
+will miss high frequency vibrations presented in some of the ground        plications. But for medical applications where accuracy is more
+truth videos, such as the dynamic load releasing test. The recon-          important, we would recommend using a finer tetrahedral mesh.
+struction accuracy of the mass damping coefficient in the Rayleigh
+damping model can be affected. Nevertheless, commonly tested               Recovering dynamic models from pure kinematic data is challeng-
+previous examples like pillows, cloth and human organs are well-           ing. At this stage we choose a simple and popular elasticity model,
+within the stiffness range that our method handles well.                   which is adequate to produce realistic results that are visually in-
+                                                                           distinguishable from our capture. More advanced elastic models,
+The coarser volumetric meshes employed in our FEM simulation               such as those presented in [Bickel et al. 2009; Bickel et al. 2010;
+introduces artificial stiffness due to lack of degrees of freedom,         Wang et al. 2011; Miguel et al. 2012], would likely produce more
+                                                                       ACM Transactions on Graphics, Vol. 34, No. 4, Article 94, Publication Date: August 2015
+94:10       •      B. Wang et al.
+
+
+
+
+Figure 11: Top: A single lotus leaf responds to falling raindrops. Second row: A taro plant responds to user interactions. Bottom: A
+dracaena fragrans shrub moving in wind.
+
+accurate results on more examples.                                                        we omit the subscript −e to avoid messy notations. Let
+Currently, we use a gradient-free downhill simplex method for pa-
+                                                                                                          X = [X1T , X2T , X3T , X4T ]T ∈ R12            (10)
+rameter fitting. Even though the Nelder-Mead algorithm occasion-
+ally performs better than gradient-based methods on problems such
+                                                                                          be the nodal position of a tetrahedral element in the undeformed
+as ours that contain many local minima, it is worthwhile to experi-
+                                                                                          shape, and x = [xT1 , xT2 , xT3 , xT4 ]T ∈ R12 be the nodal position
+ment with gradient-based methods in the future.
+                                                                                          in the deformed shape. The corotated linear model formulates the
+In addition, we would like to extend our parameter optimization                           nodal elastic force f = [f1T , f2T , f3T , f4T ]T ∈ R12 as
+algorithm to accommodate more complicated situations, such as
+motion trajectories that are rich in contacts and collisions. Derouet-                                     f = V RB T EB(RT x − X).
+Jourdan et al. [2013] is a good starting point to investigate this prob-
+lem. Finding an automatic skinning method for choosing material                           Here V is the volume of the element, and E is a constant 6 × 6
+control point locations and weights is also an interesting area of fu-                    matrix that corresponds to the material’s elastic parameters.
+ture work. James and Twigg [2005] investigated this problem for
+models with underlying skeletal structures and one would need to                          The matrix R = diag(R, R, R, R) is a block-diagonal matrix.
+extend it to deal with general soft objects. We also wish to re-derive                    R is the rigid rotation of the element computed by the polar-
+the Reference Shape Jacobian to handle anisotropic materials.                             decomposition of the deformation gradient F (= ∂x/∂X), which
+                                                                                          is just the top-left 3 × 3 block of
+Acknowledgements                                                                                                         −1
+                                                                                                                F̄ = Vs Vm  = Vs Bm
+We thank the anonymous reviewers for their constructive com-
+ments. We are grateful to the authors of [Chen et al. 2014] for
+                                                                                                                                          
+                                                                                                                      x1   x2   x3    x4
+sharing their data and fabricated models for our validation and                                            Vs =
+                                                                                                                      1    1    1     1
+comparison experiments. We also thank Jiacheng Ren, Jiangtao                                                                                  
+Shen, Keng Hua Sing, Francois Faure and Matthieu Nesme for their                                                      X1   X2    X3    X4
+                                                                                                          Vm =                                           (11)
+help and thoughtful discussions at the various stages of develop-                                                     1    1     1     1
+ing this project. This work is supported in part by Singapore Min-
+                                                                                                        −1
+istry of Education Academic Research Fund Tier 2 (MOE2011-T2-                             and Bm = Vm       are all 4 × 4 matrices. The 6 × 12 matrix B only
+2-152); Microsoft Research Asia Collaborative Research Program                            depends on X and is just a rearrangement of Bm . Denoting the
+(FY14-RES-OPP-002); NSFC (61402459, 61379090, 61331018);                                  (i, j)th element of Bm as Bij , we have:
+National 973 Program (2014CB360503); Shenzhen Innovation                                                                           
+Program (CXB201104220029A, JCYJ20140901003939034, J-                                                          B = B̄1 B̄2 B̄3 B̄4
+CYJ20130401170306810); NSERC Discovery Grant (84306).                                                                                    
+                                                                                                                       Bi1     0      0
+                                                                                                                      0      Bi2     0 
+Appendix: Reference Shape Jacobian                                                                            B̄i = 
+                                                                                                                      0
+                                                                                                                     
+                                                                                                                               0     Bi3 
+                                                                                                                                          
+                                                                                                                       B
+                                                                                                                      i2     B i1    0   
+                                                                                                                                          
+                                                  ∂f                                                                  0      Bi3 Bi2 
+Exact computation of the stiffness matrix K = ∂x     for co-rotated
+linear FEM has been described in the literature [Barbič and Zhao                                                      Bi3     0     Bi1
+2011; McAdams et al. 2011; Barbič 2012]. The Jacobian of
+the elastic forces with respect to the undeformed reference shape
+        ∂f                                                                                Now we are ready to derive the reference shape jacobian
+K = ∂X     , however, is quite complicated and not studied before.
+We therefore detail its derivation in this appendix. All the calcu-                                                         ∂f
+lations are performed with respect to each tetrahedral element, but                                                    K=      .
+                                                                                                                            ∂X
+ACM Transactions on Graphics, Vol. 34, No. 4, Article 94, Publication Date: August 2015
+                                                                               Deformation Capture and Modeling of Soft Objects                    •      94:11
+
+The q-th column of K, represented by kq , is the derivative with              References
+respect to the q-th component of X. According to Eq (10), it is
+actually the i-th component of node j, which we denote as Xij ,                BARBI Č , J., AND Z HAO , Y. 2011. Real-time large-deformation
+with i and j satisfying q = 3(j − 1) + i, 1 ≤ i ≤ 3, 1 ≤ j ≤ 4.                  substructuring. Proc. of SIGGRAPH 30, 3, 91:1–91:8.
+By applying the chain rule, we have:
+                                                                               BARBI Č , J., S IN , F., AND G RINSPUN , E. 2012. Interactive editing
+                ∂f                                                               of deformable simulations. ACM Trans. on Graphics 31, 4, 70:1–
+k3(j−1)+i =
+               ∂Xij                                                              70:8.
+             = V 0 RB T EB(Rx − X) + V R0 B T EB(Rx − X)                       BARBI Č , J. 2012. Exact corotational linear FEM stiffness matrix.
+             + V RB 0T EB(Rx − X) + V RB T EB 0 (Rx − X)                         Tech. rep., Technical report, University of Southern California.
+             + V RB T EB(R0 x − e3(j−1)+i )                                    B ECKER , M., AND T ESCHNER , M. 2007. Robust and efficient
+                                                                                  estimation of elasticity parameters using the linear finite element
+                          0
+Here the prime symbol ( ) represents the derivative (∂/∂Xij ), eq ∈               method. In Proc. Simulation und Visualization, 15–28.
+R12 is the q-th standard basis vector of R12 .
+                                                                               B HAT, K. S., T WIGG , C. D., H ODGINS , J. K., K HOSLA ,
+We assume that the nodes of an element are sorted to satisfy                      P. K., P OPOVI Ć , Z., AND S EITZ , S. M. 2003. Estimating
+det(Vm ) > 0; then the element volume can be computed by                          cloth simulation parameters from video. In Proc. ACM SIG-
+V = 16 det(Vm ). From the derivative of a determinant [Petersen                   GRAPH/Eurographics Symp. on Computer Animation, 37–51.
+and Pedersen 2006]:
+                                                                               B ICKEL , B., B ÄCHER , M., OTADUY, M. A., M ATUSIK , W., P-
+       ∂V
+               = 16 ∂ det(V
+                       ∂Vm
+                           m)               −T
+                              = 61 det(Vm )Vm       T
+                                               = V Bm .                           FISTER , H., AND G ROSS , M. 2009. Capture and modeling of
+       ∂Vm                                                                        non-linear heterogeneous soft tissue. ACM Trans. on Graphics
+According to the definition of Vm in Eq (11), we have                             28, 3, 89:1–89:9.
+
+                          ∂V      ∂V                                           B ICKEL , B., B ÄCHER , M., OTADUY, M. A., AND L EE , H. R.
+                 V0 =         =          = V Bji                                  2010. Design and fabrication of materials with desired deforma-
+                         ∂Xij   ∂(Vm )ij
+                                                                                  tion behavior. ACM Trans. on Graphics 29, 4, 63:1–63:10.
+The matrix B is a rearrangement of Bm , which is the inverse of                B RADLEY, D., P OPA , T., S HEFFER , A., H EIDRICH , W., AND
+Vm . From the derivative of an inverse:                                           B OUBEKEUR , T. 2008. Markerless garment capture. ACM Tran-
+                          ∂Bkl                                                    s. on Graphics 27, 3, 99:1–99:9.
+                               = −Bki Bjl
+                          ∂Xij                                                 C APELL , S., G REEN , S., C URLESS , B., D UCHAMP, T., AND
+                                                                                  P OPOVI Ć , Z. 2002. Interactive skeleton-driven dynamic de-
+we have
+                                                                                  formations. ACM Trans. on Graphics 21, 3, 586–593.
+                 B 0 = B̄10 B̄20 B̄30 B̄40
+                                          
+                                                                             C HEN , X., Z HENG , C., X U , W., AND Z HOU , K. 2014. An asymp-
+                             Bki Bj1          0         0                         totic numerical method for inverse elastic shape design. ACM
+                                0          Bki Bj2     0                        Trans. on Graphics 33, 4, 95:1–95:11.
+              ∂ B̄k              0            0       Bki Bj3 
+                                                             
+       B̄k0 =        = −
+                         
+              ∂Xij        Bki Bj2 Bki Bj1              0     
+                                                                              C HOI , J., AND S ZYMCZAK , A. 2009. Fitting solid meshes to ani-
+                                0          Bki Bj3   Bki Bj2                    mated surfaces using linear elasticity. ACM Trans. on Graphics
+                             Bki Bj3          0       Bki Bj1                     28, 1, 6:1–6:10.
+                                                                               C OROS , S., M ARTIN , S., T HOMASZEWSKI , B., S CHUMACHER ,
+The computation of R0 is much more involved. By applying the                      C., S UMNER , R., AND G ROSS , M. 2012. Deformable objects
+chain rule again, we have:                                                        alive! ACM Trans. on Graphics 31, 4, 69:1–69:9.
+                           ∂R    X ∂R ∂Fkl
+                                                                                    AGUIAR , E., S TOLL , C., T HEOBALT, C., AMD H ANS -
+                   R0 =        =                                   (12)        DE
+                          ∂Xij    ∂Fkl ∂Xij                                       P ETER S EIDEL , N. A., AND T HRUN , S. 2008. Performance
+                                     k,l
+                                                                                  capture from sparse multi-view video. ACM Trans. on Graphics
+Gradients of polar decomposition have been derived in [Barbič and                27, 3, 98:1–98:10.
+Zhao 2011; McAdams et al. 2011; Barbič 2012]. We refer the read-
+er to [Barbič 2012] for more details.                                         D EROUET-J OURDAN , A., B ERTAILS -D ESCOUBES , F., DAVIET,
+                                                                                  G., AND T HOLLOT, J. 2013. Inverse dynamic hair modeling
+Finally, to calculate the second term of the right hand side of E-                with frictional contact. ACM Trans. on Graphics 32, 6, 159:1–
+q (12), we need                                                                   159:10.
+              ∂ F̄         ∂Bm                                                 G ILES , M. B., AND P IERCE , N. A. 2000. An introduction to the
+    F̄ 0 =           = Vs
+            ∂(Vm )ij      ∂(Vm )ij                                                adjoint approach to design. Flow, Turbulence and Combustion
+                                                                                  65, 393–415.
+                   B1i Bj1 B1i Bj2          B1i Bj3    B1i Bj4
+                                                              
+                  B2i Bj1 B2i Bj2          B2i Bj3    B2i Bj4                H ELTEN , T., M Ü , M., S EIDEL , H.-P., AND T HEOBALT, C. 2013.
+          = −Vs 
+                   B3i Bj1 B3i Bj2          B3i Bj3    B3i Bj4                   Real-time body tracking with one depth camera and inertial sen-
+                   B4i Bj1 B4i Bj2          B4i Bj3    B4i Bj4                    sors. In Proc. Int. Conf. on Computer Vision, 1105–1112.
+Then                                                                           H ILDEBRANDT, K., S CHULZ , C., VON T YCOWICZ , C., AND
+                      ∂Fkl    ∂ F̄kl
+                           =          = (F̄ 0 )kl                                 P OLTHIER , K. 2012. Interactive spacetime control of de-
+                      ∂Xij   ∂(Vm )ij                                             formable objects. ACM Trans. on Graphics 31, 4, 71:1–71:8.
+                                                                          ACM Transactions on Graphics, Vol. 34, No. 4, Article 94, Publication Date: August 2015
+94:12       •      B. Wang et al.
+
+H UANG , J., T ONG , Y., Z HOU , K., BAO , H., AND D ESBRUN ,                             P ETERSEN , K. B., AND P EDERSEN , M. S. 2006. The matrix
+   M. 2011. Interactive shape interpolation through controllable                             cookbook. Tech. rep., MIT.
+   dynamic deformation. IEEE Trans. Visualization & Computer
+   Graphics 17, 7, 983–992.                                                               S CHONER , J., L ANG , J., AND S EIDEL , H.-P. 2004. Measurement-
+                                                                                             based interactive simulation of viscoelastic solids. Computer
+JAMES , D. L., AND T WIGG , C. D. 2005. Skinning mesh anima-                                 Graphics Forum 23, 3, 547–556.
+  tions. ACM Trans. on Graphics 24, 3, 399–407.
+                                                                                          S CHULMAN , J., L EE , A., H O , J., AND A BBEEL , P. 2013. Track-
+K ASS , M., W ITKIN , A., AND T ERZOPOULOS , D. 1988. Snakes:                                ing deformable objects with point clouds. In Proc. IEEE Int.
+   Active contour models. Int. J. Computer Vision 1, 4, 321–331.                             Conf. on Robotics & Automation.
+
+K IM , J., AND P OLLARD , N. S. 2011. Fast simulation of skeleton-                        S I , H. 2011. Tetgen, a quality tetrahedral mesh generator and a 3d
+   driven deformable body characters. ACM Trans. on Graphics 30,                               delaunay triangulator. Tech. rep., WIAS.
+   5, 121:1–121:19.                                                                       S IFAKIS , E., AND BARBIC , J. 2012. FEM simulation of 3D de-
+L EE , H.-P., F OSKEY, M., N IETHAMMER , M., K RAJCEVSKI , P.,                               formable solids: A practitioner’s guide to theory, discretization
+   AND L IN , M. C. 2012. Simulation-based joint estimation of                               and model reduction. In ACM SIGGRAPH Courses, 20:1–20:50.
+   body deformation and elasticity parameters for medical image                           S KOURAS , M., T HOMASZEWSKI , B., B ICKEL , B., AND G ROSS ,
+   analysis. IEEE Trans. on Medical Imaging 31, 11, 2156–2168.                               M. 2012. Computational design of rubber balloons. Computer
+L I , H., A DAMS , B., G UIBAS , L. J., AND PAULY, M. 2009. Robust                           Graphics Forum 31, 2, 835–844.
+    single-view geometry and motion reconstruction. ACM Trans. on                         S KOURAS , M., T HOMASZEWSKI , B., C OROS , S., B ICKEL , B.,
+    Graphics 28, 5, 175:1–175:10.                                                            AND G ROSS , M. 2013. Computational design of actuated de-
+                                                                                             formable characters. ACM Trans. on Graphics 32, 4, 82:1–82:10.
+L I , H., L UO , L., V LASIC , D., P EERS , P., P OPOVI Ć , J., PAULY,
+     M., AND RUSINKIEWICZ , S. 2012. Temporally coherent com-                             T ERZOPOULOS , D., P LATT, J., BARR , A., AND F LEISCHER , K.
+    pletion of dynamic shapes. ACM Trans. on Graphics 31, 1, 2:1–                            1987. Elastically deformable models. Proc. of SIGGRAPH 21,
+    2:11.                                                                                    4, 205–214.
+L I , S., H UANG , J., DE G OES , F., J IN , X., BAO , H., AND D ES -                     T EVS , A., B ERNER , A., WAND , M., I HRKE , I., B OKELOH , M.,
+     BRUN , M. 2014. Space-time editing of elastic motion through                            K ERBER , J., AND S EIDEL , H.-P. 2012. Animation cartography
+    material optimization and reduction. ACM Trans. on Graphics                              - intrinsic reconstruction of shape and motion. ACM Trans. on
+    33, 4, 108:1–108:10.                                                                     Graphics 31, 2, 12:1–12:15.
+M C A DAMS , A., Z HU , Y., S ELLE , A., E MPEY, M., TAMSTORF,                            V LASIC , D., BARAN , I., M ATUSIK , W., AND P OPOVIC , J. 2008.
+  R., T ERAN , J., AND S IFAKIS , E. 2011. Efficient elasticity for                          Articulated mesh animation from multi-view silhouettes. ACM
+  character skinning with contact and collisions. ACM Trans. on                              Trans. on Graphics 27, 3, 97:1–97:9.
+  Graphics 30, 4, 37:1–37:12.
+                                                                                          WANG , H., O’B RIEN , J. F., AND R AMAMOORTHI , R. 2011.
+M C NAMARA , A., T REUILLE , A., P OPOVIC , Z., AND S TAM , J.                             Data-driven elastic models for cloth: Modeling and measure-
+  2004. Fluid control using the adjoint method. ACM Trans. on                              ment. ACM Trans. on Graphics 30, 4, 71:1–71:12.
+  Graphics 23, 3, 449–456.
+                                                                                          W EI , X., AND C HAI , J. 2010. Videomocap: Modeling physically
+M IGUEL , E., B RADLEY, D., T HOMASZEWSKI , B., B ICKEL , B.,                               realistic human motion from monocular video sequences. ACM
+   M ATUSIK , W., OTADUY, M. A., AND M ARSCHNER , S. 2012.                                  Trans. on Graphics 29, 4, 42:1–42:10.
+  Data-driven estimation of cloth simulation models. Computer                             W EI , X., Z HANG , P., AND C HAI , J. 2012. Accurate realtime full-
+  Graphics Forum 31, 2, 519–528.                                                            body motion capture using a single depth camera. ACM Trans.
+M ÜLLER , M., AND G ROSS , M. 2004. Interactive virtual materials.                         on Graphics 31, 6, 188:1–188:12.
+   In Proc. Int. Conf. on Graphics Interface, 239–246.                                    W UHRER , S., L ANG , J., T EKIEH , M., AND S HU , C. 2013. Finite
+M ÜLLER , M., D ORSEY, J., M C M ILLAN , L., JAGNOW, R., AND                               element based tracking of deforming surfaces. Graphical Models
+   C UTLER , B. 2002. Stable real-time deformations. In Proc.                               77, 1, 1–17.
+   ACM SIGGRAPH/Eurographics Symp. on Computer Animation,                                 X U , H., L I , Y., C HEN , Y., AND BARBIC , J. 2015. Interactive
+   49–54.                                                                                    material design using model reduction. ACM Trans. on Graphics
+N EALEN , A., M LLER , M., K EISER , R., B OXERMAN , E., C ARL -                             34, 2, 18:1–18:14.
+   SON , M., AND AGEIA , N. 2006. Physically based deformable
+   models in computer graphics. Computer Graphics Forum 25, 4,
+   809–836.
+N OCEDAL , J., AND W RIGHT, S. J. 2006. Numerical Optimization.
+   Springer. 2nd Ed.
+OTADUY, M. A., B ICKEL , B., B RADLEY, D., AND WANG , H.
+  2012. Data-driven simulation methods in computer graphics:
+  cloth, tissue and faces. In ACM SIGGRAPH 2012 Courses, SIG-
+  GRAPH ’12, 12:1–12:96.
+PAI , D. K., D OEL , K. V. D ., JAMES , D. L., L ANG , J., L LOYD ,
+  J. E., R ICHMOND , J. L., AND YAU , S. H. 2001. Scanning
+  physical interaction behavior of 3d objects. 87–96.
+ACM Transactions on Graphics, Vol. 34, No. 4, Article 94, Publication Date: August 2015
+

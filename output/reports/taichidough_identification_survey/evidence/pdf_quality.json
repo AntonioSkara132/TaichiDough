@@ -1,0 +1,475 @@
+{
+  "pages": 30,
+  "page_size_points": [
+    0.0,
+    0.0,
+    595.2760009765625,
+    841.8900146484375
+  ],
+  "words_outside_text_margins": [
+    {
+      "page": 5,
+      "word": "\u201cviscoplastic\u201d",
+      "bbox": [
+        463.9555969238281,
+        595.7579956054688,
+        529.4268188476562,
+        606.743408203125
+      ]
+    },
+    {
+      "page": 7,
+      "word": "procedures\u2014",
+      "bbox": [
+        464.3345031738281,
+        194.44700622558594,
+        530.5161743164062,
+        205.43246459960938
+      ]
+    },
+    {
+      "page": 9,
+      "word": "optimisation\u201d",
+      "bbox": [
+        464.48370361328125,
+        127.06101989746094,
+        529.4309692382812,
+        138.04647827148438
+      ]
+    },
+    {
+      "page": 24,
+      "word": "methods\u201d",
+      "bbox": [
+        481.49908447265625,
+        194.44700622558594,
+        529.4248657226562,
+        205.43246459960938
+      ]
+    }
+  ],
+  "page_details": [
+    {
+      "page": 1,
+      "words": 135,
+      "smallest_font_pt": 10.91,
+      "first_lines": [
+        "Dough Parameter Identification",
+        "Depth recordings, tool trajectories, and the scientific case for TaichiDough",
+        "Critical literature survey and independent technical assessment",
+        "11 September 2026",
+        "Contents",
+        "1"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 2,
+      "words": 484,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "2",
+        "1",
+        "Executive assessment",
+        "Your idea is a legitimate scientific research programme: use depth recordings and known tool",
+        "trajectories to calibrate a model of dough's elastic, viscous, and plastic response, then ask whether"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 3,
+      "words": 411,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "3",
+        "\u2022 An affine-transfer scaling inconsistency is present in the current solver. An isolated",
+        "algebraic test shows that its grid-to-particle expression reproduces an affine velocity",
+        "gradient as \u210e\ud835\udc34, rather than \ud835\udc34, where \u210eis grid spacing. Because that quantity drives",
+        "deformation, viscous stress, and plastic activation, material interpretation requires resolving"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 4,
+      "words": 317,
+      "smallest_font_pt": 5.45,
+      "first_lines": [
+        "Dough parameter identification",
+        "4",
+        "Table 1",
+        "Achievement",
+        "What it establishes",
+        "Evidence it still needs for a"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 5,
+      "words": 342,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "5",
+        "Table 2",
+        "Family",
+        "Examples",
+        "Why the distinction matters"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 6,
+      "words": 501,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "6",
+        "They contain similarly named parameters but make different predictions. At held homogeneous",
+        "strain, Kelvin\u2013Voigt's rate term vanishes after the ramp; it does not produce a sustained Maxwell-",
+        "like exponential stress relaxation. A standard-linear-solid, generalised Maxwell model, Burgers",
+        "model, or fractional/power-law model has a different response and parameter interpretation."
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 7,
+      "words": 455,
+      "smallest_font_pt": 8.31,
+      "first_lines": [
+        "Dough parameter identification",
+        "7",
+        "5",
+        "Food-engineering and robotic rheometry precedents",
+        "5.1",
+        "Inverse semolina-dough FEM"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 8,
+      "words": 526,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "8",
+        "6",
+        "Visual and action-conditioned inverse simulation",
+        "6.1",
+        "DPSI: the closest elastoplastic MPM identification precedent"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 9,
+      "words": 513,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "9",
+        "a fitted material law and predicting an independent deformation rate or new trajectory. The",
+        "inspected version does not establish that latter dough result.",
+        "Implication: TaichiDough should compare its proposed one-view measurement requirement,",
+        "time-resolved loss, explicitly defined rate/plastic parameters, and frozen-parameter predictions"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 10,
+      "words": 499,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "10",
+        "Their experiments show why loading diversity matters. Narrow-frequency motion can poorly",
+        "constrain a damping law; changing clamp conditions and combining motions improves estimation;",
+        "large bending or snapping can expose constitutive-model limitations. Independent rheometer",
+        "measurements use different strain/frequency conditions and are not automatically exact ground"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 11,
+      "words": 386,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "11",
+        "MPM as well. The distinction for TaichiDough must concern the dough law, measurements, or",
+        "demonstrated result\u2014not just two moving effectors.",
+        "6.7",
+        "Forward and hybrid fitting are established options"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 12,
+      "words": 430,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "12",
+        "Study",
+        "What the inspected real",
+        "experiment identifies or fits",
+        "What makes its validation different"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 13,
+      "words": 410,
+      "smallest_font_pt": 8.31,
+      "first_lines": [
+        "Dough parameter identification",
+        "13",
+        "7.3",
+        "Numerical dissipation can imitate viscosity",
+        "PIC/APIC transfer, grid resolution, time integration, projection, and repeated contact damping",
+        "can all affect dissipation. If a per-contact multiplier \ud835\udc5fis applied each time step, its repeated effect"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 14,
+      "words": 447,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "14",
+        "8.2",
+        "Synthetic and single-view prediction benchmarks",
+        "PlasticineLab supplies differentiable elastoplastic manipulation tasks and is useful for controlled",
+        "synthetic identification experiments [35]. Recovering parameters from the exact model that"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 15,
+      "words": 440,
+      "smallest_font_pt": 7.64,
+      "first_lines": [
+        "Dough parameter identification",
+        "15",
+        "subsequent release can offer indirect information, but it should not be described as a measured",
+        "force-relaxation experiment.",
+        "9.3",
+        "Structural identifiability, practical sensitivity, and prediction"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 16,
+      "words": 372,
+      "smallest_font_pt": 8.31,
+      "first_lines": [
+        "Dough parameter identification",
+        "16",
+        "and repeatable contact. Raue and colleagues provide the general model-based experiment-",
+        "design rationale [2]. The proposed TaichiDough contribution would be a concrete real-dough",
+        "demonstration with matched acquisition and computation budgets, not a claim to have invented",
+        "experiment design."
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 17,
+      "words": 321,
+      "smallest_font_pt": 7.59,
+      "first_lines": [
+        "Dough parameter identification",
+        "17",
+        "Source",
+        "locations:",
+        "scripts/taichi_viscoelastic_mpm_scene.py:1268\u20131303,",
+        "1397\u20131407,"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 18,
+      "words": 473,
+      "smallest_font_pt": 8.31,
+      "first_lines": [
+        "Dough parameter identification",
+        "18",
+        "tool. This direction is not the interpretation commonly attached to increasing a physical friction",
+        "coefficient.",
+        "The appropriate current description is effective contact-velocity retention. Contact geometry,",
+        "retention, absorption, stickiness, grid/particle projections, and floor interaction can compensate for"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 19,
+      "words": 397,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "19",
+        "The newer _local contact-retention sweep completed, unlike the older failed directory. Its training",
+        "losses are 0.359191, 0.361067, and 0.361463 for \ud835\udc5f= 0.1, 0.2, 0.3. The smallest tested value gives",
+        "the smallest training score, with only about 0.52% improvement relative to 0.2. There is no held-",
+        "out stage or uncertainty estimate. This is a completed sensitivity result, not a physical-friction"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 20,
+      "words": 411,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "20",
+        "Motion or test",
+        "Useful information",
+        "Key confound or limitation",
+        "Gravity sag or slump"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 21,
+      "words": 476,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "21",
+        "5. propagation of all plausible parameter sets to validation predictions;",
+        "6. a final locked evaluation on untouched trials.",
+        "A grid with five levels in three parameters has 125 combinations before repeats, numerical-",
+        "sensitivity studies, or multiple specimens. This arithmetic is a compute-planning example, not"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 22,
+      "words": 356,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "22",
+        "11.7",
+        "Stage 5: uncertainty and numerical transfer",
+        "Use the physical trajectory, specimen, or batch as the resampling unit. Choose sample size after",
+        "a pilot establishes variability and the smallest practically important paired improvement; this"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 23,
+      "words": 383,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "23",
+        "Candidate contribution",
+        "Testable claim",
+        "Evidence that would",
+        "distinguish it from an"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 24,
+      "words": 339,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "24",
+        "13",
+        "Journal suitability and the scientific case",
+        "13.1",
+        "Yes, the framework can support a journal paper"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 25,
+      "words": 381,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "25",
+        "13.3",
+        "What makes this survey itself useful",
+        "Broad deformable-object surveys already organise representations, models, estimation, and",
+        "control [1]. Food reviews already organise dough rheometry and nonlinear behaviour [5]."
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 26,
+      "words": 303,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "26",
+        "14.3",
+        "Full framework study",
+        "Extend only after the basic identification tests work: cross-trajectory two-tool prediction,",
+        "independent specimens/batches, interface perturbations, numerical refits, and a packaged"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 27,
+      "words": 293,
+      "smallest_font_pt": 8.54,
+      "first_lines": [
+        "Dough parameter identification",
+        "27",
+        "Table 10",
+        "Record",
+        "What was checked",
+        "scripts/"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 28,
+      "words": 460,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "28",
+        "Source group",
+        "Scientific text inspected and limit",
+        "DiffCal; Cocuzza\u2013Yan",
+        "Full early-online/accepted author manuscripts; final"
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 29,
+      "words": 616,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "29",
+        "[8]",
+        "R. S. Anderssen and M. Kru\u017e\u00edk, \u2018Modelling of wheat-flour dough mixing as an open-loop hysteretic",
+        "process\u2019, Discrete and Continuous Dynamical Systems \u2013 B, vol. 18, no. 2, pp. 283\u2013293, 2013, doi:",
+        "10.3934/dcdsb.2013.18.283."
+      ],
+      "replacement_character": false
+    },
+    {
+      "page": 30,
+      "words": 397,
+      "smallest_font_pt": 8.92,
+      "first_lines": [
+        "Dough parameter identification",
+        "30",
+        "[27]",
+        "Y. Hu et al., \u2018A Moving Least Squares Material Point Method with Displacement Discontinuity and",
+        "Two-Way Rigid Body Coupling\u2019, ACM Transactions on Graphics, vol. 37, no. 4, Art. no. 150, 2018, doi:",
+        "10.1145/3197517.3201293."
+      ],
+      "replacement_character": false
+    }
+  ],
+  "bibliography_present": true,
+  "corrected_scores_present": true
+}

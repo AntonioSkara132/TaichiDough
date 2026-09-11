@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "snapshots": {
+    "scripts/calibrate_youngs_modulus.py": "reference/calibrate_youngs_modulus.py",
+    "scripts/material_calibration.py": "reference/material_calibration.py",
+    "scripts/run_single_episode_material_calibration.sh": "reference/run_single_episode_material_calibration.sh",
+    "scripts/sweep_episode18_tool_friction.py": "reference/sweep_episode18_tool_friction.py",
+    "scripts/sweep_episode18_viscosity.py": "reference/sweep_episode18_viscosity.py",
+    "scripts/evaluate_dynamic_topview_match.py": "reference/evaluate_dynamic_topview_match.py"
+  },
+  "recovered_from": {
+    "git_commit": "cb76169436d334c127f165ce5c3f779100bb82d4",
+    "method": "git show of each recorded source; every recovered file matched the unchanged reference_manifest.json expected SHA-256 before writing",
+    "expected_hash_authority": "reference_manifest.json"
+  }
+}

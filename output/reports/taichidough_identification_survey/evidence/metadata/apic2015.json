@@ -1,0 +1,517 @@
+{
+  "indexed": {
+    "date-parts": [
+      [
+        2026,
+        9,
+        10
+      ]
+    ],
+    "date-time": "2026-09-10T22:53:03Z",
+    "timestamp": 1789080783128,
+    "version": "build-2803163510"
+  },
+  "reference-count": 47,
+  "publisher": "Association for Computing Machinery (ACM)",
+  "issue": "4",
+  "license": [
+    {
+      "start": {
+        "date-parts": [
+          [
+            2015,
+            7,
+            27
+          ]
+        ],
+        "date-time": "2015-07-27T00:00:00Z",
+        "timestamp": 1437955200000
+      },
+      "content-version": "vor",
+      "delay-in-days": 0,
+      "URL": "https://www.acm.org/publications/policies/copyright_policy#Background"
+    }
+  ],
+  "content-domain": {
+    "domain": [
+      "dl.acm.org"
+    ],
+    "crossmark-restriction": true
+  },
+  "short-container-title": [
+    "ACM Trans. Graph."
+  ],
+  "published-print": {
+    "date-parts": [
+      [
+        2015,
+        7,
+        27
+      ]
+    ]
+  },
+  "abstract": "<jats:p>Hybrid Lagrangian/Eulerian simulation is commonplace in computer graphics for fluids and other materials undergoing large deformation. In these methods, particles are used to resolve transport and topological change, while a background Eulerian grid is used for computing mechanical forces and collision responses. Particle-in-Cell (PIC) techniques, particularly the Fluid Implicit Particle (FLIP) variants have become the norm in computer graphics calculations. While these approaches have proven very powerful, they do suffer from some well known limitations. The original PIC is stable, but highly dissipative, while FLIP, designed to remove this dissipation, is more noisy and at times, unstable. We present a novel technique designed to retain the stability of the original PIC, without suffering from the noise and instability of FLIP. Our primary observation is that the dissipation in the original PIC results from a loss of information when transferring between grid and particle representations. We prevent this loss of information by augmenting each particle with a locally affine, rather than locally constant, description of the velocity. We show that this not only stably removes the dissipation of PIC, but that it also allows for exact conservation of angular momentum across the transfers between particles and grid.</jats:p>",
+  "DOI": "10.1145/2766996",
+  "type": "journal-article",
+  "created": {
+    "date-parts": [
+      [
+        2015,
+        7,
+        28
+      ]
+    ],
+    "date-time": "2015-07-28T12:26:38Z",
+    "timestamp": 1438086398000
+  },
+  "page": "1-10",
+  "update-policy": "https://doi.org/10.1145/crossmark-policy",
+  "source": "Crossref",
+  "is-referenced-by-count": 336,
+  "title": [
+    "The affine particle-in-cell method"
+  ],
+  "prefix": "10.1145",
+  "volume": "34",
+  "author": [
+    {
+      "given": "Chenfanfu",
+      "family": "Jiang",
+      "sequence": "first",
+      "affiliation": [
+        {
+          "name": "University of California, Los Angeles"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Craig",
+      "family": "Schroeder",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "University of California, Los Angeles"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Andrew",
+      "family": "Selle",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Walt Disney Animation Studios"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Joseph",
+      "family": "Teran",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Walt Disney Animation Studios and University of California, Los Angeles"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Alexey",
+      "family": "Stomakhin",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Walt Disney Animation Studios"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    }
+  ],
+  "member": "320",
+  "published-online": {
+    "date-parts": [
+      [
+        2015,
+        7,
+        27
+      ]
+    ]
+  },
+  "reference": [
+    {
+      "key": "e_1_2_2_1_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/2019406.2019408"
+    },
+    {
+      "key": "e_1_2_2_2_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1109/TVCG.2012.87"
+    },
+    {
+      "key": "e_1_2_2_3_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/2461912.2461982"
+    },
+    {
+      "key": "e_1_2_2_4_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1276377.1276397"
+    },
+    {
+      "key": "e_1_2_2_5_1",
+      "volume-title": "Proc ACM SIGGRAPH/ Eurograph Symp Comp Anim, 219--228",
+      "author": "Batty C.",
+      "unstructured": "Batty , C. , and Bridson , R . 2008. Accurate viscous free surfaces for buckling, coiling, and rotating liquids . Proc ACM SIGGRAPH/ Eurograph Symp Comp Anim, 219--228 . Batty, C., and Bridson, R. 2008. Accurate viscous free surfaces for buckling, coiling, and rotating liquids. Proc ACM SIGGRAPH/ Eurograph Symp Comp Anim, 219--228."
+    },
+    {
+      "key": "e_1_2_2_6_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1276377.1276502"
+    },
+    {
+      "key": "e_1_2_2_7_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/2159516.2159522"
+    },
+    {
+      "key": "e_1_2_2_8_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/0021-9991(86)90211-1"
+    },
+    {
+      "key": "e_1_2_2_9_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/0010-4655(88)90020-3"
+    },
+    {
+      "key": "e_1_2_2_10_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/0021-9991(88)90123-4"
+    },
+    {
+      "key": "e_1_2_2_11_1",
+      "volume-title": "Fluid simulation for computer graphics",
+      "author": "Bridson R.",
+      "unstructured": "Bridson , R. 2008. Fluid simulation for computer graphics . Taylor & Francis . Bridson, R. 2008. Fluid simulation for computer graphics. Taylor & Francis."
+    },
+    {
+      "key": "e_1_2_2_12_1",
+      "volume-title": "Proc ACM SIGGRAPH/Eurograph Symp Comp Anim, SCA '10",
+      "author": "Chentanez N.",
+      "unstructured": "Chentanez , N. , and Muller , M . 2010. Real-time simulation of large bodies of water with small scale details . In Proc ACM SIGGRAPH/Eurograph Symp Comp Anim, SCA '10 , 197--206. Chentanez, N., and Muller, M. 2010. Real-time simulation of large bodies of water with small scale details. In Proc ACM SIGGRAPH/Eurograph Symp Comp Anim, SCA '10, 197--206."
+    },
+    {
+      "key": "e_1_2_2_13_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/2010324.1964977"
+    },
+    {
+      "key": "e_1_2_2_14_1",
+      "volume-title": "Proc ACM SIGGRAPH/Eurograph Symp Comp Anim, SCA '14",
+      "author": "Chentanez N.",
+      "unstructured": "Chentanez , N. , and Muller , M . 2014. Coupling 3d eulerian, height field and particle methods for the simulation of large scale liquid phenomena . In Proc ACM SIGGRAPH/Eurograph Symp Comp Anim, SCA '14 . Chentanez, N., and Muller, M. 2014. Coupling 3d eulerian, height field and particle methods for the simulation of large scale liquid phenomena. In Proc ACM SIGGRAPH/Eurograph Symp Comp Anim, SCA '14."
+    },
+    {
+      "key": "e_1_2_2_15_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1111/cgf.12324"
+    },
+    {
+      "key": "e_1_2_2_16_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1002/nme.3356"
+    },
+    {
+      "key": "e_1_2_2_17_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/2601097.2601167"
+    },
+    {
+      "key": "e_1_2_2_18_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/566654.566645"
+    },
+    {
+      "key": "e_1_2_2_19_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1201775.882336"
+    },
+    {
+      "key": "e_1_2_2_20_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1006/gmip.1996.0039"
+    },
+    {
+      "key": "e_1_2_2_21_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1111/j.1467-8659.2009.01562.x"
+    },
+    {
+      "key": "e_1_2_2_22_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/2508363.2508430"
+    },
+    {
+      "key": "e_1_2_2_23_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1063/1.1761178"
+    },
+    {
+      "key": "e_1_2_2_24_1",
+      "first-page": "319",
+      "article-title": "The particle-in-cell method for numerical solution of problems in fluid dynamics",
+      "volume": "3",
+      "author": "Harlow F.",
+      "year": "1964",
+      "unstructured": "Harlow , F. 1964 . The particle-in-cell method for numerical solution of problems in fluid dynamics . Meth Comp Phys 3 , 319 -- 343 . Harlow, F. 1964. The particle-in-cell method for numerical solution of problems in fluid dynamics. Meth Comp Phys 3, 319--343.",
+      "journal-title": "Meth Comp Phys"
+    },
+    {
+      "key": "e_1_2_2_25_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1360612.1360647"
+    },
+    {
+      "key": "e_1_2_2_26_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1007/s00371-008-0234-z"
+    },
+    {
+      "key": "e_1_2_2_27_1",
+      "unstructured": "Hong W. House D. and Keyser J. 2009. An adaptive sampling approach to incompressible particle-based fluid. Theory Pract Comp Graph 69--76.  Hong W. House D. and Keyser J. 2009. An adaptive sampling approach to incompressible particle-based fluid. Theory Pract Comp Graph 69--76."
+    },
+    {
+      "key": "e_1_2_2_28_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1109/TVCG.2013.105"
+    },
+    {
+      "key": "e_1_2_2_29_1",
+      "volume-title": "Proc ACM SIGGRAPH/Eurograph Symp Comp Anim, SCA '06",
+      "author": "Kim J.",
+      "unstructured": "Kim , J. , Cha , D. , Chang , B. , Koo , B. , and Ihm , I . 2006. Practical animation of turbulent splashing water . In Proc ACM SIGGRAPH/Eurograph Symp Comp Anim, SCA '06 , 335--344. Kim, J., Cha, D., Chang, B., Koo, B., and Ihm, I. 2006. Practical animation of turbulent splashing water. In Proc ACM SIGGRAPH/Eurograph Symp Comp Anim, SCA '06, 335--344."
+    },
+    {
+      "key": "e_1_2_2_30_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1007/s00371-009-0339-z"
+    },
+    {
+      "key": "e_1_2_2_31_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1109/TVCG.2008.37"
+    },
+    {
+      "key": "e_1_2_2_32_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/j.cma.2005.06.027"
+    },
+    {
+      "key": "e_1_2_2_33_1",
+      "doi-asserted-by": "crossref",
+      "unstructured": "Mihalef V. Metaxas D. and Sussman M. 2007. Textured liquids based on the marker level set. Comp Graph Forum 457--466.  Mihalef V. Metaxas D. and Sussman M. 2007. Textured liquids based on the marker level set. Comp Graph Forum 457--466.",
+      "DOI": "10.1111/j.1467-8659.2007.01068.x"
+    },
+    {
+      "key": "e_1_2_2_34_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/j.jcp.2014.10.017"
+    },
+    {
+      "key": "e_1_2_2_35_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1882261.1866195"
+    },
+    {
+      "key": "e_1_2_2_36_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/2485895.2485912"
+    },
+    {
+      "key": "e_1_2_2_37_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/2019406.2019411"
+    },
+    {
+      "key": "e_1_2_2_38_1",
+      "volume-title": "Proc ACM SIGGRAPH/Eurograph Symp Comp Anim, 81--90",
+      "author": "Sifakis E.",
+      "unstructured": "Sifakis , E. , Shinar , T. , Irving , G. , and Fedkiw , R . 2007. Hybrid simulation of deformable solids . In Proc ACM SIGGRAPH/Eurograph Symp Comp Anim, 81--90 . Sifakis, E., Shinar, T., Irving, G., and Fedkiw, R. 2007. Hybrid simulation of deformable solids. In Proc ACM SIGGRAPH/Eurograph Symp Comp Anim, 81--90."
+    },
+    {
+      "key": "e_1_2_2_39_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1599470.1599502"
+    },
+    {
+      "key": "e_1_2_2_40_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1109/TVCG.2007.1022"
+    },
+    {
+      "key": "e_1_2_2_41_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/2461912.2461948"
+    },
+    {
+      "key": "e_1_2_2_42_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/2601097.2601176"
+    },
+    {
+      "key": "e_1_2_2_43_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/0010-4655(94)00170-7"
+    },
+    {
+      "key": "e_1_2_2_44_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1111/cgf.12489"
+    },
+    {
+      "key": "e_1_2_2_45_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1006/jcph.2000.6625"
+    },
+    {
+      "key": "e_1_2_2_46_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1073204.1073298"
+    },
+    {
+      "key": "e_1_2_2_47_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1111/j.1467-8659.2010.01809.x"
+    }
+  ],
+  "container-title": [
+    "ACM Transactions on Graphics"
+  ],
+  "original-title": [],
+  "language": "en",
+  "link": [
+    {
+      "URL": "https://dl.acm.org/doi/10.1145/2766996",
+      "content-type": "unspecified",
+      "content-version": "vor",
+      "intended-application": "text-mining"
+    },
+    {
+      "URL": "https://dl.acm.org/doi/pdf/10.1145/2766996",
+      "content-type": "unspecified",
+      "content-version": "vor",
+      "intended-application": "similarity-checking"
+    }
+  ],
+  "deposited": {
+    "date-parts": [
+      [
+        2025,
+        6,
+        18
+      ]
+    ],
+    "date-time": "2025-06-18T05:43:02Z",
+    "timestamp": 1750225382000
+  },
+  "score": 1,
+  "resource": {
+    "primary": {
+      "URL": "https://dl.acm.org/doi/10.1145/2766996"
+    }
+  },
+  "subtitle": [],
+  "short-title": [],
+  "issued": {
+    "date-parts": [
+      [
+        2015,
+        7,
+        27
+      ]
+    ]
+  },
+  "references-count": 47,
+  "journal-issue": {
+    "issue": "4",
+    "published-print": {
+      "date-parts": [
+        [
+          2015,
+          7,
+          27
+        ]
+      ]
+    }
+  },
+  "alternative-id": [
+    "10.1145/2766996"
+  ],
+  "URL": "https://doi.org/10.1145/2766996",
+  "relation": {},
+  "ISSN": [
+    "0730-0301",
+    "1557-7368"
+  ],
+  "issn-type": [
+    {
+      "value": "0730-0301",
+      "type": "print"
+    },
+    {
+      "value": "1557-7368",
+      "type": "electronic"
+    }
+  ],
+  "subject": [],
+  "published": {
+    "date-parts": [
+      [
+        2015,
+        7,
+        27
+      ]
+    ]
+  },
+  "assertion": [
+    {
+      "value": "2015-07-27",
+      "order": 2,
+      "name": "published",
+      "label": "Published",
+      "group": {
+        "name": "publication_history",
+        "label": "Publication History"
+      }
+    }
+  ]
+}

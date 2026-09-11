@@ -1,0 +1,13 @@
+{
+  "window": "training-smoke-to-5",
+  "split": "training",
+  "youngs_modulus_pa": 2000.0,
+  "status": "failed",
+  "cached": false,
+  "cache_key": "429e7edaef87e581793ef7638dffc8c48909383b28200c120b8c60f2b6ea92b5",
+  "cache_dir": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/output/episode18_affine_corrected/benchmark_cpu/candidate_cache/429e7edaef87e581793ef7638dffc8c48909383b28200c120b8c60f2b6ea92b5",
+  "loss": null,
+  "failure_reason": "SDF replay collision manifest hash does not match the manifest",
+  "invalid_state": null,
+  "total_wall_s": 91.84557721699821
+}

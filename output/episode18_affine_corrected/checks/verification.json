@@ -1,0 +1,55 @@
+{
+  "full_calibration_run": false,
+  "viscosity_sweep_run": false,
+  "source_sha256": {
+    "scripts/taichi_viscoelastic_mpm_scene.py": "d33f0aec3952fa72282cd181757f678b2e2a48e5b51016c23d40fd05d6a3ac3e",
+    "scripts/sweep_episode18_viscosity.py": "853860f59c8a908d93092007a760a24541f40c4e593d769aa19664e0cbf5b049",
+    "scripts/test_mpm_mass.py": "5572b02fe870d02c00056b1cbfaa2d23e3a0855ac30924832d0e4366890c0500",
+    "test/test_mpm_affine_transfer.py": "972f39ed9bea5dad7b0d22f0a4f5b236da06333915862cfef63234f9b77962ef",
+    "test/test_episode18_viscosity_sweep.py": "d896b6f46ca7a1675c396a63ce1871165216fa92dc9d0b552b54f1c466c1e1a0"
+  },
+  "tests": {
+    "numerical_and_mass": 21,
+    "calibration_and_replay": 45,
+    "viscosity_runner": 16,
+    "total_distinct_targeted_tests": 82,
+    "all_passed": true
+  },
+  "verified_smoke": {
+    "backend": "vulkan",
+    "requested_e_pa": 2000.0,
+    "viscosity_pa_s": 0.0,
+    "source_frames": [
+      0,
+      5
+    ],
+    "scored_source_frames": [
+      1,
+      5
+    ],
+    "particle_count": 24000,
+    "saved_frame_count": 6,
+    "all_saved_particles_finite": true,
+    "no_saved_particles_below_floor": true,
+    "initial_particles_exactly_preserved": true,
+    "status": "complete",
+    "loss_counts": {
+      "total": 5,
+      "valid": 5,
+      "invalid": 0
+    },
+    "short_window_loss": 0.22781365276178236,
+    "total_wall_s": 186.8428986880026,
+    "cache_dir": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/output/episode18_affine_corrected/benchmark_gpu_verified/candidate_cache/d4553416f07b01376afe0b68e0e29f4b418aecd1a494c0f52eb0f8b9ea055755"
+  },
+  "earlier_smokes": {
+    "cpu": "simulation completed; metadata rejected due to explicit default collision overrides",
+    "vulkan": "simulation completed; metadata rejected due to explicit default collision overrides"
+  },
+  "limits": [
+    "No full-trajectory stability claim.",
+    "No new material parameters selected.",
+    "Tests cover selected modules, not the entire repository.",
+    "Short-window loss is not comparable to prior full training losses."
+  ]
+}

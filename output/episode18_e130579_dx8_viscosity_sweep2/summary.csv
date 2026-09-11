@@ -1,0 +1,6 @@
+id,viscosity_pa_s,tool_contact_friction,status,weighted_total,failure_reason
+viscosity_0,0.0,0.2,complete,0.3611063537133981,
+viscosity_1,1.0,0.2,complete,0.36109166663665204,
+viscosity_2p5,2.5,0.2,complete,0.36103418347008154,
+viscosity_5,5.0,0.2,complete,0.36101766252581863,
+viscosity_10,10.0,0.2,complete,0.3610061713928395,

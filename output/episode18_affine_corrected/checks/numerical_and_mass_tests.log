@@ -1,0 +1,5 @@
+[Taichi] version 1.7.4, llvm 15.0.4, commit b4b956fd, linux, python 3.10.12
+.....................                                                    [100%]
+21 passed in 207.53s (0:03:27)
+
+[exited with code 0]

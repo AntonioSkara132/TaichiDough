@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Episode 18 Viscosity</title>
+<style>
+:root{color-scheme:dark;--bg:#121212;--panel:#1b2024;--ink:#ebf1f5;--muted:#b4c1ca;--line:#3d484f;--accent:#efbb64;--link:#8ac5ed;--blue:#3689d6;--red:#da5248;--dough:#d18e4c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}.page{max-width:1360px;margin-inline:auto;padding-inline:clamp(16px,4vw,48px);padding-block:32px 64px}header{display:grid;gap:10px;margin-block-end:24px}header p,header h1{margin:0}h1{font-size:clamp(28px,4vw,42px);line-height:1.15;letter-spacing:-.02em;text-wrap:balance}h2{font-size:22px;line-height:1.3;margin-block:0 16px}.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}.subtitle{max-width:80ch;color:var(--muted)}a{color:var(--link);text-underline-offset:3px;overflow-wrap:anywhere}:focus-visible{outline:3px solid var(--accent);outline-offset:4px}.video-wrap{max-width:100%;border:1px solid var(--line);background:#121212}video{display:block;width:100%;max-width:100%;aspect-ratio:2/1;background:#121212}.caption{display:flex;gap:12px 26px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-block:12px 28px}.swatch{display:inline-block;width:10px;height:10px;margin-inline-end:7px;border-radius:50%}.dough{background:var(--dough)}.ur{background:var(--blue)}.kinova{background:var(--red)}.columns{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:clamp(24px,4vw,56px)}.table-scroll{overflow-x:auto;max-width:100%;border-top:1px solid var(--line)}table{width:100%;border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:12px;color:var(--muted);font-weight:600}.number{font-family:ui-monospace,"DejaVu Sans Mono",Consolas,monospace;font-size:.9em;white-space:nowrap}.best td{color:var(--accent)}.best a{color:var(--accent)}.notice{padding:18px 20px;background:var(--panel);margin-block:0 20px}.notice p{margin-block:0 12px}.notice p:last-child{margin:0}.facts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 20px;font-size:14px}dt{color:var(--muted)}dd{margin:0}code{font:13px/1.5 ui-monospace,"DejaVu Sans Mono",Consolas,monospace;overflow-wrap:anywhere}footer{border-top:1px solid var(--line);padding-block-start:18px;margin-block-start:32px;color:var(--muted);font-size:13px}footer p{max-width:95ch}.links{display:flex;flex-wrap:wrap;gap:10px 22px;margin-block:18px 0}.small{font-size:13px;color:var(--muted)}@media(max-width:850px){.columns{grid-template-columns:minmax(0,1fr)}.facts{grid-template-columns:auto minmax(0,1fr)}table{min-width:460px}}
+</style>
+</head>
+<body>
+<main class="page">
+<header>
+<p class="eyebrow">Recorded simulation replay · training comparison</p>
+<h1>Episode 18 viscosity sweep</h1>
+<p class="subtitle">Five completed cases, rendered from saved particles using the earlier isometric view. Camera, depth shading and frame timing are shared across all panels.</p>
+</header>
+<section aria-label="Synchronized replay">
+<div class="video-wrap"><video id="comparison-video" controls loop playsinline preload="metadata" poster="viscosity_comparison_preview.png"><source src="viscosity_comparison_isometric.mp4" type="video/mp4">Open the comparison MP4 using the link below.</video></div>
+<div class="caption"><span><i class="swatch dough"></i>Simulated dough</span><span><i class="swatch ur"></i>UR tool</span><span><i class="swatch kinova"></i>Kinova tool</span><span>61 frames · t = 0–2.001 s · slow motion (~4×)</span></div>
+</section>
+<div class="columns">
+<section>
+<h2>Scores and individual videos</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Viscosity results table">
+<table>
+<thead><tr><th scope="col">Viscosity, Pa·s</th><th scope="col">Training loss ↓</th><th scope="col">Isometric replay</th></tr></thead>
+<tbody>
+<tr><td class="number">0</td><td class="number">0.361106354</td><td><a href="viscosity_0_isometric.mp4">Open η = 0</a></td></tr>
+<tr><td class="number">1</td><td class="number">0.361091667</td><td><a href="viscosity_1_isometric.mp4">Open η = 1</a></td></tr>
+<tr><td class="number">2.5</td><td class="number">0.361034183</td><td><a href="viscosity_2p5_isometric.mp4">Open η = 2.5</a></td></tr>
+<tr><td class="number">5</td><td class="number">0.361017663</td><td><a href="viscosity_5_isometric.mp4">Open η = 5</a></td></tr>
+<tr class="best"><td class="number">10</td><td class="number">0.361006171</td><td><a href="viscosity_10_isometric.mp4">Open η = 10</a></td></tr>
+</tbody>
+</table>
+</div>
+<p class="small">The video includes initial source frame 0. Scores use source frames 1–60; the objective is dimensionless and lower is better.</p>
+<p class="links"><a href="viscosity_comparison_isometric.mp4">Open comparison MP4</a><a href="viscosity_comparison_preview.png">Open final-frame comparison</a></p>
+</section>
+<section>
+<h2>What the result shows</h2>
+<div class="notice"><p><strong>η = 10 has the lowest tested loss, but the change is very small.</strong> Its score is 0.0277% lower than η = 0, and it is the upper boundary of the tested range.</p><p>The videos are expected to look nearly identical. This sweep does not establish a unique physical viscosity or an independently validated improvement.</p></div>
+<dl class="facts">
+<dt>Young’s modulus</dt><dd>130.579 kPa, fixed</dd>
+<dt>Poisson’s ratio</dt><dd>0.3, fixed</dd>
+<dt>Grid / particles</dt><dd>48 / 24,000</dd>
+<dt>Time step</dt><dd>0.0002 s</dd>
+<dt>Tool contact</dt><dd>SDF, resolution 64; padding 2.604 mm</dd>
+<dt>Contact retention</dt><dd>0.2, fixed</dd>
+<dt>Plastic projection</dt><dd>Disabled in these runs</dd>
+<dt>Validation</dt><dd>Training-only sweep; no held-out stage</dd>
+</dl>
+</section>
+</div>
+<footer>
+<p>Rendered from the completed contents of <code>output/episode18_e130579_dx8_viscosity_sweep2/</code>. The earlier literature report inspected a failed-startup version of this directory; these are the newer completed results.</p>
+<p>No material simulation was rerun. Original particles and result files were not modified. The renderer, camera, shared shading range, input hashes and video checks are recorded in <a href="visualization_manifest.json">visualization_manifest.json</a>. Coefficients are effective values for this numerical setup, not universal dough constants.</p>
+</footer>
+</main>
+</body>
+</html>

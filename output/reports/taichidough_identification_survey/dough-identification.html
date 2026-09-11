@@ -1,0 +1,2669 @@
+<title>Dough Parameter Identification</title>
+<style>
+:root {
+  color-scheme: light;
+  --paper: #f7fafc;
+  --panel: #ffffff;
+  --ink: #192e3d;
+  --muted: #4d6675;
+  --accent: #216b86;
+  --line: #cddce4;
+  --tint: #eaf2f6;
+  --row: #f0f5f8;
+  --focus: #87551b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #12232d;
+    --panel: #172d39;
+    --ink: #e2edf2;
+    --muted: #afc4d0;
+    --accent: #89c9e0;
+    --line: #36525f;
+    --tint: #203b49;
+    --row: #1b333f;
+    --focus: #edbd80;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #12232d;
+  --panel: #172d39;
+  --ink: #e2edf2;
+  --muted: #afc4d0;
+  --accent: #89c9e0;
+  --line: #36525f;
+  --tint: #203b49;
+  --row: #1b333f;
+  --focus: #edbd80;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+a { color: var(--accent); text-underline-offset: .2em; overflow-wrap: anywhere; }
+a:hover { text-decoration-thickness: .12em; }
+:focus-visible { outline: .18rem solid var(--focus); outline-offset: .25rem; }
+.page-shell { max-width: 87rem; margin-inline: auto; padding-inline: clamp(1rem, 4vw, 3rem); padding-block: 2.5rem 4rem; }
+.report-cover { display: grid; gap: 1rem; max-width: 68rem; padding-block-end: 2.5rem; }
+.report-cover p, .report-cover h1 { margin: 0; }
+.eyebrow, .nav-label { color: var(--muted); font-size: .77rem; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+.report-cover h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(2.1rem, 4.5vw, 3.5rem); line-height: 1.13; font-weight: 500; text-wrap: balance; max-width: 20ch; }
+.subtitle { font-size: 1.12rem; max-width: 63ch; color: var(--muted); }
+.cover-question { max-width: 63ch; font-family: Georgia, "Times New Roman", serif; font-size: 1.22rem; line-height: 1.55; }
+.cover-meta { display: flex; gap: .5rem 1.4rem; flex-wrap: wrap; color: var(--muted); font-size: .8rem; }
+.reading-layout { display: grid; grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr); gap: clamp(1.5rem, 4vw, 4rem); align-items: start; border-top: 1px solid var(--line); padding-block-start: 2rem; }
+.desktop-contents { position: sticky; top: 1.25rem; max-height: calc(100vh - 2.5rem); overflow-y: auto; font-size: .79rem; padding-inline-end: .7rem; }
+.nav-label { margin: 0 0 .8rem; }
+.toc-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .7rem; }
+.toc-list a { display: block; text-decoration: none; line-height: 1.5; }
+.toc-list a:hover { text-decoration: underline; }
+.mobile-contents { display: none; }
+.report-text { min-width: 0; max-width: 77ch; }
+.report-text > section { margin-block-end: 3.5rem; }
+.report-text h1, .report-text h2, .report-text h3 { text-wrap: balance; scroll-margin-top: 1.5rem; }
+.report-text h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; font-size: 1.9rem; line-height: 1.25; color: var(--accent); margin-block: 0 1.25rem; }
+.report-text h2 { font-size: 1.2rem; line-height: 1.4; font-weight: 650; margin-block: 2.1rem .7rem; }
+.report-text h3 { font-size: 1.03rem; margin-block: 1.7rem .7rem; }
+.header-section-number { color: var(--muted); font-variant-numeric: tabular-nums; }
+.report-text p { margin-block: .9rem; }
+.report-text li { padding-inline-start: .1rem; margin-block: .35rem; }
+.report-text ul, .report-text ol { padding-inline-start: 1.5rem; }
+.report-text blockquote { margin-inline: 0; margin-block: 1.5rem; padding: .65rem 1.15rem; background: var(--tint); font-family: Georgia, "Times New Roman", serif; font-size: 1.1rem; }
+.report-text blockquote p { margin-block: .4rem; }
+code { font-family: "DejaVu Sans Mono", Consolas, ui-monospace, monospace; font-size: .82em; overflow-wrap: anywhere; color: var(--ink); }
+pre { overflow-x: auto; max-width: 100%; background: var(--tint); padding: 1rem; }
+pre code { overflow-wrap: normal; }
+.math.display { display: block; max-width: 100%; overflow-x: auto; padding-block: .75rem; text-align: center; }
+math { font-size: 1.05em; }
+.table-scroll { overflow-x: auto; max-width: 100%; margin-block: 1.5rem; border: 1px solid var(--line); background: var(--panel); }
+table { border-collapse: collapse; width: 100%; min-width: 37rem; font-size: .85rem; line-height: 1.55; font-variant-numeric: tabular-nums; }
+th, td { padding: .8rem .9rem; vertical-align: top; text-align: left; border-bottom: 1px solid var(--line); }
+th { font-weight: 650; background: var(--tint); }
+tr:nth-child(even) td { background: var(--row); }
+tr:last-child td { border-bottom: 0; }
+.citation { white-space: normal; font-size: .9em; }
+.csl-bib-body { font-size: .88rem; line-height: 1.6; }
+.csl-entry { display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: .45rem; margin-block: 1rem; scroll-margin-top: 1rem; }
+.csl-left-margin { color: var(--muted); font-variant-numeric: tabular-nums; }
+.csl-right-inline { overflow-wrap: anywhere; }
+.report-footer { margin-block-start: 3rem; padding-block-start: 1.5rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; max-width: 80ch; }
+.skip-link { position: absolute; top: .5rem; left: 1rem; background: var(--panel); padding: .5rem 1rem; transform: translateY(-200%); z-index: 2; }
+.skip-link:focus { transform: translateY(0); }
+@media (max-width: 58rem) {
+  .reading-layout { grid-template-columns: minmax(0, 1fr); }
+  .desktop-contents { display: none; }
+  .mobile-contents { display: block; max-width: 77ch; padding-block: 1rem 1.5rem; }
+  .mobile-contents summary { color: var(--accent); font-weight: 650; cursor: pointer; }
+  .mobile-contents nav { padding-block-start: 1rem; font-size: .9rem; }
+  .report-cover { padding-block-end: 1rem; }
+  .report-text h1 { font-size: 1.65rem; }
+  .report-text { max-width: 100%; }
+}
+@media print {
+  body { background: #ffffff; color: #192e3d; font-size: 10pt; }
+  .page-shell { max-width: none; padding-inline: 0; padding-block: 0; }
+  .reading-layout { display: block; }
+  .desktop-contents, .mobile-contents, .skip-link { display: none; }
+  .report-text { max-width: none; }
+  .table-scroll { overflow: visible; }
+  table { min-width: 0; font-size: 8pt; }
+  h1, h2, h3 { break-after: avoid; }
+  tr { break-inside: avoid; }
+}
+
+</style>
+<a class="skip-link" href="#report-text">Skip to the report</a>
+<div class="page-shell">
+<header class="report-cover">
+<p class="eyebrow">Critical literature survey · 11 September 2026</p>
+<h1>Dough Parameter Identification</h1>
+<p class="subtitle">Depth recordings, tool trajectories, and the scientific case for TaichiDough</p>
+<p class="cover-question">What can a camera and known tool motion identify—and what remains predictable when material parameters are uncertain?</p>
+<div class="cover-meta"><span>40 references and guidance sources</span><span>Primary-source evidence with access qualifications</span><span>Current-code assessment</span></div>
+</header>
+<details class="mobile-contents">
+<summary>Contents</summary>
+<nav aria-label="Report contents on small screens"><ol class="toc-list"><li><a href="#executive-assessment">1 Executive assessment</a></li>
+<li><a href="#scope-evidence-and-how-to-read-this-survey">2 Scope,
+evidence, and how to read this survey</a></li>
+<li><a href="#the-inverse-problem-what-is-being-identified">3 The
+inverse problem: what is being identified?</a></li>
+<li><a href="#dough-mechanics-and-constitutive-interpretation">4 Dough
+mechanics and constitutive interpretation</a></li>
+<li><a href="#food-engineering-and-robotic-rheometry-precedents">5 Food-engineering and robotic rheometry precedents</a></li>
+<li><a href="#visual-and-action-conditioned-inverse-simulation">6 Visual
+and action-conditioned inverse simulation</a></li>
+<li><a href="#numerical-foundations-and-what-mpm-contributes">7 Numerical foundations and what MPM contributes</a></li>
+<li><a href="#prediction-manipulation-and-benchmark-literature">8 Prediction, manipulation, and benchmark literature</a></li>
+<li><a href="#what-depth-and-tool-motion-can-identify">9 What
+depth and tool motion can identify</a></li>
+<li><a href="#taichidough-current-implementation-and-scientific-interpretation">10 TaichiDough: current implementation and scientific interpretation</a></li>
+<li><a href="#a-falsifiable-experimental-programme">11 A
+falsifiable experimental programme</a></li>
+<li><a href="#where-a-defensible-novel-contribution-could-lie">12 Where
+a defensible novel contribution could lie</a></li>
+<li><a href="#journal-suitability-and-the-scientific-case">13 Journal suitability and the scientific case</a></li>
+<li><a href="#recommended-research-sequence">14 Recommended research sequence</a></li>
+<li><a href="#evidence-appendix">15 Evidence appendix</a></li>
+<li><a href="#bibliography">References</a></li></ol></nav>
+</details>
+<div class="reading-layout">
+<aside class="desktop-contents">
+<nav aria-label="Report contents"><p class="nav-label">Contents</p><ol class="toc-list"><li><a href="#executive-assessment">1 Executive assessment</a></li>
+<li><a href="#scope-evidence-and-how-to-read-this-survey">2 Scope,
+evidence, and how to read this survey</a></li>
+<li><a href="#the-inverse-problem-what-is-being-identified">3 The
+inverse problem: what is being identified?</a></li>
+<li><a href="#dough-mechanics-and-constitutive-interpretation">4 Dough
+mechanics and constitutive interpretation</a></li>
+<li><a href="#food-engineering-and-robotic-rheometry-precedents">5 Food-engineering and robotic rheometry precedents</a></li>
+<li><a href="#visual-and-action-conditioned-inverse-simulation">6 Visual
+and action-conditioned inverse simulation</a></li>
+<li><a href="#numerical-foundations-and-what-mpm-contributes">7 Numerical foundations and what MPM contributes</a></li>
+<li><a href="#prediction-manipulation-and-benchmark-literature">8 Prediction, manipulation, and benchmark literature</a></li>
+<li><a href="#what-depth-and-tool-motion-can-identify">9 What
+depth and tool motion can identify</a></li>
+<li><a href="#taichidough-current-implementation-and-scientific-interpretation">10 TaichiDough: current implementation and scientific interpretation</a></li>
+<li><a href="#a-falsifiable-experimental-programme">11 A
+falsifiable experimental programme</a></li>
+<li><a href="#where-a-defensible-novel-contribution-could-lie">12 Where
+a defensible novel contribution could lie</a></li>
+<li><a href="#journal-suitability-and-the-scientific-case">13 Journal suitability and the scientific case</a></li>
+<li><a href="#recommended-research-sequence">14 Recommended research sequence</a></li>
+<li><a href="#evidence-appendix">15 Evidence appendix</a></li>
+<li><a href="#bibliography">References</a></li></ol></nav>
+</aside>
+<main id="report-text" class="report-text">
+<section class="level1" data-number="1" id="executive-assessment">
+<h1 data-number="1"><span class="header-section-number">1</span>
+Executive assessment</h1>
+<p><strong>Your idea is a legitimate scientific research
+programme:</strong> use depth recordings and known tool trajectories to
+calibrate a model of dough's elastic, viscous, and plastic response,
+then ask whether that model predicts new manipulations. Forward
+parameter sweeps are a valid way to perform the inference. A
+differentiable simulator is neither a scientific requirement nor a
+prerequisite for a journal paper.</p>
+<p>The broad idea is not new. Visual inverse simulation, robotic
+material identification, and inverse dough rheometry each have
+substantial prior work. The strongest opportunity is therefore
+<strong>not</strong> to claim the first camera-based dough simulator or
+the first MPM calibration. It is to answer a more precise question:</p>
+<blockquote>
+<p>Which elastic, rate-dependent, and non-recoverable behaviours can one
+calibrated depth camera and known two-tool motion distinguish in real
+dough—and which inferred parameter combinations remain predictive
+outside the calibration motions?</p>
+</blockquote>
+<p>That question connects robotics, inverse problems, continuum
+simulation, and food rheology. A carefully designed study can contribute
+new empirical knowledge, a useful calibration method, or a benchmark
+without inventing a new MPM solver. The system becomes scientifically
+persuasive when its assumptions, limitations, and advantages are
+measured, not merely described.</p>
+<section class="level2" data-number="1.1" id="the-strongest-contribution-to-pursue">
+<h2 data-number="1.1"><span class="header-section-number">1.1</span> The
+strongest contribution to pursue</h2>
+<p>The recommended main contribution is an <strong>observation- and
+motion-aware calibration protocol</strong>. It would:</p>
+<ol type="1">
+<li>distinguish recoverable deformation, rate dependence, and persistent
+deformation through deliberately chosen loading, release, and recovery
+motions;</li>
+<li>estimate only the parameters or parameter combinations that the
+observations constrain;</li>
+<li>account for uncertainty in hidden volume, camera/tool registration,
+contact, and numerical discretisation;</li>
+<li>test continuous predictions on complete, previously unused tool
+trajectories;</li>
+<li>establish what changes when an extra view, an independent mass
+measurement, or a force trace is available.</li>
+</ol>
+<p>The novelty would be the demonstrated result of that protocol: for
+example, that particular short probe sequences distinguish mechanisms
+that arbitrary shaping recordings cannot; that a single view is
+sufficient within a quantified operating range; or that apparently
+well-fitted material values actually depend on numerical contact
+settings. Each is a testable contribution. None is an established result
+of TaichiDough yet.</p>
+</section>
+<section class="level2" data-number="1.2" id="what-the-fresh-code-assessment-changes">
+<h2 data-number="1.2"><span class="header-section-number">1.2</span>
+What the fresh code assessment changes</h2>
+<p>This report uses the working tree at revision <code>cb76169</code>
+(full identifier in the evidence appendix), rather than treating the
+earlier conversation or report as evidence. It finds a substantive
+replay, reconstruction, evaluation, and forward-search implementation.
+It also finds three matters that affect interpretation:</p>
+<ul>
+<li><strong>The completed material search estimates only an effective
+elastic modulus.</strong> Viscosity is fixed to zero and plastic
+projection is disabled in that experiment. Separate viscosity and
+contact-retention sweeps do not establish joint elastic–viscous–plastic
+identification.</li>
+<li><strong>The previous held-out comparison was wrong.</strong> The
+default-modulus loss of 0.7997 is a <em>training</em> score. The
+recorded held-out comparison is 0.8281 for the selected modulus versus
+0.8359 for a frozen-state baseline, approximately 0.93% lower. There is
+no stored default-modulus held-out score in that result. This small
+improvement has no uncertainty estimate and is not cross-trajectory
+validation.</li>
+<li><strong>An affine-transfer scaling inconsistency is present in the
+current solver.</strong> An isolated algebraic test shows that its
+grid-to-particle expression reproduces an affine velocity gradient as
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi><mi>A</mi></mrow><annotation encoding="application/x-tex">hA</annotation></semantics></math>,
+rather than
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math>,
+where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math>
+is grid spacing. Because that quantity drives deformation, viscous
+stress, and plastic activation, material interpretation requires
+resolving the inconsistency and rerunning calibration. No simulator code
+was changed for this report.</li>
+</ul>
+<p>These findings do not make the research idea unscientific. They
+separate <em>verification of the numerical implementation</em> from
+<em>validation of a model of real dough</em>. Both are necessary, and
+they answer different questions.</p>
+</section>
+</section>
+<section class="level1" data-number="2" id="scope-evidence-and-how-to-read-this-survey">
+<h1 data-number="2"><span class="header-section-number">2</span> Scope,
+evidence, and how to read this survey</h1>
+<section class="level2" data-number="2.1" id="what-this-review-covers">
+<h2 data-number="2.1"><span class="header-section-number">2.1</span>
+What this review covers</h2>
+<p>The review brings together five bodies of work:</p>
+<ul>
+<li>visual inverse simulation and physical parameter
+identification;</li>
+<li>robotic manipulation and prediction of deformable materials;</li>
+<li>dough rheology and robotic or camera-assisted characterisation;</li>
+<li>MPM discretisation, constitutive modelling, and contact;</li>
+<li>identifiability, model discrepancy, uncertainty, and experimental
+design.</li>
+</ul>
+<p>A recurring problem is that these literatures use the same words for
+different results. A paper may estimate a current shape, identify a
+physical parameter, fit a convenient simulator setting, or achieve a
+shaping task. All can be valuable, but they cannot be ranked using a
+single image error or the presence of automatic differentiation.</p>
+</section>
+<section class="level2" data-number="2.2" id="review-method-and-limits">
+<h2 data-number="2.2"><span class="header-section-number">2.2</span>
+Review method and limits</h2>
+<p>This is a <strong>critical scoping review and research
+agenda</strong>, not a registered systematic review or a proof of
+priority. Searches used combinations of dough, viscoelasticity,
+plasticity, depth/RGB-D, tool motion, robot manipulation, inverse
+simulation, system identification, contact, and parameter calibration.
+Exact-title follow-up used publisher records, proceedings, author
+manuscripts, DOI metadata, arXiv, and open full-text repositories. Topic
+evidence files retain search notes, access limitations, and page/section
+locations.</p>
+<p>Technical claims are strongest when the relevant primary methods and
+results were inspected. Where only a publisher abstract or bibliographic
+record was available, the report limits itself accordingly. A feature
+marked <em>not established in the inspected material</em> is not claimed
+to be absent from the entire paper or codebase. Reviews are used for
+synthesis, not as proof of an uninspected experiment.</p>
+<p>The report does not manufacture a screened-paper count, an acceptance
+probability, or a claim that no publication has ever combined a
+particular set of components. Existing numerical results were inspected,
+not independently reproduced by full simulation. The new affine-transfer
+check is a small algebraic calculation, explicitly distinguished from a
+Taichi rollout. Primary papers downloaded for reading are not bundled
+with the web companion.</p>
+</section>
+<section class="level2" data-number="2.3" id="four-different-achievements">
+<h2 data-number="2.3"><span class="header-section-number">2.3</span>
+Four different achievements</h2>
+<div aria-label="Comparison table; scroll horizontally if needed" class="table-scroll" role="region" tabindex="0"><table>
+<colgroup>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+</colgroup>
+<thead>
+<tr>
+<th>Achievement</th>
+<th>What it establishes</th>
+<th>Evidence it still needs for a stronger claim</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Reconstruction or tracking</td>
+<td>Agreement with currently observed geometry</td>
+<td>Independent future prediction to establish dynamics</td>
+</tr>
+<tr>
+<td>Effective simulator calibration</td>
+<td>Parameters that improve a specified simulator's predictions</td>
+<td>Numerical and experimental robustness before physical
+interpretation</td>
+</tr>
+<tr>
+<td>Physical material identification</td>
+<td>Mechanically interpretable parameters under stated conditions</td>
+<td>Informative loading, uncertainty, and independent mechanical
+checks</td>
+</tr>
+<tr>
+<td>Manipulation or control</td>
+<td>Actions that achieve a target or task</td>
+<td>Separate identification tests if claiming material recovery</td>
+</tr>
+</tbody>
+</table></div>
+<p>A good reconstruction is not a rheological measurement. A broad
+parameter uncertainty interval does not necessarily prevent accurate
+prediction. A successful controller may compensate for inaccurate
+physics through repeated observations. These distinctions are central to
+evaluating TaichiDough fairly <span class="citation" data-cites="review2020 raue2011 discrepancy2014"><a href="#ref-review2020" role="doc-biblioref">[1]</a>, <a href="#ref-raue2011" role="doc-biblioref">[2]</a>, <a href="#ref-discrepancy2014" role="doc-biblioref">[3]</a></span>.</p>
+</section>
+</section>
+<section class="level1" data-number="3" id="the-inverse-problem-what-is-being-identified">
+<h1 data-number="3"><span class="header-section-number">3</span> The
+inverse problem: what is being identified?</h1>
+<section class="level2" data-number="3.1" id="a-measurement-conditioned-forward-model">
+<h2 data-number="3.1"><span class="header-section-number">3.1</span> A
+measurement-conditioned forward model</h2>
+<p>Let
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>z</mi><mi>t</mi></msub><annotation encoding="application/x-tex">z_t</annotation></semantics></math>
+denote the simulated material state,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>u</mi><mi>t</mi></msub><annotation encoding="application/x-tex">u_t</annotation></semantics></math>
+the recorded tool poses and velocities,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math>
+the material parameters, and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ψ</mi><annotation encoding="application/x-tex">\psi</annotation></semantics></math>
+uncertain non-material quantities. A useful formulation is</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>z</mi><mrow><mi>t</mi><mo>+</mo><mn>1</mn></mrow></msub><mo>=</mo><msub><mi>𝒮</mi><mrow><mi>h</mi><mo>,</mo><mi>Δ</mi><mi>t</mi></mrow></msub><mrow><mo form="prefix" stretchy="true">(</mo><msub><mi>z</mi><mi>t</mi></msub><mo>,</mo><msub><mi>u</mi><mi>t</mi></msub><mo>;</mo><mi>θ</mi><mo>,</mo><mi>ψ</mi><mo form="postfix" stretchy="true">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>y</mi><mi>t</mi></msub><mo>=</mo><msub><mi>ℋ</mi><mrow><mi>c</mi><mo>,</mo><mi>o</mi></mrow></msub><mrow><mo form="prefix" stretchy="true">(</mo><msub><mi>z</mi><mi>t</mi></msub><mo form="postfix" stretchy="true">)</mo></mrow><mo>+</mo><msub><mi>δ</mi><mi>t</mi></msub><mo>+</mo><msub><mi>ϵ</mi><mi>t</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">
+z_{t+1}=\mathcal S_{h,\Delta t}(z_t,u_t;\theta,\psi),
+\qquad
+y_t=\mathcal H_{c,o}(z_t)+\delta_t+\epsilon_t.
+</annotation></semantics></math></p>
+<p>Here
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><mi>t</mi></mrow><annotation encoding="application/x-tex">\Delta t</annotation></semantics></math>
+describe numerical resolution;
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ℋ</mi><annotation encoding="application/x-tex">\mathcal H</annotation></semantics></math>
+projects the state through camera calibration
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>c</mi><annotation encoding="application/x-tex">c</annotation></semantics></math>
+and visibility/occlusion model
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>o</mi><annotation encoding="application/x-tex">o</annotation></semantics></math>;
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>δ</mi><annotation encoding="application/x-tex">\delta</annotation></semantics></math>
+is model discrepancy; and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ϵ</mi><annotation encoding="application/x-tex">\epsilon</annotation></semantics></math>
+is measurement noise. The initial state must also be reconstructed or
+measured. The target is not simply a parameter vector fitted to an
+arbitrary point cloud: it is a model of the entire experiment and
+observation process.</p>
+<p>A forward sweep estimates a parameter set by minimising a declared
+training objective,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mo>∈</mo><munder><mo>arg min</mo><mrow><mi>θ</mi><mo>∈</mo><mi>Θ</mi></mrow></munder><munder><mo>∑</mo><mrow><mi>e</mi><mo>∈</mo><msub><mi>𝒟</mi><mrow><mi mathvariant="normal">t</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">n</mi></mrow></msub></mrow></munder><msub><mi>w</mi><mi>e</mi></msub><munder><mo>∑</mo><mrow><mi>t</mi><mo>∈</mo><msub><mi>𝒯</mi><mi>e</mi></msub></mrow></munder><mo>ℓ</mo><mspace width="-0.167em"></mspace><mrow><mo form="prefix" stretchy="true">(</mo><mi>ℋ</mi><mrow><mo form="prefix" stretchy="true">(</mo><msup><mi>𝒮</mi><mrow><mn>0</mn><mo>:</mo><mi>t</mi></mrow></msup><mrow><mo form="prefix" stretchy="true">(</mo><msub><mi>z</mi><mrow><mn>0</mn><mo>,</mo><mi>e</mi></mrow></msub><mo>,</mo><msub><mi>u</mi><mi>e</mi></msub><mo>;</mo><mi>θ</mi><mo>,</mo><mi>ψ</mi><mo form="postfix" stretchy="true">)</mo></mrow><mo form="postfix" stretchy="true">)</mo></mrow><mo>,</mo><msub><mi>y</mi><mrow><mi>t</mi><mo>,</mo><mi>e</mi></mrow></msub><mo form="postfix" stretchy="true">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\widehat\theta\in\operatorname*{arg\,min}_{\theta\in\Theta}
+\sum_{e\in\mathcal D_{\mathrm{train}}}w_e
+\sum_{t\in\mathcal T_e}\ell\!\left(
+\mathcal H(\mathcal S^{0:t}(z_{0,e},u_e;\theta,\psi)),y_{t,e}
+\right).
+</annotation></semantics></math></p>
+<p>The optimiser can be a grid, a coarse-to-fine sweep, random or
+space-filling search, evolutionary search, Bayesian optimisation,
+finite-difference optimisation, or an adjoint method. These choices
+affect computational cost and exploration, not whether the inverse
+problem is scientifically meaningful. Finite-difference
+Levenberg–Marquardt is <em>not autodiff</em>, but it is not strictly
+derivative-free either. This distinction matters when comparing
+food-engineering and robotics methods.</p>
+</section>
+<section class="level2" data-number="3.2" id="separate-parameter-families">
+<h2 data-number="3.2"><span class="header-section-number">3.2</span>
+Separate parameter families</h2>
+<div aria-label="Comparison table; scroll horizontally if needed" class="table-scroll" role="region" tabindex="0"><table>
+<colgroup>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+</colgroup>
+<thead>
+<tr>
+<th>Family</th>
+<th>Examples</th>
+<th>Why the distinction matters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bulk material</td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>E</mi><annotation encoding="application/x-tex">E</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ν</mi><annotation encoding="application/x-tex">\nu</annotation></semantics></math>,
+viscosity
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>,
+relaxation times, yield/hardening parameters</td>
+<td>These describe a specified constitutive law, not the word “dough” in
+general</td>
+</tr>
+<tr>
+<td>Interface</td>
+<td>Tangential slip law, adhesion, floor interaction</td>
+<td>Incorrect interfaces can be compensated by apparent bulk stiffness
+or dissipation</td>
+</tr>
+<tr>
+<td>Geometry and sensing</td>
+<td>Hidden volume, mass/density, tool registration, camera pose,
+timing</td>
+<td>These alter inferred strain, force scale, contact onset, and visual
+residuals</td>
+</tr>
+<tr>
+<td>Numerical</td>
+<td>Grid spacing, time step, particle count, transfer, SDF resolution,
+contact padding</td>
+<td>A fitted value that changes with these settings may describe the
+numerical model rather than the material</td>
+</tr>
+</tbody>
+</table></div>
+<p>Treating all these quantities as “dough parameters” prevents
+meaningful physical interpretation. Conversely, holding them fixed does
+not remove their uncertainty. It makes every material estimate
+conditional on those choices <span class="citation" data-cites="kennedy2001 discrepancy2014"><a href="#ref-discrepancy2014" role="doc-biblioref">[3]</a>, <a href="#ref-kennedy2001" role="doc-biblioref">[4]</a></span>.</p>
+</section>
+<section class="level2" data-number="3.3" id="a-precise-meaning-of-scientific-value">
+<h2 data-number="3.3"><span class="header-section-number">3.3</span> A
+precise meaning of scientific value</h2>
+<p>A scientific framework states a hypothesis, makes assumptions
+explicit, produces reproducible predictions, and includes experiments
+that could contradict its claim. For TaichiDough, a useful claim is not
+“the animation looks realistic.” It is, for example:</p>
+<blockquote>
+<p>Under a specified recipe, sensor configuration, and contact model,
+parameters fitted from multi-rate pressing and recovery predict unseen
+dual-tool deformation more accurately than parameters fitted from a
+single monotonic push, under the same forward-simulation budget.</p>
+</blockquote>
+<p>Failure to confirm that hypothesis can still provide useful knowledge
+if it reveals an observation limit, a constitutive-model failure, or a
+dependence on tool contact. An isolated failed software launch, by
+contrast, says nothing about rheology.</p>
+</section>
+</section>
+<section class="level1" data-number="4" id="dough-mechanics-and-constitutive-interpretation">
+<h1 data-number="4"><span class="header-section-number">4</span> Dough
+mechanics and constitutive interpretation</h1>
+<section class="level2" data-number="4.1" id="constitutive-models-define-the-parameters">
+<h2 data-number="4.1"><span class="header-section-number">4.1</span>
+Constitutive models define the parameters</h2>
+<p>Elasticity describes recoverable response. Viscosity describes stress
+associated with a deformation rate or flow. Viscoelasticity introduces a
+time-dependent combination of elastic and dissipative response, often
+with internal state or memory. Plasticity commonly describes
+irreversible deformation with a yield condition and loading history.
+Food papers sometimes use “viscoplastic” more broadly for lasting
+viscous flow. A manuscript must give the equation, not rely on the
+label.</p>
+<p>For a scalar linear Kelvin–Voigt element,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>σ</mi><mo>=</mo><mi>E</mi><mi>ε</mi><mo>+</mo><mi>η</mi><mover><mi>ε</mi><mo accent="true">̇</mo></mover><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\sigma=E\varepsilon+\eta\dot\varepsilon.
+</annotation></semantics></math></p>
+<p>For a scalar Maxwell element,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>ε</mi><mo accent="true">̇</mo></mover><mo>=</mo><mfrac><mover><mi>σ</mi><mo accent="true">̇</mo></mover><mi>E</mi></mfrac><mo>+</mo><mfrac><mi>σ</mi><mi>η</mi></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\dot\varepsilon=\frac{\dot\sigma}{E}+\frac{\sigma}{\eta}.
+</annotation></semantics></math></p>
+<p>They contain similarly named parameters but make different
+predictions. At held homogeneous strain, Kelvin–Voigt's rate term
+vanishes after the ramp; it does not produce a sustained Maxwell-like
+exponential stress relaxation. A standard-linear-solid, generalised
+Maxwell model, Burgers model, or fractional/power-law model has a
+different response and parameter interpretation. Large-strain dough may
+additionally exhibit strain hardening, structural change, rupture, and
+interface slip <span class="citation" data-cites="yazar2023 ng2006 sun2020"><a href="#ref-yazar2023" role="doc-biblioref">[5]</a>, <a href="#ref-ng2006" role="doc-biblioref">[6]</a>, <a href="#ref-sun2020" role="doc-biblioref">[7]</a></span>.</p>
+<p>The choice need not be the most complicated model. A restricted model
+can be scientifically useful if its operating range and failures are
+quantified. But adding more sweep values cannot make an incapable
+constitutive family reproduce missing physics.</p>
+</section>
+<section class="level2" data-number="4.2" id="real-dough-is-not-plasticine">
+<h2 data-number="4.2"><span class="header-section-number">4.2</span>
+Real dough is not plasticine</h2>
+<p>Plasticine is a valuable reproducible proxy for robot shaping, but
+successful fitting on plasticine is not validation for flour dough.
+Flour formulation, hydration, mixing, temperature, resting, and previous
+handling affect response. Small-deformation stiffness need not predict
+large-deformation behaviour. A sample may become easier or harder to
+deform depending on preparation history; experiments themselves change
+it <span class="citation" data-cites="yazar2023"><a href="#ref-yazar2023" role="doc-biblioref">[5]</a></span>.</p>
+<p>The food literature already includes nonlinear rheology,
+formulation-dependent viscoelastic models, rate-independent hysteretic
+descriptions of mixing, and experiments/simulation of bread-dough
+rolling <span class="citation" data-cites="ng2006 sun2020 anderssen2013 rolling2009"><a href="#ref-ng2006" role="doc-biblioref">[6]</a>, <a href="#ref-sun2020" role="doc-biblioref">[7]</a>, <a href="#ref-anderssen2013" role="doc-biblioref">[8]</a>, <a href="#ref-rolling2009" role="doc-biblioref">[9]</a></span>. These references prevent a claim
+that modelling dough with several mechanical parameters is itself new.
+Their exact constitutive domains also warn against importing fitted
+numbers from extrusion or starch-pasting tests into room-temperature
+robot manipulation.</p>
+</section>
+<section class="level2" data-number="4.3" id="residual-deformation-does-not-prove-yield-plasticity">
+<h2 data-number="4.3"><span class="header-section-number">4.3</span>
+Residual deformation does not prove yield plasticity</h2>
+<p>A remaining deformation after a short wait could result from a
+yielded solid, a flowing dashpot, very slow recovery, structural damage,
+adhesion to the table, or gravity. A three-second recording cannot
+distinguish a permanent shape change from a recovery that takes much
+longer without additional evidence.</p>
+<p>The fondant study by Cocuzza and Yan makes this issue concrete. It
+identifies a three-element spring–dashpot model, including a series
+dashpot, before evaluating gravity and tool-induced sheet deformation.
+The series dashpot produces non-recoverable strain without an explicit
+yield threshold. The study adds a different known-force recovery test
+when tensile data cannot determine the third parameter reliably <span class="citation" data-cites="cocuzza2018"><a href="#ref-cocuzza2018" role="doc-biblioref">[10]</a></span>. This is a useful precedent for
+<em>changing the experiment to expose a parameter</em>, rather than
+trusting a precise optimiser output.</p>
+<p>For TaichiDough, plasticity experiments should include unloading,
+varied peak deformation, repeated cycles or matched fresh samples, and
+sufficiently long recovery. If the chosen model uses principal-stretch
+limits, report those dimensionless limits. Do not rename them a measured
+yield stress in pascals.</p>
+</section>
+<section class="level2" data-number="4.4" id="interfaces-are-part-of-the-experiment">
+<h2 data-number="4.4"><span class="header-section-number">4.4</span>
+Interfaces are part of the experiment</h2>
+<p>Dough can adhere, slip, and stretch during tool separation. Ghorbel
+and Launay compare different probe materials and hydration conditions
+and report rate-dependent adhesive separation behaviour <span class="citation" data-cites="adhesion2014"><a href="#ref-adhesion2014" role="doc-biblioref">[11]</a></span>. Their result is not a contact law
+for TaichiDough, but it demonstrates why bulk viscosity and tool
+adhesion can be confused in a depth sequence.</p>
+<p>Pressing, sliding, and withdrawal should be evaluated separately
+before a complex two-tool sequence is used to estimate everything
+simultaneously. Tool material, moisture, cleanliness, and contact
+geometry need documentation. A signed-distance field describes geometry;
+it does not select the correct normal, tangential, or adhesive
+response.</p>
+</section>
+</section>
+<section class="level1" data-number="5" id="food-engineering-and-robotic-rheometry-precedents">
+<h1 data-number="5"><span class="header-section-number">5</span>
+Food-engineering and robotic rheometry precedents</h1>
+<section class="level2" data-number="5.1" id="inverse-semolina-dough-fem">
+<h2 data-number="5.1"><span class="header-section-number">5.1</span>
+Inverse semolina-dough FEM</h2>
+<p>Fabbri and Cevoli use extrusion measurements and forward FEM to
+identify a power-law consistency index
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>
+and flow index
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>
+in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>=</mo><mi>k</mi><msup><mover><mi>γ</mi><mo accent="true">̇</mo></mover><mi>n</mi></msup></mrow><annotation encoding="application/x-tex">\tau=k\dot\gamma^n</annotation></semantics></math>
+<span class="citation" data-cites="fabbri2015"><a href="#ref-fabbri2015" role="doc-biblioref">[12]</a></span>. These are flow parameters, not
+simultaneous elasticity and plasticity estimates. Known piston/flow
+motion and die geometry are combined with measured force-derived
+pressure.</p>
+<p>The inverse method uses Levenberg–Marquardt with finite-difference
+Jacobians. It compares its results against conventional capillary
+rheometry with several dies and repeated measurements. The reported
+disagreements, 3.6% for
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>
+and 2.0% for
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>,
+compare characterisation procedures—not unseen robotic trajectories or
+camera prediction. The authors do not claim that agreement identifies
+which procedure is closer to physical truth.</p>
+<p><strong>Relevance:</strong> inverse simulation of dough and numerical
+parameter estimation are established. TaichiDough's possible distinction
+is partial visual observation, volumetric tool-conditioned prediction,
+and an explicit study of what the measurements identify. Independent
+mechanical comparison would substantially strengthen any claim to
+physical parameters.</p>
+</section>
+<section class="level2" data-number="5.2" id="miranda-and-relapp">
+<h2 data-number="5.2"><span class="header-section-number">5.2</span>
+MIRANDA and RELAPP</h2>
+<p>Monleón-Getino and colleagues combine computer vision and robotic
+material testing, including flour-dough experiments <span class="citation" data-cites="miranda2025"><a href="#ref-miranda2025" role="doc-biblioref">[13]</a></span>. MIRANDA tracks visible landmarks
+and derives recovery descriptors; RELAPP supplies robotic deformation
+and force-related measurements. Regression links descriptors to
+laboratory flour-quality quantities such as alveograph strength and RVA
+final viscosity.</p>
+<p>This is close enough that “first vision-and-robotics framework for
+dough characterisation” is not a defensible claim. It is also different
+from TaichiDough's proposed result: video recovery descriptors and
+regressed industrial indices are not a recovered three-dimensional
+continuum material law. RVA final viscosity is not interchangeable with
+a room-temperature continuum shear viscosity.</p>
+<p>A crucial validation detail is explicit in the full article, §2.5:
+its regression data were <strong>not split into training and test
+sets</strong>. The reported fits therefore do not establish
+withheld-motion or independent-batch prediction. This creates a useful
+comparison question, not a reason to dismiss the work: can a
+mechanistic, trajectory-conditioned model make independently tested
+geometric predictions from similarly accessible measurements?</p>
+</section>
+<section class="level2" data-number="5.3" id="rheological-robot-shaping-and-rgb-d-tracking">
+<h2 data-number="5.3"><span class="header-section-number">5.3</span>
+Rheological robot-shaping and RGB-D tracking</h2>
+<p>Cocuzza and Yan identify a rheological model of fondant icing using
+tensile and known-force tests, then separately assess sheet deformation
+under gravity and a shaping tool <span class="citation" data-cites="cocuzza2018"><a href="#ref-cocuzza2018" role="doc-biblioref">[10]</a></span>. The article predates recent visual
+MPM systems and shows that robotic food modelling has an experimental
+identification history outside MPM.</p>
+<p>Petit and colleagues use RGB-D sensing with non-rigid FEM-based
+tracking for a pizza-chef application <span class="citation" data-cites="pizza2017"><a href="#ref-pizza2017" role="doc-biblioref">[14]</a></span>. Tracking updates the state using
+current observations. A fitted model predicting an unseen future
+trajectory without those updates answers a different and stronger
+dynamics question. The proposed TaichiDough paper should state
+explicitly whether visual observations initialise, calibrate,
+continually correct, or only evaluate the simulation.</p>
+<p>Together these studies suggest a productive contribution: connect the
+food literature's controlled preparation and mechanical tests to
+robotics' partial sensing and action-conditioned prediction. Hardware
+uniqueness alone is not the argument.</p>
+</section>
+</section>
+<section class="level1" data-number="6" id="visual-and-action-conditioned-inverse-simulation">
+<h1 data-number="6"><span class="header-section-number">6</span> Visual
+and action-conditioned inverse simulation</h1>
+<section class="level2" data-number="6.1" id="dpsi-the-closest-elastoplastic-mpm-identification-precedent">
+<h2 data-number="6.1"><span class="header-section-number">6.1</span>
+DPSI: the closest elastoplastic MPM identification precedent</h2>
+<p>Yang, Ji, and Lai's DPSI directly addresses physics-based system
+identification for robotic manipulation of elastoplastic materials <span class="citation" data-cites="dpsi2025"><a href="#ref-dpsi2025" role="doc-biblioref">[15]</a></span>. A KUKA robot executes known tool
+trajectories on plasticine. A Zivid camera is moved to six viewpoints
+before and after each manipulation, and the resulting point clouds are
+fused. This is <strong>one physical camera but multi-view endpoint
+observation</strong>, not a continuous fixed-view depth sequence.</p>
+<p>The simulator combines fixed-corotated elasticity, von Mises
+plasticity, MLS-MPM/APIC, and rigid-tool SDF contact. Its
+lower-contact-complexity experiment fits
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>E</mi><annotation encoding="application/x-tex">E</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ν</mi><annotation encoding="application/x-tex">\nu</annotation></semantics></math>,
+yield stress, and density; its higher-contact-complexity experiment also
+fits table and manipulator friction. Viscosity is not an explicit
+parameter in this stated model. Missing underside geometry is completed
+under a table-contact assumption. The tools are coated with flour to
+reduce adhesion, making the interface preparation part of the experiment
+rather than an incidental detail.</p>
+<p>DPSI compares endpoint Chamfer and Earth Mover's Distance objectives
+against observed or volume-filled targets, and uses Adam. It evaluates a
+heightmap error separately. The heightmap metric is a summed residual,
+not mean depth error in millimetres. Its reported best parameters are
+selected using in-distribution validation evaluated during optimisation;
+that validation should not be described as an untouched final test.</p>
+<p>Crucially, DPSI already tests six examples of longer, unseen tool
+motions, including rolling, repeated poking, and rotation. Those tests
+provide genuine action-transfer evidence, although fitted parameters do
+not uniformly outperform handpicked ones. The paper also reports flat
+loss regions, different low-loss parameter combinations, incomplete
+elastic recovery, and contact parameters compensating for material-model
+error.</p>
+<p><strong>Implication for TaichiDough:</strong> known tool motion,
+incomplete volumetric reconstruction, elastoplastic MPM fitting, contact
+calibration, and unseen-motion evaluation are established. A useful
+advance would be to show what continuous depth adds beyond endpoints,
+and whether rate-dependent and persistent response can be separated in
+<em>real flour dough</em>. Merely replacing Adam with a sweep would not
+establish that advance.</p>
+</section>
+<section class="level2" data-number="6.2" id="empm-already-bimanual-and-already-bread-dough">
+<h2 data-number="6.2"><span class="header-section-number">6.2</span>
+EMPM: already bimanual and already bread dough</h2>
+<p>Chen and colleagues' EMPM uses three RealSense D455 cameras,
+action-conditioned MPM, offline human demonstrations, and online
+experiments with two Franka arms <span class="citation" data-cites="empm2026"><a href="#ref-empm2026" role="doc-biblioref">[16]</a></span>. Its materials explicitly include
+bread dough. It is therefore a direct counterexample to a broad claim
+that bimanual, visually calibrated MPM for dough is unexplored.</p>
+<p>The formulation includes fixed-corotated elasticity, von Mises
+plasticity, and Coulomb table/gripper friction. Its general parameter
+notation lists
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>E</mi><annotation encoding="application/x-tex">E</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ν</mi><annotation encoding="application/x-tex">\nu</annotation></semantics></math>,
+density, and yield stress. However, the experimental implementation
+explicitly states that it optimises homogeneous <strong>Young's modulus
+and Poisson's ratio</strong>. A general parameter vector is not evidence
+that every entry was jointly identified in the reported bread-dough
+experiment. An explicit viscosity parameter is not part of the listed
+formulation.</p>
+<p>Offline fitting uses point-cloud and tracked-point discrepancies with
+AdamW. The paper also explicitly provides <strong>CMA-ES on the forward
+simulator</strong>. This is an especially relevant precedent:
+derivative-free embodied MPM identification is already a legitimate
+published option, not a scientific deficiency requiring TaichiDough to
+implement autodiff.</p>
+<p>Online fitting omits persistent object tracks and updates near
+quasi-static states, comparing short rollouts with observed geometry.
+Its bread-dough results measure alignment with and without ongoing
+correction. Such adaptation can be useful for robotics, but it is
+different from freezing a fitted material law and predicting an
+independent deformation rate or new trajectory. The inspected version
+does not establish that latter dough result.</p>
+<p><strong>Implication:</strong> TaichiDough should compare its proposed
+one-view measurement requirement, time-resolved loss, explicitly defined
+rate/plastic parameters, and frozen-parameter predictions with EMPM's
+actual experiment. Neither “two arms,” “bread dough,” nor “forward
+optimisation” alone establishes novelty.</p>
+</section>
+<section class="level2" data-number="6.3" id="diffcal-and-diffcloud-depth-is-already-an-identification-input">
+<h2 data-number="6.3"><span class="header-section-number">6.3</span>
+DiffCal and DiffCloud: depth is already an identification input</h2>
+<p>Arnavaz and colleagues' <em>Differentiable Depth</em>, implemented in
+DiffCal, uses one Intel L515 depth camera with known silicone-specimen
+geometry and clamp conditions <span class="citation" data-cites="diffcal2023"><a href="#ref-diffcal2023" role="doc-biblioref">[17]</a></span>. A stable neo-Hookean FEM with
+strain-rate damping is fitted directly against rendered-versus-observed
+depth images. Poisson's ratio is fixed. One dynamic experiment jointly
+fits <strong>Young's modulus, damping, and density from twelve depth
+images at 30 Hz</strong>, following synchronised support removal.</p>
+<p>This is clear prior evidence for single-depth-camera
+elastic/dissipative calibration. It is also instructive about physical
+interpretation: the paper explicitly treats fitted quantities as
+parameters of the selected discrete simulator, and coarse/fine
+discretisations produce different stiffness and damping estimates. Its
+damping coefficient should not be renamed a dough shear viscosity
+without matching the equation and units. Known reference geometry, short
+dynamic sequences, and largely fitting-oriented evaluation distinguish
+it from arbitrary dough with changing contact and hidden initial
+volume.</p>
+<p>DiffCloud uses two calibrated RealSense cameras, known initial cloth
+geometry and grasp location, and recorded robot motion <span class="citation" data-cites="diffcloud2022"><a href="#ref-diffcloud2022" role="doc-biblioref">[18]</a></span>. It fits stiffness and mass
+multipliers in a differentiable thin-shell simulator. Its real
+experiments commonly minimise a one-way squared point-distance loss at
+one selected informative frame rather than supervise every frame.
+Folding also uses a visibility-related sampling heuristic.</p>
+<p>DiffCloud demonstrates useful real observation alignment. A target
+sequence that is subsequently fitted is not an independent
+frozen-parameter prediction test, and such a real cross-trajectory test
+was not located in the inspected version. Its selected-frame approach is
+nevertheless a relevant baseline for TaichiDough: <strong>does the extra
+information in intermediate depth observations actually improve
+parameter discrimination and future prediction?</strong> That is an
+experiment, not an assumption that more frames must help.</p>
+</section>
+<section class="level2" data-number="6.4" id="earlier-mechanical-identification-wang-and-hahn">
+<h2 data-number="6.4"><span class="header-section-number">6.4</span>
+Earlier mechanical identification: Wang and Hahn</h2>
+<p>Wang and colleagues combine three Kinect cameras, a high-quality
+initial scan, fixed boundaries, and dynamic release under gravity to
+estimate soft-object models <span class="citation" data-cites="wang2015"><a href="#ref-wang2015" role="doc-biblioref">[19]</a></span>. Corotated FEM uses
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>E</mi><annotation encoding="application/x-tex">E</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ν</mi><annotation encoding="application/x-tex">\nu</annotation></semantics></math>,
+and Rayleigh damping parameters
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math>.
+Their material-fitting subproblem uses <strong>gradient-free
+Nelder–Mead</strong>, within an alternating procedure that also
+estimates tracking and reference geometry. Calling the material fit
+derivative-free is accurate; calling every stage gradient-free would not
+be.</p>
+<p>Separate static loading and dynamic comparisons provide stronger
+validation than fitting the original images alone. The paper also
+recognises discretisation-dependent apparent stiffness, flat or
+multimodal objectives, and the limitations of 30 Hz sampling for
+damping. It demonstrates that visual material calibration with
+derivative-free optimisation and mechanical validation predates recent
+differentiable MPM frameworks.</p>
+<p>Hahn and colleagues use ten-camera marker motion capture, known
+geometry, and measured clamp motion to identify neo-Hookean elasticity
+with power-law viscosity <span class="citation" data-cites="hahn2019"><a href="#ref-hahn2019" role="doc-biblioref">[20]</a></span>.
+Sensitivity/adjoint gradients and L-BFGS fit Lamé parameters, a
+viscosity coefficient, and a rate exponent. This is not a markerless
+depth method, but it is central to the <em>mechanics</em> of the
+proposed problem.</p>
+<p>Their experiments show why loading diversity matters.
+Narrow-frequency motion can poorly constrain a damping law; changing
+clamp conditions and combining motions improves estimation; large
+bending or snapping can expose constitutive-model limitations.
+Independent rheometer measurements use different strain/frequency
+conditions and are not automatically exact ground truth for the
+manipulation experiment.</p>
+<p>Together, these studies support a stronger research argument than
+simply showing an optimiser converges: demonstrate informative
+excitation, disclose numerical dependence, and validate under physically
+different conditions.</p>
+</section>
+<section class="level2" data-number="6.5" id="pac-nerf-and-gic-distinguish-synthetic-scope-from-real-evidence">
+<h2 data-number="6.5"><span class="header-section-number">6.5</span>
+PAC-NeRF and GIC: distinguish synthetic scope from real evidence</h2>
+<p>PAC-NeRF identifies continuum-model parameters from posed multi-view
+RGB videos, using differentiable MPM coupled to a radiance-field
+representation <span class="citation" data-cites="pacnerf2023"><a href="#ref-pacnerf2023" role="doc-biblioref">[21]</a></span>. Its
+synthetic studies include elastic, plastic, Newtonian, granular, and
+non-Newtonian viscoplastic laws. The last includes shear/bulk response,
+yield stress, and plastic viscosity. Therefore a visual inverse problem
+containing elastic, viscous, and plastic parameters is already
+represented in the literature.</p>
+<p>The real demonstration is much narrower: a falling deformable ball
+recorded by four cameras, using <strong>RGB rather than their depth
+measurements</strong>. Synthetic recovery under known
+parameter-generating models and qualitative real reconstruction should
+not be described as experimentally validated joint rheological
+identification of manipulated dough.</p>
+<p>GIC uses multi-view Gaussian reconstruction to construct geometry and
+infer continuum parameters through temporal point-distance and mask
+losses <span class="citation" data-cites="gic2024"><a href="#ref-gic2024" role="doc-biblioref">[22]</a></span>. Synthetic
+experiments likewise cover multiple constitutive families, including
+viscoplasticity. A future-frame benchmark tests same-sequence
+continuation. For sparse-view real data, the described variant fits
+masks rather than using the complete dynamic reconstruction objective.
+Real grasp demonstrations add useful application evidence, including
+transfer of inferred properties to a different simulation framework, but
+they are not matched-condition rheometry.</p>
+<p>These systems are strong prior art for visual continuum
+identification. They also demonstrate why a survey should separate
+<strong>what a formulation permits</strong>, <strong>what synthetic
+experiments recover</strong>, and <strong>what real experiments
+establish</strong>. TaichiDough's possible contribution is the latter:
+an experimentally supported result about rate, recovery, and residual
+deformation in real dough under known tools and limited sensing.</p>
+</section>
+<section class="level2" data-number="6.6" id="learned-constitutive-laws-and-action-conditioned-twins">
+<h2 data-number="6.6"><span class="header-section-number">6.6</span>
+Learned constitutive laws and action-conditioned twins</h2>
+<p>MASIV learns neural elasticity and plasticity mappings, rather than
+recovering a compact vector of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>E</mi><annotation encoding="application/x-tex">E</annotation></semantics></math>,
+viscosity, and yield coefficients <span class="citation" data-cites="masiv2025"><a href="#ref-masiv2025" role="doc-biblioref">[23]</a></span>. Multi-view reconstructed
+trajectories and silhouettes supervise differentiable MPM.
+Initialisation and mechanical priors constrain the learned functions;
+interior trajectories are inferred rather than directly observed. It is
+a relevant alternative when a fixed constitutive family is too
+restrictive, but the scientific target differs from interpretable
+parameter calibration. Its main-paper evidence includes synthetic
+prediction and qualitative transfer, not new real-dough rheometry.</p>
+<p>PhysTwin records one- and two-hand interactions with three RGB-D
+cameras and fits a spring–mass model with stiffness, damping, collision,
+and control-interaction parameters <span class="citation" data-cites="phystwin2025"><a href="#ref-phystwin2025" role="doc-biblioref">[24]</a></span>. Zero-order initial fitting is
+followed by gradient refinement. A single-image geometry prior does not
+make the complete identification method single-camera.</p>
+<p>PhysTwin separately reports reconstruction, future-frame
+continuation, and unseen interactions. In the latter, the fitted
+physical model is reused but registered to the new episode's initial
+observation. This is meaningful transfer evidence with an explicit
+initial-state requirement. It shows that bimanual visual fitting and
+new-interaction evaluation are established outside MPM as well. The
+distinction for TaichiDough must concern the dough law, measurements, or
+demonstrated result—not just two moving effectors.</p>
+</section>
+<section class="level2" data-number="6.7" id="forward-and-hybrid-fitting-are-established-options">
+<h2 data-number="6.7"><span class="header-section-number">6.7</span>
+Forward and hybrid fitting are established options</h2>
+<p>Matl and colleagues identify granular contact coefficients using
+depth-derived pile statistics and BayesSim likelihood-free inference
+<span class="citation" data-cites="matl2020"><a href="#ref-matl2020" role="doc-biblioref">[25]</a></span>. No simulator gradients are
+required. Repeated calibration pours at one height are followed by
+different pour heights and robotic tasks, with uncertainty and model
+mismatch examined. These are granular rather than dough parameters, but
+the study is a strong methodological precedent for forward-only
+calibration aimed at predictive macroscopic behaviour.</p>
+<p>Yoon and Lim combine Bayesian optimisation with later gradient
+descent for robot-manipulated cloth <span class="citation" data-cites="yoon2025"><a href="#ref-yoon2025" role="doc-biblioref">[26]</a></span>. Their experiments include held-out
+draping and specimen-size transfer. The accessible publisher text
+supports a <strong>hybrid</strong> method, not a purely derivative-free
+one, and comparisons also change simulation resolution. It should not be
+cited as isolated evidence that a particular optimiser is superior.</p>
+<p>For TaichiDough, method choice can be practical and transparent: a
+small joint grid or space-filling search, selective refinement, and a
+plausible-parameter ensemble. Compare its cost and predictive quality
+under equal budgets if claiming an inference advantage. A scientific
+identification study can instead keep the optimiser conventional and
+make the experimental finding its main contribution.</p>
+</section>
+<section class="level2" data-number="6.8" id="evidence-matrix-compare-questions-not-score-magnitudes">
+<h2 data-number="6.8"><span class="header-section-number">6.8</span>
+Evidence matrix: compare questions, not score magnitudes</h2>
+<p>The following table summarises the primary distinctions. It does not
+rank performance across incompatible tasks or declare uninspected
+capabilities absent.</p>
+<div aria-label="Comparison table; scroll horizontally if needed" class="table-scroll" role="region" tabindex="0"><table>
+<colgroup>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+</colgroup>
+<thead>
+<tr>
+<th>Study</th>
+<th>What the inspected real experiment identifies or fits</th>
+<th>What makes its validation different</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DPSI</td>
+<td>Plasticine elastic/yield/density and, in a separate contact level,
+interface friction; multi-view endpoints</td>
+<td>Validation used in parameter selection; additional unseen longer
+actions</td>
+</tr>
+<tr>
+<td>EMPM</td>
+<td>Stated experimental
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>E</mi><mo>,</mo><mi>ν</mi></mrow><annotation encoding="application/x-tex">E,\nu</annotation></semantics></math>
+fit; three views; bread dough and two arms</td>
+<td>Online alignment while adapting is not frozen-parameter dough
+transfer</td>
+</tr>
+<tr>
+<td>DiffCal</td>
+<td>Single-view silicone stiffness/damping/density with known
+geometry</td>
+<td>Strong discretisation/fitting study; independent dynamic transfer
+not located</td>
+</tr>
+<tr>
+<td>DiffCloud</td>
+<td>Cloth stiffness/mass multipliers from two views and robot
+motion</td>
+<td>Selected-frame fitting; independent real frozen-parameter transfer
+not located</td>
+</tr>
+<tr>
+<td>Wang et al.</td>
+<td>Elasticity and Rayleigh damping from tracked 3D dynamics</td>
+<td>Separate static loading and dynamic checks; derivative-free material
+fit</td>
+</tr>
+<tr>
+<td>Hahn et al.</td>
+<td>Elasticity and power-law viscosity from marker motion</td>
+<td>Different motions/clamps reveal both information gains and model
+limits</td>
+</tr>
+<tr>
+<td>PAC-NeRF / GIC</td>
+<td>Real evidence narrower than synthetic multi-law parameter
+coverage</td>
+<td>Keep rendering, synthetic recovery, temporal continuation, and grasp
+tasks separate</td>
+</tr>
+<tr>
+<td>PhysTwin</td>
+<td>Effective spring/damping/contact model from three-view hand
+interactions</td>
+<td>Future-frame and separate interaction transfer; new initial state
+aligned</td>
+</tr>
+<tr>
+<td>Fabbri–Cevoli</td>
+<td>Semolina flow consistency and exponent from extrusion pressure</td>
+<td>Independent rheometry comparison, not camera-guided action
+transfer</td>
+</tr>
+<tr>
+<td>MIRANDA / RELAPP</td>
+<td>Recovery/force descriptors and regressed flour-quality indices</td>
+<td>Explicitly no regression train/test split</td>
+</tr>
+<tr>
+<td>Proposed TaichiDough study</td>
+<td>A defined effective dough law from continuous single-view depth and
+recorded tools</td>
+<td>Must demonstrate independent prediction and uncertainty; not yet
+achieved</td>
+</tr>
+</tbody>
+</table></div>
+<p>Three comparisons are particularly valuable for a TaichiDough paper:
+<strong>endpoint versus time-resolved observation</strong>;
+<strong>arbitrary shaping versus designed rate/recovery probes</strong>;
+and <strong>fit quality versus independent frozen-parameter
+prediction</strong>. These comparisons provide testable questions that
+remain meaningful even when the optimiser and simulator are established
+methods.</p>
+</section>
+</section>
+<section class="level1" data-number="7" id="numerical-foundations-and-what-mpm-contributes">
+<h1 data-number="7"><span class="header-section-number">7</span>
+Numerical foundations and what MPM contributes</h1>
+<section class="level2" data-number="7.1" id="mls-mpm-apic-and-a-material-law-are-different-choices">
+<h2 data-number="7.1"><span class="header-section-number">7.1</span>
+MLS-MPM, APIC, and a material law are different choices</h2>
+<p>The original MLS-MPM paper derives a moving-least-squares formulation
+and efficient stress-divergence computation; its CPIC extension
+addresses displacement discontinuities and two-way rigid coupling <span class="citation" data-cites="mls2018"><a href="#ref-mls2018" role="doc-biblioref">[27]</a></span>. APIC describes the locally affine
+velocity representation used in particle–grid transfers <span class="citation" data-cites="apic2015"><a href="#ref-apic2015" role="doc-biblioref">[28]</a></span>. Neither name specifies the
+material's rheology.</p>
+<p>MPM is attractive for large deformation because material state is
+carried by particles and computation uses a background grid rather than
+a permanently deforming body-fitted mesh. That advantage does not
+automatically supply physically correct cutting, fracture, thin-tool
+contact, or topology changes. Those require additional formulations and
+verification.</p>
+<p>The snow MPM model is important because it uses corotated elasticity,
+principal-stretch plastic projection, and plastic-volume-dependent
+hardening <span class="citation" data-cites="snow2013"><a href="#ref-snow2013" role="doc-biblioref">[29]</a></span>. Reusing
+related mechanisms for dough can be a useful approximation, but the
+parameters inherit the meaning of that particular law. A snow-style
+dimensionless compression limit is not a direct rheometer yield-stress
+measurement.</p>
+</section>
+<section class="level2" data-number="7.2" id="contact-geometry-versus-contact-mechanics">
+<h2 data-number="7.2"><span class="header-section-number">7.2</span>
+Contact geometry versus contact mechanics</h2>
+<p>An SDF provides signed distance and, where well-defined, a normal. It
+can support detecting penetration and projecting velocity or position.
+It does not define compliance, restitution, slip, adhesion, or the
+relationship between normal and tangential forces.</p>
+<p>For example, ILS-MPM explicitly specifies unilateral contact,
+normal/tangential penalty treatment, and Coulomb sticking/sliding for
+deformable particulate contact <span class="citation" data-cites="ils2020"><a href="#ref-ils2020" role="doc-biblioref">[30]</a></span>. Its evolving level-set formulation
+is not identical to sampling a static rigid-tool SDF. It is relevant
+prior art for contact, but comparison should name the shared geometric
+idea and the different mechanical and numerical treatments.</p>
+<p>For physical Coulomb friction, tangential traction is bounded
+relative to normal traction. A multiplicative reduction of velocity
+without normal-force dependence is a different model. It can be
+calibrated as an effective numerical response, but the fitted
+coefficient must not be interpreted as a measured Coulomb
+coefficient.</p>
+</section>
+<section class="level2" data-number="7.3" id="numerical-dissipation-can-imitate-viscosity">
+<h2 data-number="7.3"><span class="header-section-number">7.3</span>
+Numerical dissipation can imitate viscosity</h2>
+<p>PIC/APIC transfer, grid resolution, time integration, projection, and
+repeated contact damping can all affect dissipation. If a per-contact
+multiplier
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math>
+is applied each time step, its repeated effect scales like
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>r</mi><mrow><mi>T</mi><mi>/</mi><mi>Δ</mi><mi>t</mi></mrow></msup><annotation encoding="application/x-tex">r^{T/\Delta t}</annotation></semantics></math>
+in a simplified continuous-contact example. Its equivalent decay rate
+is</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>γ</mi><mo>=</mo><mi>−</mi><mfrac><mrow><mo>log</mo><mi>r</mi></mrow><mrow><mi>Δ</mi><mi>t</mi></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\gamma=-\frac{\log r}{\Delta t}.
+</annotation></semantics></math></p>
+<p>This is not a constitutive viscosity law. It shows why an unchanged
+numerical contact parameter need not represent unchanged dissipation
+after a time-step change. In the actual simulator, contact activation
+and multiple update stages make the dependence more complicated
+still.</p>
+<p>Likewise, two padding studies answer different questions: holding
+padding fixed in metres while refining the grid, or holding
+padding/grid-spacing fixed so its physical thickness changes. A paper
+should report both quantities and distinguish these experiments.
+Material and prediction robustness must be assessed under numerical
+changes that preserve mass, initial volume, tool motion, and the
+intended physical contact assumptions.</p>
+</section>
+<section class="level2" data-number="7.4" id="differentiability-is-an-inference-option">
+<h2 data-number="7.4"><span class="header-section-number">7.4</span>
+Differentiability is an inference option</h2>
+<p>ChainQueen establishes differentiable MLS-MPM for soft-robot
+applications, while DiffTaichi supplies an efficient differentiable
+programming framework <span class="citation" data-cites="chainqueen2019 difftaichi2020"><a href="#ref-chainqueen2019" role="doc-biblioref">[31]</a>, <a href="#ref-difftaichi2020" role="doc-biblioref">[32]</a></span>. These are foundational references
+for adjoint-based optimisation, not evidence that every scientifically
+useful MPM study must use an adjoint.</p>
+<p>A derivative-free search can handle a small number of parameters
+transparently and work with discontinuous contact or image operations.
+It still suffers from expensive evaluations, parameter coupling, and
+ambiguous data. Gradients can accelerate search, but do not create
+missing information or guarantee the correct constitutive model. Both
+approaches need validation against observations not used for
+fitting.</p>
+</section>
+</section>
+<section class="level1" data-number="8" id="prediction-manipulation-and-benchmark-literature">
+<h1 data-number="8"><span class="header-section-number">8</span>
+Prediction, manipulation, and benchmark literature</h1>
+<section class="level2" data-number="8.1" id="learned-dynamics-is-a-different-scientific-target">
+<h2 data-number="8.1"><span class="header-section-number">8.1</span>
+Learned dynamics is a different scientific target</h2>
+<p>RoboCraft reconstructs particle representations from RGB-D, learns
+graph dynamics, and uses predictive control for elastoplastic shaping
+<span class="citation" data-cites="robocraft2022"><a href="#ref-robocraft2022" role="doc-biblioref">[33]</a></span>. RoboCook
+adds diverse tools and long-horizon real dough tasks, with transfer
+demonstrations to other materials <span class="citation" data-cites="robocook2023"><a href="#ref-robocook2023" role="doc-biblioref">[34]</a></span>. <strong>Real flour-dough robotic
+manipulation is therefore not an unexplored application.</strong></p>
+<p>Their value as comparators depends on the claim. If TaichiDough
+claims more accurate forward dynamics, a learned model trained on the
+same observations is useful. If it claims interpretable material
+parameters or a measurement protocol, an appropriate
+mechanical/inverse-calibration comparison may be more important. A
+complete controller is not mandatory for a narrowly framed
+identification paper.</p>
+<p>RoboCook's CEM+MPM versus learned-model/planner comparisons change
+more than just calibration. They should not be read as proof that a
+carefully calibrated MPM model inherently loses to learned dynamics. Nor
+should a TaichiDough static reconstruction IoU be compared to a final
+target-shaping IoU as if they measured the same task.</p>
+</section>
+<section class="level2" data-number="8.2" id="synthetic-and-single-view-prediction-benchmarks">
+<h2 data-number="8.2"><span class="header-section-number">8.2</span>
+Synthetic and single-view prediction benchmarks</h2>
+<p>PlasticineLab supplies differentiable elastoplastic manipulation
+tasks and is useful for controlled synthetic identification experiments
+<span class="citation" data-cites="plasticinelab2021"><a href="#ref-plasticinelab2021" role="doc-biblioref">[35]</a></span>.
+Recovering parameters from the exact model that generated the
+observations is a valuable implementation test, but it can be an
+<em>inverse crime</em>: the test omits the model mismatch that makes
+physical inference difficult. Add noisy sensing, imperfect registration,
+altered contact, and ideally a different observation or forward
+generator.</p>
+<p>DoughNet predicts geometry and topology from a single RGB-D
+observation and tool actions <span class="citation" data-cites="doughnet2024"><a href="#ref-doughnet2024" role="doc-biblioref">[36]</a></span>. It does not establish physical
+parameter identification in the inspected project description, but it
+prevents treating single-view input alone as a new capability.
+TaichiDough's distinction would be the identifiability, physical
+interpretation, numerical robustness, or experimental repeatability it
+demonstrates.</p>
+<p>A useful future benchmark should document more than many depth
+frames. It should include independent specimens, preparation metadata,
+calibration, tool motion, contact conditions, recovery durations, split
+definitions, and reference measurements. This would connect robotics
+datasets to food-rheology reproducibility.</p>
+</section>
+</section>
+<section class="level1" data-number="9" id="what-depth-and-tool-motion-can-identify">
+<h1 data-number="9"><span class="header-section-number">9</span> What
+depth and tool motion can identify</h1>
+<section class="level2" data-number="9.1" id="a-simple-counterexample-to-absolute-stiffness-identification">
+<h2 data-number="9.1"><span class="header-section-number">9.1</span> A
+simple counterexample to absolute-stiffness identification</h2>
+<p>Consider homogeneous small-strain quasistatic elasticity, fixed
+Poisson ratio, no body forces, prescribed displacement on part of the
+boundary, and zero traction on the remainder:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>∇</mi><mo>⋅</mo><mrow><mo form="prefix" stretchy="true">[</mo><mi>E</mi><mspace width="0.167em"></mspace><mover><mi>𝖢</mi><mo accent="true">¯</mo></mover><mrow><mo form="prefix" stretchy="true">(</mo><mi>ν</mi><mo form="postfix" stretchy="true">)</mo></mrow><mo>:</mo><mi>ε</mi><mrow><mo form="prefix" stretchy="true">(</mo><mi>u</mi><mo form="postfix" stretchy="true">)</mo></mrow><mo form="postfix" stretchy="true">]</mo></mrow><mo>=</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\nabla\cdot\left[E\,\overline{\mathsf C}(\nu):\varepsilon(u)\right]=0.
+</annotation></semantics></math></p>
+<p>For any constant
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">a&gt;0</annotation></semantics></math>,
+replacing
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>E</mi><annotation encoding="application/x-tex">E</annotation></semantics></math>
+with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mi>E</mi></mrow><annotation encoding="application/x-tex">aE</annotation></semantics></math>
+leaves the displacement solution unchanged after dividing equilibrium by
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math>.
+Reaction forces change, but a depth camera observing displacement does
+not measure them. Therefore <strong>known tool displacement does not, by
+itself, guarantee identification of the absolute stiffness
+scale</strong>.</p>
+<p>This is an analytical example with stated assumptions, not a theorem
+that all depth-based dough calibration fails. Known gravity, inertia
+with independently constrained mass/density, nonzero measured loads, or
+force sensing can provide an absolute scale. Whether they provide a
+strong enough signal in a particular recording is an experimental
+question.</p>
+<p>If density is unknown as well, combinations such as
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>E</mi><mi>/</mi><mi>ρ</mi></mrow><annotation encoding="application/x-tex">E/\rho</annotation></semantics></math>
+can be easier to infer from dynamics than
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>E</mi><annotation encoding="application/x-tex">E</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ρ</mi><annotation encoding="application/x-tex">\rho</annotation></semantics></math>
+separately. Supplied mass helps, but density computed as mass divided by
+reconstructed volume inherits the uncertainty in hidden geometry.</p>
+</section>
+<section class="level2" data-number="9.2" id="a-camera-may-identify-timescales-better-than-separate-constants">
+<h2 data-number="9.2"><span class="header-section-number">9.2</span> A
+camera may identify timescales better than separate constants</h2>
+<p>For the idealised scalar Kelvin–Voigt element during unloaded
+recovery,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mover><mi>ε</mi><mo accent="true">̇</mo></mover><mo>+</mo><mi>E</mi><mi>ε</mi><mo>=</mo><mn>0</mn><mo>,</mo><mspace width="2.0em"></mspace><mi>ε</mi><mrow><mo form="prefix" stretchy="true">(</mo><mi>t</mi><mo form="postfix" stretchy="true">)</mo></mrow><mo>=</mo><mi>ε</mi><mrow><mo form="prefix" stretchy="true">(</mo><mn>0</mn><mo form="postfix" stretchy="true">)</mo></mrow><mo>exp</mo><mrow><mo form="prefix" stretchy="true">[</mo><mi>−</mi><mi>t</mi><mi>E</mi><mi>/</mi><mi>η</mi><mo form="postfix" stretchy="true">]</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\eta\dot\varepsilon+E\varepsilon=0,
+\qquad
+\varepsilon(t)=\varepsilon(0)\exp[-tE/\eta].
+</annotation></semantics></math></p>
+<p>This recovery identifies the ratio
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mi>/</mi><mi>E</mi></mrow><annotation encoding="application/x-tex">\eta/E</annotation></semantics></math>
+if the assumptions hold. It does not necessarily identify both absolute
+parameters. More complex spatial deformation, inertia, gravity, or
+additional loads can add information, but the lesson remains: look for
+identifiable <em>combinations</em>, not only individual
+coefficients.</p>
+<p>A fixed-displacement hold is especially easy to misinterpret. If the
+visible geometry is held still while force relaxes, depth alone cannot
+directly measure the stress-relaxation curve. A load cell or independent
+force measurement is needed for that direct measurement. Lateral motion
+or subsequent release can offer indirect information, but it should not
+be described as a measured force-relaxation experiment.</p>
+</section>
+<section class="level2" data-number="9.3" id="structural-identifiability-practical-sensitivity-and-prediction">
+<h2 data-number="9.3"><span class="header-section-number">9.3</span>
+Structural identifiability, practical sensitivity, and prediction</h2>
+<p>Structural identifiability concerns what ideal observations and the
+assumed model can uniquely determine. Practical identifiability concerns
+finite, noisy, incomplete measurements. A flat sampled loss curve is
+evidence of weak sensitivity under the chosen experiment and objective;
+it is not by itself a proof of structural non-identifiability <span class="citation" data-cites="raue2009 raue2011"><a href="#ref-raue2011" role="doc-biblioref">[2]</a>, <a href="#ref-raue2009" role="doc-biblioref">[37]</a></span>.</p>
+<p>There is also <strong>predictive identifiability</strong>: different
+parameter combinations may predict the required output almost
+identically. A broad parameter set can therefore support accurate
+forecasts for one action class, yet diverge under another. The correct
+response is to propagate the plausible set through the intended held-out
+actions, not automatically discard the framework because one modulus is
+uncertain <span class="citation" data-cites="raue2011"><a href="#ref-raue2011" role="doc-biblioref">[2]</a></span>.</p>
+<p>Model discrepancy further complicates interpretation. Missing
+adhesion, wrong hidden volume, or numerical errors can be absorbed into
+fitted mechanical parameters. A narrow numerical optimum is not proof of
+physical truth. Explicit discrepancy models can help but also introduce
+further confounding; independent information is needed to separate those
+effects <span class="citation" data-cites="kennedy2001 discrepancy2014"><a href="#ref-discrepancy2014" role="doc-biblioref">[3]</a>, <a href="#ref-kennedy2001" role="doc-biblioref">[4]</a></span>.</p>
+</section>
+<section class="level2" data-number="9.4" id="conditional-sweeps-are-not-joint-parameter-profiles">
+<h2 data-number="9.4"><span class="header-section-number">9.4</span>
+Conditional sweeps are not joint parameter profiles</h2>
+<p>A curve
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mrow><mo form="prefix" stretchy="true">(</mo><mi>E</mi><mo>,</mo><msub><mi>η</mi><mn>0</mn></msub><mo>,</mo><msub><mi>p</mi><mn>0</mn></msub><mo form="postfix" stretchy="true">)</mo></mrow></mrow><annotation encoding="application/x-tex">L(E,\eta_0,p_0)</annotation></semantics></math>
+varies elasticity while keeping viscosity and plasticity fixed. It
+measures a conditional slice. A profile instead permits the others to
+change:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mrow><mi mathvariant="normal">p</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">f</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">l</mi><mi mathvariant="normal">e</mi></mrow></msub><mrow><mo form="prefix" stretchy="true">(</mo><mi>E</mi><mo form="postfix" stretchy="true">)</mo></mrow><mo>=</mo><munder><mo>min</mo><mrow><mi>η</mi><mo>,</mo><mi>p</mi><mo>,</mo><mi>ψ</mi></mrow></munder><mi>L</mi><mrow><mo form="prefix" stretchy="true">(</mo><mi>E</mi><mo>,</mo><mi>η</mi><mo>,</mo><mi>p</mi><mo>,</mo><mi>ψ</mi><mo form="postfix" stretchy="true">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">
+L_{\mathrm{profile}}(E)=\min_{\eta,p,\psi}L(E,\eta,p,\psi).
+</annotation></semantics></math></p>
+<p>The latter can reveal compensating combinations hidden by
+one-at-a-time sweeps. A joint grid, space-filling search, or repeated
+conditional optimisation can approximate a profile without autodiff. A
+set defined as “within 2% of the best geometric loss” is a
+<em>loss-tolerance set</em>, not a 95% confidence interval. Formal
+intervals need a defensible likelihood/noise model or an empirically
+justified resampling procedure.</p>
+<p>With one physical trajectory, resampling the same complete trajectory
+cannot estimate between-trajectory uncertainty. Thousands of adjacent
+depth frames are not thousands of independent experiments. The sampling
+unit must match the claim: trajectory, specimen, batch, or preparation
+day.</p>
+</section>
+<section class="level2" data-number="9.5" id="information-aware-motion-selection-without-gradients">
+<h2 data-number="9.5"><span class="header-section-number">9.5</span>
+Information-aware motion selection without gradients</h2>
+<p>One possible method contribution is to choose a small set of motions
+that produces distinguishable outcomes across candidate models. Forward
+simulations can estimate feature sensitivities:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>J</mi><mrow><mi>j</mi><mi>k</mi></mrow></msub><mo>≈</mo><mfrac><mrow><msub><mi>f</mi><mi>j</mi></msub><mrow><mo form="prefix" stretchy="true">(</mo><msup><mi>θ</mi><mrow><mo form="prefix" stretchy="true">(</mo><mi>k</mi><mo>,</mo><mi>+</mi><mo form="postfix" stretchy="true">)</mo></mrow></msup><mo form="postfix" stretchy="true">)</mo></mrow><mo>−</mo><msub><mi>f</mi><mi>j</mi></msub><mrow><mo form="prefix" stretchy="true">(</mo><msup><mi>θ</mi><mrow><mo form="prefix" stretchy="true">(</mo><mi>k</mi><mo>,</mo><mi>−</mi><mo form="postfix" stretchy="true">)</mo></mrow></msup><mo form="postfix" stretchy="true">)</mo></mrow></mrow><mrow><mn>2</mn><mi>ϵ</mi><mspace width="0.167em"></mspace><msub><mi>s</mi><mi>j</mi></msub></mrow></mfrac><mo>,</mo></mrow><annotation encoding="application/x-tex">
+J_{jk}\approx\frac{f_j(\theta^{(k,+)})-f_j(\theta^{(k,-)})}
+{2\epsilon\,s_j},
+</annotation></semantics></math></p>
+<p>where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>θ</mi><mrow><mo form="prefix" stretchy="true">(</mo><mi>k</mi><mo>,</mo><mi>±</mi><mo form="postfix" stretchy="true">)</mo></mrow></msup><annotation encoding="application/x-tex">\theta^{(k,\pm)}</annotation></semantics></math>
+equals
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math>
+except that its positive
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>th
+parameter is multiplied by
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mi>±</mi><mi>ϵ</mi></mrow></msup><annotation encoding="application/x-tex">e^{\pm\epsilon}</annotation></semantics></math>.
+Here
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>f</mi><mi>j</mi></msub><annotation encoding="application/x-tex">f_j</annotation></semantics></math>
+is a measured trajectory feature and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>s</mi><mi>j</mi></msub><annotation encoding="application/x-tex">s_j</annotation></semantics></math>
+a noise or scale estimate. Nearly parallel columns suggest confounded
+effects; small columns suggest poor signal. This approximation needs
+checks across perturbation sizes and contact regimes. It is a
+diagnostic, not a guarantee of global identifiability or a calibrated
+confidence interval.</p>
+<p>Alternatively, no derivative estimate is required: simulate a
+plausible parameter ensemble and select motions where their predicted
+observable histories disagree most, subject to safe and repeatable
+contact. Raue and colleagues provide the general model-based
+experiment-design rationale <span class="citation" data-cites="raue2011"><a href="#ref-raue2011" role="doc-biblioref">[2]</a></span>. The proposed TaichiDough
+contribution would be a concrete real-dough demonstration with matched
+acquisition and computation budgets, not a claim to have invented
+experiment design.</p>
+</section>
+</section>
+<section class="level1" data-number="10" id="taichidough-current-implementation-and-scientific-interpretation">
+<h1 data-number="10"><span class="header-section-number">10</span>
+TaichiDough: current implementation and scientific interpretation</h1>
+<section class="level2" data-number="10.1" id="what-is-implemented">
+<h2 data-number="10.1"><span class="header-section-number">10.1</span>
+What is implemented</h2>
+<p>The audited code supplies much of the infrastructure needed for the
+proposed study:</p>
+<ul>
+<li>metric-camera and floor-plane representations;</li>
+<li>single-view volumetric reconstruction by filling from observed
+points toward the floor;</li>
+<li>particle initialisation that preserves the reconstructed volume and
+supplied mass when changing particle count;</li>
+<li>two-tool replay with timestamp checks, translation interpolation,
+quaternion SLERP, and angular contact-point velocity;</li>
+<li>box, no-tool, and generated-solid SDF collision options;</li>
+<li>visible-depth, mask, coverage, and point-distance evaluation without
+post-hoc per-frame registration or time warping;</li>
+<li>coarse-to-fine modulus search, invalid-candidate handling,
+fingerprints, and declared training/validation windows;</li>
+<li>separate tool-retention and viscosity sweep runners.</li>
+</ul>
+<p>These are implemented capabilities, not yet a demonstration that all
+three material mechanisms are recoverable. Calibration records refer to
+metric-v2 transformations, but a schema check is not an independent
+metrology error estimate. Generated watertight solids are usable
+collision geometry, but their topology tests do not independently verify
+physical tool dimensions or marker registration.</p>
+</section>
+<section class="level2" data-number="10.2" id="the-actual-material-approximation">
+<h2 data-number="10.2"><span class="header-section-number">10.2</span>
+The actual material approximation</h2>
+<p>For deformation state
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>F</mi><annotation encoding="application/x-tex">F</annotation></semantics></math>,
+polar rotation
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>R</mi><annotation encoding="application/x-tex">R</annotation></semantics></math>,
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mo>=</mo><mo>det</mo><mi>F</mi></mrow><annotation encoding="application/x-tex">J=\det F</annotation></semantics></math>,
+the code uses</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>τ</mi><mi>e</mi></msub><mo>=</mo><mn>2</mn><mi>μ</mi><mrow><mo form="prefix" stretchy="true">(</mo><mi>F</mi><mo>−</mo><mi>R</mi><mo form="postfix" stretchy="true">)</mo></mrow><msup><mi>F</mi><mi>T</mi></msup><mo>+</mo><mi>λ</mi><mi>J</mi><mrow><mo form="prefix" stretchy="true">(</mo><mi>J</mi><mo>−</mo><mn>1</mn><mo form="postfix" stretchy="true">)</mo></mrow><mi>I</mi><mo>,</mo><mspace width="2.0em"></mspace><mi>μ</mi><mo>=</mo><mfrac><mi>E</mi><mrow><mn>2</mn><mrow><mo form="prefix" stretchy="true">(</mo><mn>1</mn><mo>+</mo><mi>ν</mi><mo form="postfix" stretchy="true">)</mo></mrow></mrow></mfrac><mo>,</mo><mspace width="1.0em"></mspace><mi>λ</mi><mo>=</mo><mfrac><mrow><mi>E</mi><mi>ν</mi></mrow><mrow><mrow><mo form="prefix" stretchy="true">(</mo><mn>1</mn><mo>+</mo><mi>ν</mi><mo form="postfix" stretchy="true">)</mo></mrow><mrow><mo form="prefix" stretchy="true">(</mo><mn>1</mn><mo>−</mo><mn>2</mn><mi>ν</mi><mo form="postfix" stretchy="true">)</mo></mrow></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\tau_e=2\mu(F-R)F^T+\lambda J(J-1)I,
+\qquad
+\mu=\frac{E}{2(1+\nu)},\quad
+\lambda=\frac{E\nu}{(1+\nu)(1-2\nu)}.
+</annotation></semantics></math></p>
+<p>This is a corotated stress-like quantity
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><msup><mi>F</mi><mi>T</mi></msup></mrow><annotation encoding="application/x-tex">PF^T</annotation></semantics></math>,
+not the first Piola stress itself. When plastic-volume hardening is
+enabled, both Lamé coefficients are additionally multiplied by
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>exp</mo><mrow><mo form="prefix" stretchy="true">[</mo><mi>b</mi><mrow><mo form="prefix" stretchy="true">(</mo><mn>1</mn><mo>−</mo><msub><mi>J</mi><mi>p</mi></msub><mo form="postfix" stretchy="true">)</mo></mrow><mo form="postfix" stretchy="true">]</mo></mrow></mrow><annotation encoding="application/x-tex">\exp[b(1-J_p)]</annotation></semantics></math>,
+where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math>
+is the hardening setting. The code adds</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>τ</mi><mi>v</mi></msub><mo>=</mo><mi>η</mi><mrow><mo form="prefix" stretchy="true">(</mo><mi>C</mi><mo>+</mo><msup><mi>C</mi><mi>T</mi></msup><mo form="postfix" stretchy="true">)</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">
+\tau_v=\eta(C+C^T),
+</annotation></semantics></math></p>
+<p>where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>C</mi><annotation encoding="application/x-tex">C</annotation></semantics></math>
+is intended to represent an affine velocity gradient. It is an
+instantaneous rate addition, with no generalised Maxwell branch or
+relaxation spectrum. At finite deformation, directly adding a rate term
+to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><msup><mi>F</mi><mi>T</mi></msup></mrow><annotation encoding="application/x-tex">PF^T</annotation></semantics></math>
+requires a stated stress convention; a spatial Cauchy viscosity and a
+Kirchhoff viscosity are not automatically interchangeable.</p>
+<p>Optional plastic projection clips the principal stretches into
+<code>plastic_min</code>/<code>plastic_max</code>. Optional
+<code>Jp</code> stores a scalar plastic-volume-related history for
+hardening, not a full general plastic state. The limits are
+dimensionless. The flag <code>--pure-viscoelastic</code> disables this
+projection: sweeping plastic bounds while retaining that flag would
+provide no evidence about plasticity.</p>
+<p>Source locations:
+<code>scripts/taichi_viscoelastic_mpm_scene.py:1268–1303</code>,
+<code>1397–1407</code>, and <code>2013–2039</code>. The corresponding
+reading of snow-style plasticity should use its explicit stretch/energy
+equations rather than assume a yield-stress model <span class="citation" data-cites="snow2013"><a href="#ref-snow2013" role="doc-biblioref">[29]</a></span>.</p>
+</section>
+<section class="level2" data-number="10.3" id="verified-affine-transfer-inconsistency">
+<h2 data-number="10.3"><span class="header-section-number">10.3</span>
+Verified affine-transfer inconsistency</h2>
+<p>For an interior quadratic B-spline stencil with physical offsets
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>i</mi></msub><mo>=</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><msub><mi>x</mi><mi>p</mi></msub></mrow><annotation encoding="application/x-tex">d_i=x_i-x_p</annotation></semantics></math>,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>w</mi><mi>i</mi></msub><msub><mi>d</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>,</mo><mspace width="2.0em"></mspace><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>w</mi><mi>i</mi></msub><msub><mi>d</mi><mi>i</mi></msub><msubsup><mi>d</mi><mi>i</mi><mi>T</mi></msubsup><mo>=</mo><mfrac><msup><mi>h</mi><mn>2</mn></msup><mn>4</mn></mfrac><mi>I</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\sum_iw_i d_i=0,
+\qquad
+\sum_iw_i d_i d_i^T=\frac{h^2}{4}I.
+</annotation></semantics></math></p>
+<p>An affine grid velocity
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>v</mi><mi>i</mi></msub><mo>=</mo><mi>b</mi><mo>+</mo><mi>A</mi><msub><mi>d</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">v_i=b+Ad_i</annotation></semantics></math>
+should be reconstructed by</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mo>=</mo><mfrac><mn>4</mn><msup><mi>h</mi><mn>2</mn></msup></mfrac><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>w</mi><mi>i</mi></msub><msub><mi>v</mi><mi>i</mi></msub><msubsup><mi>d</mi><mi>i</mi><mi>T</mi></msubsup><mo>=</mo><mi>A</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">
+C=\frac{4}{h^2}\sum_iw_i v_i d_i^T=A.
+</annotation></semantics></math></p>
+<p>The audited source instead uses physical
+<code>dpos=(offset-fx)*dx</code> with coefficient <code>4*inv_dx</code>,
+which produces
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mrow><mi mathvariant="normal">c</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">d</mi><mi mathvariant="normal">e</mi></mrow></msub><mo>=</mo><mi>h</mi><mi>A</mi></mrow><annotation encoding="application/x-tex">C_{\mathrm{code}}=hA</annotation></semantics></math>.
+The coefficient
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>4</mn><mi>/</mi><mi>h</mi></mrow><annotation encoding="application/x-tex">4/h</annotation></semantics></math>
+is appropriate if the offset is dimensionless; it is inconsistent with
+the physical offset used here.</p>
+<p>An isolated NumPy reproduction of the exact weights and expression
+confirms the issue:</p>
+<div aria-label="Comparison table; scroll horizontally if needed" class="table-scroll" role="region" tabindex="0"><table>
+<colgroup>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+</colgroup>
+<thead>
+<tr>
+<th>Grid resolution</th>
+<th>Input gradient component</th>
+<th>Reconstructed component in current expression</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>24</td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mspace width="0.222em"></mspace><msup><mi mathvariant="normal">s</mi><mrow><mi>−</mi><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">3\ \mathrm{s}^{-1}</annotation></semantics></math></td>
+<td>0.125</td>
+</tr>
+<tr>
+<td>48</td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mspace width="0.222em"></mspace><msup><mi mathvariant="normal">s</mi><mrow><mi>−</mi><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">3\ \mathrm{s}^{-1}</annotation></semantics></math></td>
+<td>0.0625</td>
+</tr>
+<tr>
+<td>96</td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mspace width="0.222em"></mspace><msup><mi mathvariant="normal">s</mi><mrow><mi>−</mi><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">3\ \mathrm{s}^{-1}</annotation></semantics></math></td>
+<td>0.03125</td>
+</tr>
+</tbody>
+</table></div>
+<p>The corrected physical-offset formula reproduces
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math>
+to floating-point precision in the same calculation. This is an
+algebraic verification, not a measured dough result or a full Taichi
+regression test. Source:
+<code>scripts/taichi_viscoelastic_mpm_scene.py:1374–1378</code>;
+reproducible check: <code>evidence/check_affine_transfer.py</code>.</p>
+<p>Because
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>C</mi><annotation encoding="application/x-tex">C</annotation></semantics></math>
+drives the update
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo form="prefix" stretchy="true">(</mo><mi>I</mi><mo>+</mo><mi>Δ</mi><mi>t</mi><mi>C</mi><mo form="postfix" stretchy="true">)</mo></mrow><mi>F</mi></mrow><annotation encoding="application/x-tex">(I+\Delta tC)F</annotation></semantics></math>,
+the viscous term, and plastic activation, the discrepancy affects more
+than a cosmetic naming convention. The stored modulus experiment's
+simulator hash matches the audited source. <strong>Resolve and test this
+before interpreting fitted SI parameters or collecting an expensive
+calibration dataset.</strong> A correction changes dynamics and requires
+new fits; dividing an old fitted modulus by grid resolution is not a
+justified substitute. The source code has been left unchanged because
+this task is an assessment, not an implementation request.</p>
+</section>
+<section class="level2" data-number="10.4" id="contact-friction-is-velocity-retention">
+<h2 data-number="10.4"><span class="header-section-number">10.4</span>
+Contact “friction” is velocity retention</h2>
+<p>After removing inward normal relative velocity, the tool update
+multiplies the remaining relative velocity by</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mrow><mo form="prefix" stretchy="true">(</mo><mn>1</mn><mo>−</mo><mi>a</mi><mo form="postfix" stretchy="true">)</mo></mrow><mrow><mo form="prefix" stretchy="true">(</mo><mn>1</mn><mo>−</mo><mi>s</mi><mo form="postfix" stretchy="true">)</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">
+r(1-a)(1-s),
+</annotation></semantics></math></p>
+<p>where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math>
+is named <code>tool_contact_friction</code>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math>
+is absorption, and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math>
+is stickiness. This scales outward normal as well as tangential relative
+components and has no normal-traction-based Coulomb bound. Lower
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math>
+means more attenuation;
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r=0</annotation></semantics></math>
+makes the corrected particle velocity follow the tool. This direction is
+not the interpretation commonly attached to increasing a physical
+friction coefficient.</p>
+<p>The appropriate current description is <strong>effective
+contact-velocity retention</strong>. Contact geometry, retention,
+absorption, stickiness, grid/particle projections, and floor interaction
+can compensate for viscosity in a visual loss. Source:
+<code>scripts/taichi_viscoelastic_mpm_scene.py:1335–1343</code> and the
+particle-contact functions. The SDF checks remain useful, but they
+validate signed geometry, not a physical friction law.</p>
+</section>
+<section class="level2" data-number="10.5" id="hidden-volume-and-observation-assumptions">
+<h2 data-number="10.5"><span class="header-section-number">10.5</span>
+Hidden volume and observation assumptions</h2>
+<p>The floor-fill reconstruction assumes that the unobserved volume
+between the visible top and floor is occupied. It does not measure
+hidden cavities, folded undersides, or detached material. Supplied
+object mass divided by this volume determines density. A wrong volume
+therefore changes both geometry and mechanical scale. In the inspected
+modulus run, the supplied 0.25 kg and reconstructed volume of
+approximately
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>8.8317</mn><mo>×</mo><msup><mn>10</mn><mrow><mi>−</mi><mn>4</mn></mrow></msup></mrow><annotation encoding="application/x-tex">8.8317\times10^{-4}</annotation></semantics></math>
+m³ imply about 283 kg/m³. That is a derived simulation input, not an
+independent density measurement; the mass and reconstruction should be
+checked against the actual specimen.</p>
+<p>The current objective averages depth-change, mask-IoU loss,
+observed-to-simulated visible-point distance, and real-coverage loss.
+These are dimensionless normalised components. Their aggregate is not a
+depth error in metres. Dough-only rendering omits tool occlusion, and
+the depth-change term uses the intersection of valid initial/current
+masks. That can exclude newly exposed or disappearing areas; support and
+visibility need separate reporting.</p>
+<p>These are reasonable starting assumptions for a restricted task,
+provided their effects are measured. Single-view efficiency becomes a
+contribution only when the accuracy and uncertainty costs of these
+assumptions are quantified.</p>
+</section>
+<section class="level2" data-number="10.6" id="what-the-stored-experiments-actually-show">
+<h2 data-number="10.6"><span class="header-section-number">10.6</span>
+What the stored experiments actually show</h2>
+<p>The available modulus experiment uses 24,000 particles, grid 48,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><mi>t</mi><mo>=</mo><mn>0.0002</mn></mrow><annotation encoding="application/x-tex">\Delta t=0.0002</annotation></semantics></math>
+s, SDF resolution 64, contact padding
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mn>384</mn></mrow><annotation encoding="application/x-tex">1/384</annotation></semantics></math>
+m, supplied mass 0.25 kg, fixed
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ν</mi><mo>=</mo><mn>0.3</mn></mrow><annotation encoding="application/x-tex">\nu=0.3</annotation></semantics></math>,
+zero viscosity, and disabled plasticity. It selects
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>E</mi><mo>=</mo><mn>130</mn><mo>,</mo><mn>579.320726</mn></mrow><annotation encoding="application/x-tex">E=130{,}579.320726</annotation></semantics></math>
+Pa on source frames 1–60, but reports <code>needs_review</code> and
+<code>accepted: false</code> because its sampled near-minimum region is
+broad.</p>
+<div aria-label="Comparison table; scroll horizontally if needed" class="table-scroll" role="region" tabindex="0"><table>
+<thead>
+<tr>
+<th>Setting</th>
+<th style="text-align: right;">Training frames 1–60</th>
+<th style="text-align: right;">Later frames 61–97</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Selected modulus</td>
+<td style="text-align: right;">0.361059</td>
+<td style="text-align: right;">0.828075</td>
+</tr>
+<tr>
+<td>Default
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>E</mi><mo>=</mo><mn>2000</mn></mrow><annotation encoding="application/x-tex">E=2000</annotation></semantics></math>
+Pa</td>
+<td style="text-align: right;">0.799745</td>
+<td style="text-align: right;">Not stored in this result</td>
+</tr>
+<tr>
+<td>Frozen initial state</td>
+<td style="text-align: right;">0.343191</td>
+<td style="text-align: right;">0.835860</td>
+</tr>
+</tbody>
+</table></div>
+<p>All entries are the same declared aggregate loss; lower is better.
+The frozen-state baseline is slightly better on training than the
+selected simulation. The selected simulation is about 0.93% better on
+the later window than frozen state, without repetitions or a confidence
+interval. These values do not establish a unique modulus or transfer to
+a new action. They also <strong>do not</strong> support the earlier
+claim that the fitted model is worse than default
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>E</mi><annotation encoding="application/x-tex">E</annotation></semantics></math>
+on held-out data: that claim incorrectly compared different splits.</p>
+<p>Ten sampled modulus values between approximately 91.4 and 186.5 kPa
+fall within the configured 2% loss tolerance. This is weak practical
+discrimination for that objective and experiment, not proof of universal
+non-identifiability. Its whole-window bootstrap has one training window;
+all resamples repeat it, so its zero-width interval provides no
+between-trial precision evidence.</p>
+<p>The newer <code>_local</code> contact-retention sweep completed,
+unlike the older failed directory. Its training losses are 0.359191,
+0.361067, and 0.361463 for
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>0.1</mn><mo>,</mo><mn>0.2</mn><mo>,</mo><mn>0.3</mn></mrow><annotation encoding="application/x-tex">r=0.1,0.2,0.3</annotation></semantics></math>.
+The smallest tested value gives the smallest training score, with only
+about 0.52% improvement relative to 0.2. There is no held-out stage or
+uncertainty estimate. This is a completed sensitivity result, not a
+physical-friction measurement.</p>
+<p>A viscosity runner now tests 0, 1, 2.5, 5, and 10 under the
+parameter's nominal Pa·s interpretation. The available
+<code>viscosity_sweep2</code> results failed during CUDA initialisation
+with <code>CUDA_ERROR_COMPAT_NOT_SUPPORTED_ON_DEVICE</code>. They are
+startup failures, not evidence that the viscosities are physically wrong
+or numerically unstable. No successful joint
+elasticity–viscosity–plasticity fit was found.</p>
+<p>Current metric-v2 static records show a close initial visible-depth
+match, but they use the observation from which the initial state was
+reconstructed. Older long proxy-tool rollouts are diagnostic evidence
+for their own configurations, not a valid measure of current solid-SDF
+accuracy. The evidence appendix identifies the files and split
+locations.</p>
+</section>
+</section>
+<section class="level1" data-number="11" id="a-falsifiable-experimental-programme">
+<h1 data-number="11"><span class="header-section-number">11</span> A
+falsifiable experimental programme</h1>
+<section class="level2" data-number="11.1" id="start-with-the-claim-not-all-available-knobs">
+<h2 data-number="11.1"><span class="header-section-number">11.1</span>
+Start with the claim, not all available knobs</h2>
+<p>The first study should target <strong>predictive calibration of a
+restricted material model</strong>, not simultaneous recovery of every
+rheological constant. State the preparation, deformation range, loading
+speeds, observation duration, tools, and required predictions. Decide
+whether the aim is a batch-specific model, transfer between specimens of
+one recipe, or transfer between recipes. These are different claims.</p>
+<p>A sensible initial model comparison is:</p>
+<ul>
+<li>elastic-only;</li>
+<li>elastic plus a specified rate-dependent term;</li>
+<li>elastic plus a specified plastic mechanism;</li>
+<li>the combined model, if the observations justify its extra
+parameters.</li>
+</ul>
+<p>Retain added complexity only when it improves independent prediction
+or explains a mechanically verified effect. More parameters and a lower
+training loss do not establish better science.</p>
+</section>
+<section class="level2" data-number="11.2" id="motion-primitives-and-what-they-measure">
+<h2 data-number="11.2"><span class="header-section-number">11.2</span>
+Motion primitives and what they measure</h2>
+<div aria-label="Comparison table; scroll horizontally if needed" class="table-scroll" role="region" tabindex="0"><table>
+<colgroup>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+</colgroup>
+<thead>
+<tr>
+<th>Motion or test</th>
+<th>Useful information</th>
+<th>Key confound or limitation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Small press, unload, and release</td>
+<td>Reversible response; contact geometry; recovery</td>
+<td>Displacement alone may not fix absolute stiffness</td>
+</tr>
+<tr>
+<td>Same path at multiple speeds</td>
+<td>Rate dependence and candidate timescales</td>
+<td>Inertia, contact, timing, and specimen history also change
+response</td>
+</tr>
+<tr>
+<td>Fixed-displacement hold</td>
+<td>Force relaxation if force is recorded</td>
+<td>Nearly fixed visible geometry may contain little information</td>
+</tr>
+<tr>
+<td>Known-force creep and recovery</td>
+<td>Compliance, retarded response, lasting flow</td>
+<td>A position-controlled robot is not a constant-force apparatus</td>
+</tr>
+<tr>
+<td>Load–unload at several amplitudes</td>
+<td>Onset of persistent deformation; model selection</td>
+<td>Slow recovery, damage, and adhesion can imitate plasticity</td>
+</tr>
+<tr>
+<td>Gravity sag or slump</td>
+<td>Known body-force scale and contact-light response</td>
+<td>Requires reliable mass/geometry and visible deformation above
+noise</td>
+</tr>
+<tr>
+<td>Controlled slide and withdrawal</td>
+<td>Interface slip and adhesion</td>
+<td>Contact damping and bulk dissipation remain coupled</td>
+</tr>
+<tr>
+<td>New two-tool sequence</td>
+<td>Practical action-transfer prediction</td>
+<td>Must remain untouched during model and parameter selection</td>
+</tr>
+</tbody>
+</table></div>
+<p>Use a pilot to choose speeds, amplitudes, and recovery durations.
+Values should resolve the material response above sensor noise while
+avoiding unmodelled rupture, uncontrolled adhesion, or tool-tracking
+errors. A numerical list chosen merely because its values are convenient
+is not a justified physical search range.</p>
+<p>One specific warning follows from the current nominal settings:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>E</mi><mo>≈</mo><mn>130.6</mn></mrow><annotation encoding="application/x-tex">E\approx130.6</annotation></semantics></math>
+kPa and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ν</mi><mo>=</mo><mn>0.3</mn></mrow><annotation encoding="application/x-tex">\nu=0.3</annotation></semantics></math>
+give
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mo>≈</mo><mn>50.2</mn></mrow><annotation encoding="application/x-tex">\mu\approx50.2</annotation></semantics></math>
+kPa. Ratios
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mi>/</mi><mi>μ</mi></mrow><annotation encoding="application/x-tex">\eta/\mu</annotation></semantics></math>
+for
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\eta=1</annotation></semantics></math>–10
+Pa·s are approximately 20–200 microseconds, compared with a
+200-microsecond simulation step and roughly 33-millisecond recorded
+frame spacing. This is only a dimensional diagnostic; it is not the
+exact recovery time of the full model. It does show why the viscosity
+range needs an argument based on observable response times, especially
+after the affine-transfer inconsistency is resolved.</p>
+</section>
+<section class="level2" data-number="11.3" id="stage-1-verify-the-numerical-and-measurement-chain">
+<h2 data-number="11.3"><span class="header-section-number">11.3</span>
+Stage 1: verify the numerical and measurement chain</h2>
+<p>Before parameter interpretation:</p>
+<ol type="1">
+<li>add affine-field reproduction and rigid-motion tests for
+transfer;</li>
+<li>verify mass/volume invariance across particle counts and grids;</li>
+<li>test simple elastic, rate-dependent, and plastic cases with known
+expected behaviour;</li>
+<li>check camera projection, floor coordinates, tool pose conventions,
+interpolation, and timing independently;</li>
+<li>quantify tool-to-marker and camera-to-scene uncertainty;</li>
+<li>test collision solids and padding without confusing topological
+validity with physical alignment;</li>
+<li>test parameter recovery under the actual depth/visibility operator,
+then deliberately introduce noise and model mismatch.</li>
+</ol>
+<p>Report failures separately as launch/environment failures, numerical
+failures, missing-observation cases, and physically poor predictions.
+Only the last group measures predictive inadequacy. A verification test
+does not replace physical validation, but it prevents a search from
+compensating for a coding error.</p>
+</section>
+<section class="level2" data-number="11.4" id="stage-2-fit-a-small-justified-joint-parameter-set">
+<h2 data-number="11.4"><span class="header-section-number">11.4</span>
+Stage 2: fit a small, justified joint parameter set</h2>
+<p>Select bounds from physical response scales, reference tests, and
+pilot sensitivity. Positive scale parameters often benefit from
+logarithmic sampling; dimensionless stretch bounds require their own
+physically meaningful intervals. Represent zero viscosity as an explicit
+model case rather than taking its logarithm.</p>
+<p>A forward-only protocol can use:</p>
+<ol type="1">
+<li>a coarse joint grid or space-filling set;</li>
+<li>evaluation of every candidate under identical trajectories,
+numerical settings, and visibility rules;</li>
+<li>refinement around several promising regions, not only the first
+apparent minimum;</li>
+<li>pairwise loss plots and approximate profiles to identify
+compensation;</li>
+<li>propagation of all plausible parameter sets to validation
+predictions;</li>
+<li>a final locked evaluation on untouched trials.</li>
+</ol>
+<p>A grid with five levels in three parameters has 125 combinations
+before repeats, numerical-sensitivity studies, or multiple specimens.
+This arithmetic is a compute-planning example, not a proposed universal
+budget. Compare sampling strategies under equal forward-evaluation and
+physical-data budgets. Record failed evaluations, warm-up/compilation,
+simulator time, evaluator time, and total wall time.</p>
+<p>One-at-a-time sweeps remain useful diagnostics. They should not be
+presented as evidence that elasticity, viscosity, and plasticity were
+jointly separated. Similarly, selecting a contact parameter after
+examining a former holdout turns that holdout into development data; a
+new final test is then needed.</p>
+</section>
+<section class="level2" data-number="11.5" id="stage-3-separate-three-kinds-of-validation">
+<h2 data-number="11.5"><span class="header-section-number">11.5</span>
+Stage 3: separate three kinds of validation</h2>
+<p><strong>Temporal forecast:</strong> fit an early interval and
+propagate continuously from the initial state into later frames. Do not
+reset the state at the boundary. This tests prediction under the same
+specimen and trajectory history.</p>
+<p><strong>Cross-trajectory prediction:</strong> fit on one set of
+motions and predict entirely different recorded motions without
+refitting. Vary speed, orientation, indentation, or tool coordination to
+test the claimed operating range. This is the central evidence for
+useful material calibration.</p>
+<p><strong>Across-specimen or batch transfer:</strong> test
+independently prepared samples or days, with recipe and preparation
+controlled. A batch-specific calibration paper does not need to promise
+universal recipe transfer, but it must state that limit. If recipe
+transfer is claimed, evaluate it explicitly.</p>
+<p>An extra camera or a geometric scan can test hidden-volume
+assumptions. A force trace or conventional material test can test the
+mechanical scale. Those measurements may be reserved for evaluation
+while the operational estimator uses one camera. That makes the
+low-sensor claim testable rather than assumed.</p>
+</section>
+<section class="level2" data-number="11.6" id="stage-4-use-metrics-that-reveal-different-errors">
+<h2 data-number="11.6"><span class="header-section-number">11.6</span>
+Stage 4: use metrics that reveal different errors</h2>
+<p>Report camera-space depth error with valid support, silhouette IoU,
+bidirectional coverage, and symmetric visible-point distance or a
+thresholded F-score. Add geometry features relevant to the task: height,
+extent, centroid, spread, or recovered thickness. Force/torque error
+belongs in the report when force is available and mechanically
+relevant.</p>
+<p>Always distinguish:</p>
+<ul>
+<li>current-state reconstruction from future prediction;</li>
+<li>visible geometry from complete volume;</li>
+<li>optimised loss from independent evaluation metrics;</li>
+<li>frame-wise curves from episode-level uncertainty;</li>
+<li>a mean error from the coverage on which it was computed.</li>
+</ul>
+<p>Do not perform per-frame alignment or time warping during final
+prediction evaluation. If input registration is uncertain, calibrate it
+independently or analyse its uncertainty, rather than aligning away the
+prediction error. Include error versus forecast horizon and contact
+phase; a final-frame value can conceal wrong intermediate dynamics.</p>
+<p>At minimum compare a frozen initial state, unfitted/default
+mechanics, and the selected model. For a contact claim, compare
+calibrated box/solid-SDF/no-tool cases under otherwise matched settings.
+For a multi-parameter claim, compare nested material models. A learned
+baseline is important for a learned-versus-physics performance claim,
+but not automatically mandatory for a focused identification
+experiment.</p>
+</section>
+<section class="level2" data-number="11.7" id="stage-5-uncertainty-and-numerical-transfer">
+<h2 data-number="11.7"><span class="header-section-number">11.7</span>
+Stage 5: uncertainty and numerical transfer</h2>
+<p>Use the physical trajectory, specimen, or batch as the resampling
+unit. Choose sample size after a pilot establishes variability and the
+smallest practically important paired improvement; this report does not
+prescribe an arbitrary number as a journal requirement. Repeats of
+interpolation frames do not increase the independent sample count.</p>
+<p>Report plausible parameter sets and their predicted outcome spread.
+Test camera/tool perturbations, hidden-volume alternatives,
+contact-retention assumptions, SDF resolution, particle count, grid
+spacing, and time step. Preserve physical mass and geometry when
+changing resolution. Separate physical-padding-fixed and
+grid-relative-padding-fixed tests.</p>
+<p>Two outcomes can both be valuable:</p>
+<ul>
+<li>stable parameters and improved independent predictions support
+physical/effective identification within the stated conditions;</li>
+<li>unstable individual parameters but stable useful predictions support
+a narrower predictive calibration claim.</li>
+</ul>
+<p>If both parameter values and predictions change materially under
+plausible numerical or measurement choices, report that limitation. More
+printed decimal places do not resolve it.</p>
+</section>
+</section>
+<section class="level1" data-number="12" id="where-a-defensible-novel-contribution-could-lie">
+<h1 data-number="12"><span class="header-section-number">12</span> Where
+a defensible novel contribution could lie</h1>
+<section class="level2" data-number="12.1" id="novelty-is-a-result-not-a-list-of-components">
+<h2 data-number="12.1"><span class="header-section-number">12.1</span>
+Novelty is a result, not a list of components</h2>
+<p>The existing pieces—depth cameras, recorded tool poses, MPM, SDFs,
+loss minimisation, and parameter sweeps—are established. Their
+combination can still enable a meaningful contribution if it answers a
+question the closest studies do not answer in the same experimental
+conditions. A narrow hardware conjunction is weak evidence of novelty; a
+measured advantage or a carefully established limitation is much
+stronger.</p>
+<p>The following are <strong>prospective contributions</strong>, ranked
+here by their fit to the proposed framework rather than claimed
+uniqueness in the entire literature.</p>
+<div aria-label="Comparison table; scroll horizontally if needed" class="table-scroll" role="region" tabindex="0"><table>
+<colgroup>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+</colgroup>
+<thead>
+<tr>
+<th>Candidate contribution</th>
+<th>Testable claim</th>
+<th>Evidence that would distinguish it from an implementation
+report</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Motion-dependent identification</td>
+<td>Designed rate/recovery/amplitude probes distinguish mechanisms
+better than arbitrary shaping recordings</td>
+<td>Matched-budget comparison, joint parameter sensitivity, and
+untouched action-transfer predictions</td>
+</tr>
+<tr>
+<td>Single-view measurement sufficiency</td>
+<td>One view provides useful predictions within a defined operating
+range</td>
+<td>Independent-view or volume checks; quantify what extra sensing
+changes</td>
+</tr>
+<tr>
+<td>Material/interface separation</td>
+<td>Independent contact/timing characterisation reduces false viscosity
+or plasticity estimates</td>
+<td>Controlled contact perturbations and improved cross-tool or
+cross-motion transfer</td>
+</tr>
+<tr>
+<td>Numerical robustness of inferred response</td>
+<td>Some parameter combinations or predictions remain stable after
+refinement</td>
+<td>Correct transfer tests and refits across
+grid/time-step/particle/contact settings</td>
+</tr>
+<tr>
+<td>Real-dough benchmark</td>
+<td>Controlled repeated specimens connect rheology to robot
+prediction</td>
+<td>Released preparations, calibrations, depth, trajectories, optional
+forces, and locked evaluation splits</td>
+</tr>
+</tbody>
+</table></div>
+<p>None requires a new adjoint solver. A more capable constitutive model
+or a new search strategy could be an additional contribution, but would
+require separate comparison. It is better to demonstrate one principal
+contribution clearly than to claim all five on one recording.</p>
+</section>
+<section class="level2" data-number="12.2" id="recommended-primary-hypothesis">
+<h2 data-number="12.2"><span class="header-section-number">12.2</span>
+Recommended primary hypothesis</h2>
+<p><strong>H1:</strong> Multi-rate loading and sufficiently long
+release/recovery observations provide more useful constraints on a
+restricted elastic–viscous–plastic model than a single monotonic
+deformation, leading to better prediction on new two-tool
+trajectories.</p>
+<p>Support would require improvement over a matched-data,
+matched-compute baseline, reproducible across independent trials, with
+the added model mechanisms actually enabled and numerically verified. H1
+is weakened if the apparent improvement disappears after
+registration/contact uncertainty is included, if the inferred response
+changes with time step, or if multiple model classes remain
+observationally equivalent on new motions.</p>
+<p>A complementary hypothesis is that <strong>not all individual
+parameters need be recoverable</strong>: a narrower set of parameter
+combinations may suffice for a particular prediction task. Report this
+as a positive predictive result with a bounded physical claim, not as
+complete rheological recovery.</p>
+</section>
+<section class="level2" data-number="12.3" id="strong-and-weak-manuscript-claims">
+<h2 data-number="12.3"><span class="header-section-number">12.3</span>
+Strong and weak manuscript claims</h2>
+<p><strong>A strong claim, if experimentally supported:</strong></p>
+<blockquote>
+<p>We establish when single-view depth and recorded dual-tool kinematics
+are sufficient to calibrate a compact model of real dough response. A
+forward-only search over explicitly defined elastic, rate, and
+residual-deformation parameters is evaluated on independent tool
+trajectories, with contact, hidden-volume, and numerical sensitivity
+quantified.</p>
+</blockquote>
+<p><strong>A strong narrower claim, if parameters remain
+ambiguous:</strong></p>
+<blockquote>
+<p>Several mechanically different parameter sets fit the observed
+manipulations. We identify which additional motions or measurements
+distinguish them, and which predictions remain reliable despite that
+ambiguity.</p>
+</blockquote>
+<p><strong>Claims not supported by the present evidence:</strong> first
+visual material identification; first robotic dough rheometry; a novel
+MLS-MPM method; physical Coulomb-friction measurement from the current
+retention coefficient; joint rheological identification from the
+completed elasticity-only run; or universal dough constants.</p>
+<p>“An effective parameter for a specified model and preparation” is not
+a concession that makes the work unpublishable. It is an accurate
+statement of the inverse problem. It becomes valuable when the resulting
+predictions, uncertainty, or limitations are useful to other
+researchers.</p>
+</section>
+</section>
+<section class="level1" data-number="13" id="journal-suitability-and-the-scientific-case">
+<h1 data-number="13"><span class="header-section-number">13</span>
+Journal suitability and the scientific case</h1>
+<section class="level2" data-number="13.1" id="yes-the-framework-can-support-a-journal-paper">
+<h2 data-number="13.1"><span class="header-section-number">13.1</span>
+Yes, the framework can support a journal paper</h2>
+<p>A scientific paper does not have to introduce a new numerical solver.
+Official RA-L scope includes innovative ideas, theoretical findings,
+application results, and case studies. It does not require gradients or
+a new optimiser <span class="citation" data-cites="ral-scope"><a href="#ref-ral-scope" role="doc-biblioref">[38]</a></span>. RA-P
+explicitly accommodates practical investigations, reproducible advances,
+and case studies <span class="citation" data-cites="rap-scope"><a href="#ref-rap-scope" role="doc-biblioref">[39]</a></span>.
+Research-software significance can also include substantial engineering
+rather than algorithmic novelty, although JOSS has its own maturity,
+research-use, licensing, documentation, and testing requirements <span class="citation" data-cites="joss-scope"><a href="#ref-joss-scope" role="doc-biblioref">[40]</a></span>.</p>
+<p>These scope statements are not acceptance predictions. They show why
+“uses known methods” and “uses sweeps” are not sufficient reasons to
+reject the idea. Reviewers will still ask what was learned, how it
+differs from close prior work, whether experiments test the claims, and
+whether another group can reproduce the result.</p>
+</section>
+<section class="level2" data-number="13.2" id="choose-the-paper-type-to-match-the-evidence">
+<h2 data-number="13.2"><span class="header-section-number">13.2</span>
+Choose the paper type to match the evidence</h2>
+<div aria-label="Comparison table; scroll horizontally if needed" class="table-scroll" role="region" tabindex="0"><table>
+<colgroup>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+</colgroup>
+<thead>
+<tr>
+<th>Paper type</th>
+<th>Plausible main contribution</th>
+<th>What must exist before submission</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Robotics method/experimental paper</td>
+<td>Partial-observation calibration with demonstrated action-transfer or
+information-aware probing</td>
+<td>Verified implementation, closest-method comparison, independent
+physical tests, uncertainty</td>
+</tr>
+<tr>
+<td>Applied robotics systems paper</td>
+<td>Reliable real-dough measurement/replay/calibration procedure with
+useful practical findings</td>
+<td>Repeated real experiments, specified calibration, failure analysis,
+reproducible release</td>
+</tr>
+<tr>
+<td>Food-engineering/rheology paper</td>
+<td>Mechanically interpretable response under controlled preparation and
+loading</td>
+<td>Independent force/rheometry reference, correct constitutive
+interpretation, batch/repeatability evidence</td>
+</tr>
+<tr>
+<td>Simulation/computational-methods paper</td>
+<td>New discretisation, contact, constitutive or inference
+treatment</td>
+<td>A genuinely new method plus accuracy/stability/efficiency
+evaluation</td>
+</tr>
+<tr>
+<td>Dataset or scientific-software paper</td>
+<td>A reusable calibrated resource or research tool</td>
+<td>Data rights/license, documented protocol, working release,
+reproducible use beyond one bespoke run</td>
+</tr>
+</tbody>
+</table></div>
+<p>For the proposed framework, a focused robotics experimental or
+applied-systems article is the most natural direction. A food-rheology
+article becomes more plausible with independent mechanical measurements.
+A numerical-methods paper requires a numerical contribution; merely
+implementing MPM is not one.</p>
+<p>A top-level submission should not depend on a long feature list—GUI,
+network adapters, reinforcement-learning interfaces—unless those
+features are used in an experiment. They may belong in documentation.
+The paper's space belongs to the inference problem, measurements, model,
+uncertainty, and evidence.</p>
+</section>
+<section class="level2" data-number="13.3" id="what-makes-this-survey-itself-useful">
+<h2 data-number="13.3"><span class="header-section-number">13.3</span>
+What makes this survey itself useful</h2>
+<p>Broad deformable-object surveys already organise representations,
+models, estimation, and control <span class="citation" data-cites="review2020"><a href="#ref-review2020" role="doc-biblioref">[1]</a></span>. Food reviews already organise dough
+rheometry and nonlinear behaviour <span class="citation" data-cites="yazar2023"><a href="#ref-yazar2023" role="doc-biblioref">[5]</a></span>. A useful survey at their
+intersection should organise studies by <strong>parameter, observation,
+and excitation</strong>, rather than by simulator brand or optimiser
+alone.</p>
+<p>This report's proposed synthesis asks:</p>
+<ol type="1">
+<li>What physical or effective quantity is estimated?</li>
+<li>What information is measured—shape, motion, force, or a task
+outcome?</li>
+<li>What loading and history make that quantity observable?</li>
+<li>Which sensor, contact, geometry, and numerical assumptions remain
+fixed?</li>
+<li>What independent prediction or physical measurement validates the
+result?</li>
+</ol>
+<p>That taxonomy makes meaningful comparisons possible between an
+extrusion FEM inverse problem, a point-cloud MPM fit, a video-recovery
+descriptor, and a learned robot dynamics model. It also makes misleading
+comparisons easier to identify. To submit this document itself as a
+formal review article would require a more reproducible database/search
+protocol, systematic inclusion/exclusion accounting, complete
+bibliographic checking, and author-led critical revision. This report is
+a substantial starting survey, not a claim that those review-publication
+requirements have already been met.</p>
+</section>
+</section>
+<section class="level1" data-number="14" id="recommended-research-sequence">
+<h1 data-number="14"><span class="header-section-number">14</span>
+Recommended research sequence</h1>
+<section class="level2" data-number="14.1" id="immediate-verification-and-clarification">
+<h2 data-number="14.1"><span class="header-section-number">14.1</span>
+Immediate verification and clarification</h2>
+<ol type="1">
+<li>Resolve the affine-transfer inconsistency and add an
+affine-reproduction regression test; rerun affected calibration.</li>
+<li>Define the intended constitutive law and units. Decide whether the
+first paper estimates effective rate and stretch-limit parameters or
+physically interpretable rheological constants.</li>
+<li>Keep elasticity-only, viscosity, plasticity, and combined-model
+experiments distinct. Ensure parameter switches actually activate the
+tested mechanism.</li>
+<li>Rename or clearly document the contact-retention coefficient so it
+cannot be mistaken for Coulomb friction.</li>
+<li>Preserve current logs, exact splits, and source hashes. Do not
+rewrite failed or superseded experiments as successful evidence.</li>
+</ol>
+</section>
+<section class="level2" data-number="14.2" id="first-physical-study">
+<h2 data-number="14.2"><span class="header-section-number">14.2</span>
+First physical study</h2>
+<p>Use controlled pressing/release, multiple speeds, and several
+amplitudes on independently prepared specimens. Preserve the depth and
+pose time bases, initial mass and volume assumptions, tool calibration,
+and preparation history. Use an independent force or geometric reference
+on a subset if possible. Compare conditional sweeps with a small joint
+search and propagate plausible parameters into unseen motions.</p>
+<p>The first result should answer a limited question well: for example,
+whether release and recovery observations distinguish elastic-only from
+rate-dependent or plastic models better than pressing alone. It need not
+recover every parameter simultaneously to be publishable.</p>
+</section>
+<section class="level2" data-number="14.3" id="full-framework-study">
+<h2 data-number="14.3"><span class="header-section-number">14.3</span>
+Full framework study</h2>
+<p>Extend only after the basic identification tests work:
+cross-trajectory two-tool prediction, independent specimens/batches,
+interface perturbations, numerical refits, and a packaged benchmark.
+Report both successful and ambiguous cases. Publish the operational
+single-camera pipeline separately from any evaluation-only
+force/extra-camera measurements so the claimed sensing requirement
+remains clear.</p>
+</section>
+<section class="level2" data-number="14.4" id="suggested-reading-order">
+<h2 data-number="14.4"><span class="header-section-number">14.4</span>
+Suggested reading order</h2>
+<p>Read by the question each paper can answer, rather than attempting
+the whole bibliography in date order.</p>
+<div aria-label="Comparison table; scroll horizontally if needed" class="table-scroll" role="region" tabindex="0"><table>
+<colgroup>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+<col style="width: 33%"/>
+</colgroup>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Paper or pair</th>
+<th>What to extract for your study</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>DPSI <span class="citation" data-cites="dpsi2025"><a href="#ref-dpsi2025" role="doc-biblioref">[15]</a></span></td>
+<td>Closest elastoplastic MPM calibration; contact preparation; endpoint
+fitting; unseen actions and failures</td>
+</tr>
+<tr>
+<td>2</td>
+<td>EMPM <span class="citation" data-cites="empm2026"><a href="#ref-empm2026" role="doc-biblioref">[16]</a></span></td>
+<td>Existing bimanual bread-dough work; actual fitted parameters;
+adaptive alignment versus prediction</td>
+</tr>
+<tr>
+<td>3</td>
+<td>DiffCal <span class="citation" data-cites="diffcal2023"><a href="#ref-diffcal2023" role="doc-biblioref">[17]</a></span> and Hahn et
+al. <span class="citation" data-cites="hahn2019"><a href="#ref-hahn2019" role="doc-biblioref">[20]</a></span></td>
+<td>What dynamic visual observations constrain; damping definitions;
+motion diversity and numerical dependence</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Yazar <span class="citation" data-cites="yazar2023"><a href="#ref-yazar2023" role="doc-biblioref">[5]</a></span></td>
+<td>Dough preparation, nonlinear response, appropriate loading, recovery
+and interface conditions</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Fabbri–Cevoli <span class="citation" data-cites="fabbri2015"><a href="#ref-fabbri2015" role="doc-biblioref">[12]</a></span> and
+Cocuzza–Yan <span class="citation" data-cites="cocuzza2018"><a href="#ref-cocuzza2018" role="doc-biblioref">[10]</a></span></td>
+<td>Independent mechanical checks; change the experiment when a
+parameter remains unconstrained</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Raue et al. <span class="citation" data-cites="raue2011"><a href="#ref-raue2011" role="doc-biblioref">[2]</a></span></td>
+<td>Conditional slices versus profiles; uncertain parameters versus
+reliable predictions</td>
+</tr>
+<tr>
+<td>7</td>
+<td>MLS-MPM and snow MPM <span class="citation" data-cites="mls2018 snow2013"><a href="#ref-mls2018" role="doc-biblioref">[27]</a>, <a href="#ref-snow2013" role="doc-biblioref">[29]</a></span></td>
+<td>Transfer/stress equations and the precise meaning of stretch-based
+plasticity</td>
+</tr>
+<tr>
+<td>8</td>
+<td>PAC-NeRF and GIC <span class="citation" data-cites="pacnerf2023 gic2024"><a href="#ref-pacnerf2023" role="doc-biblioref">[21]</a>, <a href="#ref-gic2024" role="doc-biblioref">[22]</a></span></td>
+<td>Joint viscoplastic parameterisation; synthetic versus real
+evidence</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Matl et al. <span class="citation" data-cites="matl2020"><a href="#ref-matl2020" role="doc-biblioref">[25]</a></span> and Wang et
+al. <span class="citation" data-cites="wang2015"><a href="#ref-wang2015" role="doc-biblioref">[19]</a></span></td>
+<td>Forward-only material fitting, uncertainty and independent
+validation</td>
+</tr>
+<tr>
+<td>10</td>
+<td>MIRANDA/RELAPP, RoboCook and PhysTwin <span class="citation" data-cites="miranda2025 robocook2023 phystwin2025"><a href="#ref-miranda2025" role="doc-biblioref">[13]</a>, <a href="#ref-phystwin2025" role="doc-biblioref">[24]</a>, <a href="#ref-robocook2023" role="doc-biblioref">[34]</a></span></td>
+<td>Adjacent food measurement, practical shaping, and new-interaction
+prediction</td>
+</tr>
+</tbody>
+</table></div>
+<p>The reading catalogue records a primary link, the source version
+inspected, and whether access was full, partial, abstract-level, or
+metadata-only. That distinction is especially important before copying
+equations, reported parameter values, or evaluation claims into a
+manuscript.</p>
+</section>
+</section>
+<section class="level1" data-number="15" id="evidence-appendix">
+<h1 data-number="15"><span class="header-section-number">15</span>
+Evidence appendix</h1>
+<section class="level2" data-number="15.1" id="current-repository-records">
+<h2 data-number="15.1"><span class="header-section-number">15.1</span>
+Current repository records</h2>
+<p>The audit is tied to revision
+<code>cb76169436d334c127f165ce5c3f779100bb82d4</code>. Relative paths
+below avoid dependence on a particular machine's home directory.</p>
+<div aria-label="Comparison table; scroll horizontally if needed" class="table-scroll" role="region" tabindex="0"><table>
+<colgroup>
+<col style="width: 50%"/>
+<col style="width: 50%"/>
+</colgroup>
+<thead>
+<tr>
+<th>Record</th>
+<th>What was checked</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scripts/taichi_viscoelastic_mpm_scene.py:1268–1407</code></td>
+<td>Material terms, plastic switches, transfers, and contact/velocity
+updates</td>
+</tr>
+<tr>
+<td><code>scripts/deformpath_dynamics.py:390–516</code></td>
+<td>Timestamped two-tool interpolation and velocities</td>
+</tr>
+<tr>
+<td><code>scripts/reconstruct_voxel_dough_from_deformpath.py:223–372</code></td>
+<td>Floor-fill and hidden-volume assumptions</td>
+</tr>
+<tr>
+<td><code>scripts/material_calibration.py:164–332</code></td>
+<td>Normalised loss, support, and validity rules</td>
+</tr>
+<tr>
+<td><code>scripts/calibrate_youngs_modulus.py:1184–1379</code></td>
+<td>Search, selection, split handling, and reporting</td>
+</tr>
+<tr>
+<td><code>data/single_episode_calibration/episode18_kugla_fixed_collision_11_9/material_calibration_result.json</code></td>
+<td>Correct training/held-out/default/frozen-state comparisons</td>
+</tr>
+<tr>
+<td><code>output/episode18_e130579_dx8_tool_friction_sweep_local/friction_sweep.json</code></td>
+<td>Completed training-only retention sweep</td>
+</tr>
+<tr>
+<td><code>output/episode18_e130579_dx8_viscosity_sweep2/viscosity_sweep.json</code></td>
+<td>Failed startup cases; stderr identifies CUDA initialisation
+failure</td>
+</tr>
+</tbody>
+</table></div>
+<p>In the large material-result JSON, selection/flat-minimum/one-window
+bootstrap are at lines 227–289; the held-out aggregate is at
+86830–86837; the default comparison explicitly carries the training
+split at 93862–93899. The full local evidence note contains additional
+locations and interpretation. Numeric reports under <code>data/</code>
+and external recorded inputs require an archive or download procedure;
+source code alone is not a complete reproduction package.</p>
+</section>
+<section class="level2" data-number="15.2" id="what-was-and-was-not-executed">
+<h2 data-number="15.2"><span class="header-section-number">15.2</span>
+What was and was not executed</h2>
+<p>Executed for this assessment: read-only source/result inspection,
+primary-literature retrieval, bibliography preparation, the isolated
+affine-weight calculation, and document builds. <strong>Not
+executed:</strong> a new material calibration, a new robot experiment, a
+full Taichi regression suite, or an independent reproduction of the
+stored real-data results. No simulator or sweep source files were
+modified.</p>
+<p>The accompanying evidence files distinguish full-text inspection,
+abstract-level evidence, and metadata-only reading leads. The
+bibliography identifies the particular editions cited; related
+conference/journal titles and online/issue years may differ. The older
+report remains a separate file and should not be used for its erroneous
+mixed-split comparison.</p>
+</section>
+<section class="level2" data-number="15.3" id="literature-access-and-version-qualifications">
+<h2 data-number="15.3"><span class="header-section-number">15.3</span>
+Literature access and version qualifications</h2>
+<div aria-label="Comparison table; scroll horizontally if needed" class="table-scroll" role="region" tabindex="0"><table>
+<colgroup>
+<col style="width: 50%"/>
+<col style="width: 50%"/>
+</colgroup>
+<thead>
+<tr>
+<th>Source group</th>
+<th>Scientific text inspected and limit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DPSI; EMPM</td>
+<td>Full arXiv v3 (February 2025) and v1 (January 2026), respectively;
+final journal publication metadata checked separately</td>
+</tr>
+<tr>
+<td>PAC-NeRF; GIC; DiffCloud</td>
+<td>Full arXiv versions v1 (2023), v3 (2024), and v2 (2025); DiffCloud's
+conference publication is 2022</td>
+</tr>
+<tr>
+<td>PhysTwin; MASIV</td>
+<td>CVF accepted main papers; separate supplements not read</td>
+</tr>
+<tr>
+<td>DiffCal; Cocuzza–Yan</td>
+<td>Full early-online/accepted author manuscripts; final issue metadata
+checked separately</td>
+</tr>
+<tr>
+<td>Wang; Hahn; Matl; Fabbri; MIRANDA; Yazar; RoboCook</td>
+<td>Full papers or relevant primary full-text methods/results
+inspected</td>
+</tr>
+<tr>
+<td>MLS-MPM; snow MPM; ILS-MPM; Raue 2011; Arriola-Rios review</td>
+<td>Relevant primary full-text numerical/methodological sections
+inspected</td>
+</tr>
+<tr>
+<td>APIC; RoboCraft; PlasticineLab; DoughNet; ChainQueen;
+DiffTaichi</td>
+<td>Primary abstracts/project descriptions and publication records;
+detailed results not inferred from those alone</td>
+</tr>
+<tr>
+<td>Raue 2009; Kennedy–O'Hagan; Brynjarsdóttir–O'Hagan;
+Anderssen–Kružík; Ghorbel–Launay</td>
+<td>Abstract-level evidence and metadata; used for general
+methodological or physical context</td>
+</tr>
+<tr>
+<td>Ng; Sun; Mitsoulis–Hatzikiriakos; Petit</td>
+<td>Metadata/discovery excerpts; reading leads and broad subject scope,
+not quantitative validation evidence</td>
+</tr>
+<tr>
+<td>Yoon–Lim</td>
+<td>Partial publisher-text access through §5.4.2; complete limitations
+unavailable</td>
+</tr>
+</tbody>
+</table></div>
+<p>The source-version qualifications apply to the technical descriptions
+throughout this report. In particular, final publication metadata do not
+prove that a preprint's wording is identical to the published version.
+Detailed locators and search queries are in
+<code>evidence/visual_inverse.md</code>,
+<code>evidence/dough_rheology.md</code>, and
+<code>evidence/methods_evaluation.md</code>. The CSV catalogue provides
+primary links and access levels for each reference.</p>
+</section>
+<section class="level2" data-number="15.4" id="bottom-line">
+<h2 data-number="15.4"><span class="header-section-number">15.4</span>
+Bottom line</h2>
+<p><strong>The scientific opportunity is real, but it is an experimental
+and inverse-problem question—not a novelty claim about using Taichi or
+parameter sweeps.</strong> A framework that establishes when depth and
+tool kinematics can distinguish dough response, quantifies what remains
+ambiguous, and predicts new manipulations would be a credible
+contribution. The strongest report of that work will connect numerical
+verification, measurement physics, food preparation, and independent
+prediction in one transparent argument.</p>
+</section>
+</section>
+<section class="level1 unnumbered" id="bibliography">
+<h1 class="unnumbered">References</h1>
+<div class="references csl-bib-body" data-entry-spacing="0" id="refs" role="list">
+<div class="csl-entry" id="ref-review2020" role="listitem">
+<div class="csl-left-margin">[1] </div><div class="csl-right-inline">V.
+E. Arriola-Rios, P. Guler, F. Ficuciello, D. Kragic, B. Siciliano, and
+J. L. Wyatt, <span>‘Modeling of Deformable Objects for Robotic
+Manipulation: A Tutorial and Review’</span>, <em>Frontiers in Robotics
+and AI</em>, vol. 7, Art. no. 82, 2020, doi: <a href="https://doi.org/10.3389/frobt.2020.00082">10.3389/frobt.2020.00082</a>.</div>
+</div>
+<div class="csl-entry" id="ref-raue2011" role="listitem">
+<div class="csl-left-margin">[2] </div><div class="csl-right-inline">A.
+Raue, C. Kreutz, T. Maiwald, U. Klingmüller, and J. Timmer,
+<span>‘Addressing parameter identifiability by model-based
+experimentation’</span>, <em>IET Systems Biology</em>, vol. 5, no. 2,
+pp. 120–130, 2011, doi: <a href="https://doi.org/10.1049/iet-syb.2010.0061">10.1049/iet-syb.2010.0061</a>.</div>
+</div>
+<div class="csl-entry" id="ref-discrepancy2014" role="listitem">
+<div class="csl-left-margin">[3] </div><div class="csl-right-inline">J.
+Brynjarsdóttir and A. O’Hagan, <span>‘Learning about physical
+parameters: the importance of model discrepancy’</span>, <em>Inverse
+Problems</em>, vol. 30, no. 11, Art. no. 114007, 2014, doi: <a href="https://doi.org/10.1088/0266-5611/30/11/114007">10.1088/0266-5611/30/11/114007</a>.</div>
+</div>
+<div class="csl-entry" id="ref-kennedy2001" role="listitem">
+<div class="csl-left-margin">[4] </div><div class="csl-right-inline">M.
+C. Kennedy and A. O’Hagan, <span>‘Bayesian calibration of computer
+models’</span>, <em>Journal of the Royal Statistical Society: Series B
+(Statistical Methodology)</em>, vol. 63, no. 3, pp. 425–464, 2001, doi:
+<a href="https://doi.org/10.1111/1467-9868.00294">10.1111/1467-9868.00294</a>.</div>
+</div>
+<div class="csl-entry" id="ref-yazar2023" role="listitem">
+<div class="csl-left-margin">[5] </div><div class="csl-right-inline">G.
+Yazar, <span>‘Wheat Flour Quality Assessment by Fundamental Non-Linear
+Rheological Methods: A Critical Review’</span>, <em>Foods</em>, vol. 12,
+no. 18, Art. no. 3353, 2023, doi: <a href="https://doi.org/10.3390/foods12183353">10.3390/foods12183353</a>.</div>
+</div>
+<div class="csl-entry" id="ref-ng2006" role="listitem">
+<div class="csl-left-margin">[6] </div><div class="csl-right-inline">T.
+S. K. Ng, G. H. McKinley, and M. Padmanabhan, <span>‘Linear to
+Non-linear Rheology of Wheat Flour Dough’</span>, <em>Applied
+Rheology</em>, vol. 16, no. 5, pp. 265–274, 2006, doi: <a href="https://doi.org/10.1515/arh-2006-0019">10.1515/arh-2006-0019</a>.</div>
+</div>
+<div class="csl-entry" id="ref-sun2020" role="listitem">
+<div class="csl-left-margin">[7] </div><div class="csl-right-inline">X.
+Sun, F. Koksel, M. T. Nickerson, and M. G. Scanlon, <span>‘Modeling the
+viscoelastic behavior of wheat flour dough prepared from a wide range of
+formulations’</span>, <em>Food Hydrocolloids</em>, vol. 98, Art. no.
+105129, 2020, doi: <a href="https://doi.org/10.1016/j.foodhyd.2019.05.030">10.1016/j.foodhyd.2019.05.030</a>.</div>
+</div>
+<div class="csl-entry" id="ref-anderssen2013" role="listitem">
+<div class="csl-left-margin">[8] </div><div class="csl-right-inline">R.
+S. Anderssen and M. Kružík, <span>‘Modelling of wheat-flour dough mixing
+as an open-loop hysteretic process’</span>, <em>Discrete and Continuous
+Dynamical Systems – B</em>, vol. 18, no. 2, pp. 283–293, 2013, doi: <a href="https://doi.org/10.3934/dcdsb.2013.18.283">10.3934/dcdsb.2013.18.283</a>.</div>
+</div>
+<div class="csl-entry" id="ref-rolling2009" role="listitem">
+<div class="csl-left-margin">[9] </div><div class="csl-right-inline">E.
+Mitsoulis and S. G. Hatzikiriakos, <span>‘Rolling of bread dough:
+Experiments and simulations’</span>, <em>Food and Bioproducts
+Processing</em>, vol. 87, no. 2, pp. 124–138, 2009, doi: <a href="https://doi.org/10.1016/j.fbp.2008.07.001">10.1016/j.fbp.2008.07.001</a>.</div>
+</div>
+<div class="csl-entry" id="ref-cocuzza2018" role="listitem">
+<div class="csl-left-margin">[10] </div><div class="csl-right-inline">S.
+Cocuzza and X.-T. Yan, <span>‘First engineering framework for the
+out-of-plane robotic shaping of thin rheological objects’</span>,
+<em>Robotics and Computer-Integrated Manufacturing</em>, vol. 53, pp.
+108–121, 2018, doi: <a href="https://doi.org/10.1016/j.rcim.2018.02.005">10.1016/j.rcim.2018.02.005</a>.</div>
+</div>
+<div class="csl-entry" id="ref-adhesion2014" role="listitem">
+<div class="csl-left-margin">[11] </div><div class="csl-right-inline">D.
+Ghorbel and B. Launay, <span>‘An investigation into the nature of wheat
+flour dough adhesive behaviour’</span>, <em>Food Research
+International</em>, vol. 64, pp. 305–313, 2014, doi: <a href="https://doi.org/10.1016/j.foodres.2014.06.045">10.1016/j.foodres.2014.06.045</a>.</div>
+</div>
+<div class="csl-entry" id="ref-fabbri2015" role="listitem">
+<div class="csl-left-margin">[12] </div><div class="csl-right-inline">A.
+Fabbri and C. Cevoli, <span>‘Estimation of semolina dough rheological
+parameters by inversion of a finite elements model’</span>, <em>Journal
+of Agricultural Engineering</em>, vol. 46, no. 3, pp. 95–99, 2015, doi:
+<a href="https://doi.org/10.4081/jae.2015.469">10.4081/jae.2015.469</a>.</div>
+</div>
+<div class="csl-entry" id="ref-miranda2025" role="listitem">
+<div class="csl-left-margin">[13] </div><div class="csl-right-inline">A.
+Monleón-Getino <em>et al.</em>, <span>‘Advancing Viscoelastic Material
+Characterization Through Computer Vision and Robotics: MIRANDA and
+RELAPP’</span>, <em>Materials</em>, vol. 18, no. 21, Art. no. 4827,
+2025, doi: <a href="https://doi.org/10.3390/ma18214827">10.3390/ma18214827</a>.</div>
+</div>
+<div class="csl-entry" id="ref-pizza2017" role="listitem">
+<div class="csl-left-margin">[14] </div><div class="csl-right-inline">A.
+Petit, V. Lippiello, G. A. Fontanelli, and B. Siciliano, <span>‘Tracking
+elastic deformable objects with an RGB-D sensor for a pizza chef
+robot’</span>, <em>Robotics and Autonomous Systems</em>, vol. 88, pp.
+187–201, 2017, doi: <a href="https://doi.org/10.1016/j.robot.2016.08.023">10.1016/j.robot.2016.08.023</a>.</div>
+</div>
+<div class="csl-entry" id="ref-dpsi2025" role="listitem">
+<div class="csl-left-margin">[15] </div><div class="csl-right-inline">X.
+Yang, Z. Ji, and Y.-K. Lai, <span>‘Differentiable physics-based system
+identification for robotic manipulation of elastoplastic
+materials’</span>, <em>The International Journal of Robotics
+Research</em>, vol. 44, no. 13, pp. 2126–2155, 2025, doi: <a href="https://doi.org/10.1177/02783649251334661">10.1177/02783649251334661</a>.</div>
+</div>
+<div class="csl-entry" id="ref-empm2026" role="listitem">
+<div class="csl-left-margin">[16] </div><div class="csl-right-inline">Y.
+Chen, Y. Hu, L. Sun, T. Kusnur, L. Herlant, and C. Jiang, <span>‘EMPM:
+Embodied MPM for Modeling and Simulation of Deformable Objects’</span>,
+<em>IEEE Robotics and Automation Letters</em>, vol. 11, no. 4, pp.
+4179–4186, 2026, doi: <a href="https://doi.org/10.1109/LRA.2026.3664610">10.1109/LRA.2026.3664610</a>.</div>
+</div>
+<div class="csl-entry" id="ref-diffcal2023" role="listitem">
+<div class="csl-left-margin">[17] </div><div class="csl-right-inline">K.
+Arnavaz, M. K. Nielsen, P. G. Kry, M. Macklin, and K. Erleben,
+<span>‘Differentiable Depth for Real2Sim Calibration of Soft Body
+Simulations’</span>, <em>Computer Graphics Forum</em>, vol. 42, no. 1,
+pp. 277–289, 2023, doi: <a href="https://doi.org/10.1111/cgf.14720">10.1111/cgf.14720</a>.</div>
+</div>
+<div class="csl-entry" id="ref-diffcloud2022" role="listitem">
+<div class="csl-left-margin">[18] </div><div class="csl-right-inline">P.
+Sundaresan, R. Antonova, and J. Bohg, <span>‘DiffCloud: Real-to-Sim from
+Point Clouds with Differentiable Simulation and Rendering of Deformable
+Objects’</span>, in <em>IEEE/RSJ International Conference on Intelligent
+Robots and Systems (IROS)</em>, 2022, pp. 10828–10835. doi: <a href="https://doi.org/10.1109/IROS47612.2022.9981101">10.1109/IROS47612.2022.9981101</a>.</div>
+</div>
+<div class="csl-entry" id="ref-wang2015" role="listitem">
+<div class="csl-left-margin">[19] </div><div class="csl-right-inline">B.
+Wang, L. Wu, K. Yin, U. Ascher, L. Liu, and H. Huang, <span>‘Deformation
+Capture and Modeling of Soft Objects’</span>, <em>ACM Transactions on
+Graphics</em>, vol. 34, no. 4, Art. no. 94, 2015, doi: <a href="https://doi.org/10.1145/2766911">10.1145/2766911</a>.</div>
+</div>
+<div class="csl-entry" id="ref-hahn2019" role="listitem">
+<div class="csl-left-margin">[20] </div><div class="csl-right-inline">D.
+Hahn, P. Banzet, J. M. Bern, and S. Coros, <span>‘Real2Sim:
+Visco-elastic parameter estimation from dynamic motion’</span>, <em>ACM
+Transactions on Graphics</em>, vol. 38, no. 6, Art. no. 236, 2019, doi:
+<a href="https://doi.org/10.1145/3355089.3356548">10.1145/3355089.3356548</a>.</div>
+</div>
+<div class="csl-entry" id="ref-pacnerf2023" role="listitem">
+<div class="csl-left-margin">[21] </div><div class="csl-right-inline">X.
+Li <em>et al.</em>, <span>‘PAC-NeRF: Physics Augmented Continuum Neural
+Radiance Fields for Geometry-Agnostic System Identification’</span>, in
+<em>International Conference on Learning Representations (ICLR)</em>,
+2023. Available: <a href="https://openreview.net/forum?id=tVkrbkz42vc">https://openreview.net/forum?id=tVkrbkz42vc</a></div>
+</div>
+<div class="csl-entry" id="ref-gic2024" role="listitem">
+<div class="csl-left-margin">[22] </div><div class="csl-right-inline">J.
+Cai <em>et al.</em>, <span>‘GIC: Gaussian-Informed Continuum for
+Physical Property Identification and Simulation’</span>, in <em>Advances
+in Neural Information Processing Systems</em>, 2024, pp. 75035–75063.
+doi: <a href="https://doi.org/10.52202/079017-2388">10.52202/079017-2388</a>.</div>
+</div>
+<div class="csl-entry" id="ref-masiv2025" role="listitem">
+<div class="csl-left-margin">[23] </div><div class="csl-right-inline">Y.
+Zhao <em>et al.</em>, <span>‘Toward Material-Agnostic System
+Identification from Videos’</span>, in <em>Proceedings of the IEEE/CVF
+International Conference on Computer Vision (ICCV)</em>, 2025, pp.
+5944–5956. doi: <a href="https://doi.org/10.1109/ICCV51701.2025.00562">10.1109/ICCV51701.2025.00562</a>.</div>
+</div>
+<div class="csl-entry" id="ref-phystwin2025" role="listitem">
+<div class="csl-left-margin">[24] </div><div class="csl-right-inline">H.
+Jiang, H.-Y. Hsu, K. Zhang, H.-N. Yu, S. Wang, and Y. Li,
+<span>‘PhysTwin: Physics-Informed Reconstruction and Simulation of
+Deformable Objects from Videos’</span>, in <em>Proceedings of the
+IEEE/CVF International Conference on Computer Vision (ICCV)</em>, 2025,
+pp. 7219–7230. Available: <a href="https://openaccess.thecvf.com/content/ICCV2025/papers/Jiang_PhysTwin_Physics-Informed_Reconstruction_and_Simulation_of_Deformable_Objects_from_Videos_ICCV_2025_paper.pdf">https://openaccess.thecvf.com/content/ICCV2025/papers/Jiang_PhysTwin_Physics-Informed_Reconstruction_and_Simulation_of_Deformable_Objects_from_Videos_ICCV_2025_paper.pdf</a></div>
+</div>
+<div class="csl-entry" id="ref-matl2020" role="listitem">
+<div class="csl-left-margin">[25] </div><div class="csl-right-inline">C.
+Matl, Y. Narang, R. Bajcsy, F. Ramos, and D. Fox, <span>‘Inferring the
+Material Properties of Granular Media for Robotic Tasks’</span>, in
+<em>IEEE International Conference on Robotics and Automation
+(ICRA)</em>, 2020. doi: <a href="https://doi.org/10.1109/ICRA40945.2020.9197063">10.1109/ICRA40945.2020.9197063</a>.</div>
+</div>
+<div class="csl-entry" id="ref-yoon2025" role="listitem">
+<div class="csl-left-margin">[26] </div><div class="csl-right-inline">K.
+Yoon and S.-C. Lim, <span>‘Real-to-sim high-resolution cloth modeling:
+Physical parameter optimization using particle-based simulation with
+robot manipulation data’</span>, <em>Journal of Computational Design and
+Engineering</em>, vol. 12, no. 8, pp. 29–44, 2025, doi: <a href="https://doi.org/10.1093/jcde/qwaf065">10.1093/jcde/qwaf065</a>.</div>
+</div>
+<div class="csl-entry" id="ref-mls2018" role="listitem">
+<div class="csl-left-margin">[27] </div><div class="csl-right-inline">Y.
+Hu <em>et al.</em>, <span>‘A Moving Least Squares Material Point Method
+with Displacement Discontinuity and Two-Way Rigid Body Coupling’</span>,
+<em>ACM Transactions on Graphics</em>, vol. 37, no. 4, Art. no. 150,
+2018, doi: <a href="https://doi.org/10.1145/3197517.3201293">10.1145/3197517.3201293</a>.</div>
+</div>
+<div class="csl-entry" id="ref-apic2015" role="listitem">
+<div class="csl-left-margin">[28] </div><div class="csl-right-inline">C.
+Jiang, C. Schroeder, A. Selle, J. Teran, and A. Stomakhin, <span>‘The
+Affine Particle-In-Cell Method’</span>, <em>ACM Transactions on
+Graphics</em>, vol. 34, no. 4, Art. no. 51, 2015, doi: <a href="https://doi.org/10.1145/2766996">10.1145/2766996</a>.</div>
+</div>
+<div class="csl-entry" id="ref-snow2013" role="listitem">
+<div class="csl-left-margin">[29] </div><div class="csl-right-inline">A.
+Stomakhin, C. Schroeder, L. Chai, J. Teran, and A. Selle, <span>‘A
+Material Point Method for Snow Simulation’</span>, <em>ACM Transactions
+on Graphics</em>, vol. 32, no. 4, Art. no. 102, 2013, doi: <a href="https://doi.org/10.1145/2461912.2461948">10.1145/2461912.2461948</a>.</div>
+</div>
+<div class="csl-entry" id="ref-ils2020" role="listitem">
+<div class="csl-left-margin">[30] </div><div class="csl-right-inline">C.
+Liu and W. Sun, <span>‘ILS-MPM: An implicit level-set-based material
+point method for frictional particulate contact mechanics of deformable
+particles’</span>, <em>Computer Methods in Applied Mechanics and
+Engineering</em>, vol. 369, Art. no. 113168, 2020, doi: <a href="https://doi.org/10.1016/j.cma.2020.113168">10.1016/j.cma.2020.113168</a>.</div>
+</div>
+<div class="csl-entry" id="ref-chainqueen2019" role="listitem">
+<div class="csl-left-margin">[31] </div><div class="csl-right-inline">Y.
+Hu <em>et al.</em>, <span>‘ChainQueen: A Real-Time Differentiable
+Physical Simulator for Soft Robotics’</span>, in <em>IEEE International
+Conference on Robotics and Automation (ICRA)</em>, 2019, pp. 6265–6271.
+doi: <a href="https://doi.org/10.1109/ICRA.2019.8794333">10.1109/ICRA.2019.8794333</a>.</div>
+</div>
+<div class="csl-entry" id="ref-difftaichi2020" role="listitem">
+<div class="csl-left-margin">[32] </div><div class="csl-right-inline">Y.
+Hu <em>et al.</em>, <span>‘DiffTaichi: Differentiable Programming for
+Physical Simulation’</span>, in <em>International Conference on Learning
+Representations (ICLR)</em>, 2020. Available: <a href="https://openreview.net/forum?id=B1eB5xSFvr">https://openreview.net/forum?id=B1eB5xSFvr</a></div>
+</div>
+<div class="csl-entry" id="ref-robocraft2022" role="listitem">
+<div class="csl-left-margin">[33] </div><div class="csl-right-inline">H.
+Shi, H. Xu, Z. Huang, Y. Li, and J. Wu, <span>‘RoboCraft: Learning to
+See, Simulate, and Shape Elasto-Plastic Objects with Graph
+Networks’</span>, in <em>Robotics: Science and Systems XVIII</em>, 2022.
+doi: <a href="https://doi.org/10.15607/RSS.2022.XVIII.008">10.15607/RSS.2022.XVIII.008</a>.</div>
+</div>
+<div class="csl-entry" id="ref-robocook2023" role="listitem">
+<div class="csl-left-margin">[34] </div><div class="csl-right-inline">H.
+Shi, H. Xu, S. Clarke, Y. Li, and J. Wu, <span>‘RoboCook: Long-Horizon
+Elasto-Plastic Object Manipulation with Diverse Tools’</span>, in
+<em>Proceedings of the 7th Conference on Robot Learning</em>, 2023, pp.
+642–660. Available: <a href="https://proceedings.mlr.press/v229/shi23a.html">https://proceedings.mlr.press/v229/shi23a.html</a></div>
+</div>
+<div class="csl-entry" id="ref-plasticinelab2021" role="listitem">
+<div class="csl-left-margin">[35] </div><div class="csl-right-inline">Z.
+Huang <em>et al.</em>, <span>‘PlasticineLab: A Soft-Body Manipulation
+Benchmark with Differentiable Physics’</span>, in <em>International
+Conference on Learning Representations (ICLR)</em>, 2021. Available: <a href="https://openreview.net/forum?id=xCcdBRQEDW">https://openreview.net/forum?id=xCcdBRQEDW</a></div>
+</div>
+<div class="csl-entry" id="ref-doughnet2024" role="listitem">
+<div class="csl-left-margin">[36] </div><div class="csl-right-inline">D.
+Bauer, Z. Xu, and S. Song, <span>‘DoughNet: A Visual Predictive Model
+for Topological Manipulation of Deformable Objects’</span>, in
+<em>Computer Vision – ECCV 2024</em>, 2024, pp. 92–108. doi: <a href="https://doi.org/10.1007/978-3-031-72940-9_6">10.1007/978-3-031-72940-9_6</a>.</div>
+</div>
+<div class="csl-entry" id="ref-raue2009" role="listitem">
+<div class="csl-left-margin">[37] </div><div class="csl-right-inline">A.
+Raue <em>et al.</em>, <span>‘Structural and practical identifiability
+analysis of partially observed dynamical models by exploiting the
+profile likelihood’</span>, <em>Bioinformatics</em>, vol. 25, no. 15,
+pp. 1923–1929, 2009, doi: <a href="https://doi.org/10.1093/bioinformatics/btp358">10.1093/bioinformatics/btp358</a>.</div>
+</div>
+<div class="csl-entry" id="ref-ral-scope" role="listitem">
+<div class="csl-left-margin">[38] </div><div class="csl-right-inline">IEEE Robotics and Automation Society,
+<span>‘IEEE Robotics and Automation Letters: Information for
+Authors’</span>. Accessed: Sep. 11, 2026. [Online]. Available: <a href="https://www.ieee-ras.org/publications/ra-l/ra-l-information-for-authors/">https://www.ieee-ras.org/publications/ra-l/ra-l-information-for-authors/</a></div>
+</div>
+<div class="csl-entry" id="ref-rap-scope" role="listitem">
+<div class="csl-left-margin">[39] </div><div class="csl-right-inline">IEEE Robotics and Automation Society,
+<span>‘IEEE Robotics and Automation Practice’</span>. Accessed: Sep. 11,
+2026. [Online]. Available: <a href="https://www.ieee-ras.org/publications/ra-p/">https://www.ieee-ras.org/publications/ra-p/</a></div>
+</div>
+<div class="csl-entry" id="ref-joss-scope" role="listitem">
+<div class="csl-left-margin">[40] </div><div class="csl-right-inline">Journal of Open Source Software,
+<span>‘Submitting a paper to JOSS’</span>. Accessed: Sep. 11, 2026.
+[Online]. Available: <a href="https://joss.readthedocs.io/en/latest/submitting.html">https://joss.readthedocs.io/en/latest/submitting.html</a></div>
+</div>
+</div>
+</section>
+
+</main>
+</div>
+<footer class="report-footer">
+<p>Critical scoping review, not an exhaustive priority claim. Proposed experiments are distinguished from recorded TaichiDough results. Source files, the PDF, and annotated evidence are in <code>output/reports/taichidough_identification_survey/</code>.</p>
+<p>Read-only companion to the PDF. No simulator source was changed and no new material calibration was run for this assessment.</p>
+</footer>
+</div>

@@ -791,12 +791,12 @@ def fit_initial_particles_to_scene(points, args, calibration=None):
 
 
 def mpm_grid_stencil_is_safe(position, grid_size):
-    """Return whether the existing Taichi integer stencil base stays in the grid."""
+    """Return whether the quadratic stencil fits the grid, including its lower padding."""
     values = np.asarray(position, dtype=np.float64)
     if values.shape != (3,) or not np.isfinite(values).all() or int(grid_size) < 3:
         return False
-    base = np.trunc(values * int(grid_size) - 0.5).astype(np.int64)
-    return bool(np.all(base >= 0) and np.all(base + 2 < int(grid_size)))
+    base = np.floor(values * int(grid_size) - 0.5).astype(np.int64)
+    return bool(np.all(base >= -1) and np.all(base + 2 < int(grid_size)))
 
 
 def resize_initial_particles(points, count, seed):
@@ -881,8 +881,10 @@ def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
     F = ti.Matrix.field(dim, dim, dtype=ti.f32, shape=n_particles)
     Jp = ti.field(dtype=ti.f32, shape=n_particles)
     yielded = ti.field(dtype=ti.i32, shape=n_particles)
-    grid_v = ti.Vector.field(dim, dtype=ti.f32, shape=(n_grid, n_grid, n_grid))
-    grid_m = ti.field(dtype=ti.f32, shape=(n_grid, n_grid, n_grid))
+    # Nodes at -dx retain complete B-spline support at scene zero without moving the floor.
+    grid_shape = (n_grid + 1, n_grid + 1, n_grid + 1)
+    grid_v = ti.Vector.field(dim, dtype=ti.f32, shape=grid_shape, offset=(-1, -1, -1))
+    grid_m = ti.field(dtype=ti.f32, shape=grid_shape, offset=(-1, -1, -1))
     tool_x = ti.Vector.field(dim, dtype=ti.f32, shape=tool_vis_count)
     tool_center = ti.Vector.field(dim, dtype=ti.f32, shape=2)
     tool_quat = ti.Vector.field(4, dtype=ti.f32, shape=2)
@@ -1216,14 +1218,12 @@ def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
 
     @ti.func
     def position_has_safe_grid_stencil(position):
-        # This exactly matches the base conversion used by P2G and G2P below.
-        # Taichi's float-to-int conversion truncates toward zero, so checking a
-        # continuous lower bound would reject valid floor-adjacent particles.
-        base = (position * inv_dx - 0.5).cast(int)
+        # Match P2G/G2P floor rounding and the node at -dx on each axis.
+        base = ti.floor(position * inv_dx - 0.5).cast(int)
         return (
-            base.x >= 0 and base.x + 2 < n_grid
-            and base.y >= 0 and base.y + 2 < n_grid
-            and base.z >= 0 and base.z + 2 < n_grid
+            base.x >= -1 and base.x + 2 < n_grid
+            and base.y >= -1 and base.y + 2 < n_grid
+            and base.z >= -1 and base.z + 2 < n_grid
         )
 
     @ti.kernel
@@ -1284,7 +1284,7 @@ def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
                 if not particle_state_is_finite(p):
                     ti.atomic_min(invalid_pre_p2g_state[None], p)
                 else:
-                    base = (x[p] * inv_dx - 0.5).cast(int)
+                    base = ti.floor(x[p] * inv_dx - 0.5).cast(int)
                     fx = x[p] * inv_dx - base.cast(float)
                     w = [
                         0.5 * (1.5 - fx) ** 2,
@@ -1360,7 +1360,7 @@ def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
             elif not position_has_safe_grid_stencil(x[p]):
                 ti.atomic_min(invalid_post_g2p_stencil[None], p)
             else:
-                base = (x[p] * inv_dx - 0.5).cast(int)
+                base = ti.floor(x[p] * inv_dx - 0.5).cast(int)
                 fx = x[p] * inv_dx - base.cast(float)
                 w = [
                     0.5 * (1.5 - fx) ** 2,
@@ -1375,7 +1375,8 @@ def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
                     g_v = grid_v[base + offset]
                     weight = w[i].x * w[j].y * w[k].z
                     new_v += weight * g_v
-                    new_C += 4 * inv_dx * weight * g_v.outer_product(dpos)
+                    # Physical offsets have a quadratic B-spline moment of dx^2 / 4.
+                    new_C += 4 * inv_dx * inv_dx * weight * g_v.outer_product(dpos)
                 v[p] = new_v * velocity_damping
                 x[p] += dt * v[p]
                 projected_x = x[p]
@@ -1454,7 +1455,7 @@ def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
             grid_coordinate = position * inv_dx
             stencil_base = None
             if np.isfinite(grid_coordinate).all():
-                stencil_base = np.trunc(grid_coordinate - 0.5).astype(np.int64)
+                stencil_base = np.floor(grid_coordinate - 0.5).astype(np.int64)
             diagnostic = {
                 "schema": "taichidough/mpm-invalid-state/v1",
                 "failure_kind": failure_kind,
@@ -1464,7 +1465,7 @@ def build_sim(args, mesh_collision=None, return_sdf_contact_diagnostics=False):
                 "grid_size": n_grid,
                 "grid_coordinate": json_safe(grid_coordinate),
                 "stencil_base": json_safe(stencil_base),
-                "safe_stencil_base_interval": [0, n_grid - 3],
+                "safe_stencil_base_interval": [-1, n_grid - 3],
                 "position_scene": json_safe(position),
                 "velocity_scene": json_safe(velocities[particle_index]),
                 "affine_velocity": json_safe(affine[particle_index]),

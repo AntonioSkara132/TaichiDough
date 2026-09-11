@@ -1,0 +1,18 @@
+{
+  "Dough_Parameter_Identification.pdf": {
+    "bytes": 214083,
+    "sha256": "bab02d20fe486894237e49d18d3f27e08cf23ba53c738e3ace79812a77f5a55a"
+  },
+  "Dough_Parameter_Identification.html": {
+    "bytes": 166510,
+    "sha256": "2111094ed17ecfe2fbfc4ae62891a4a41c2ddc11b7cf55088cde7f4bb88ba791"
+  },
+  "REPORT.md": {
+    "bytes": 84343,
+    "sha256": "72442cc376543dcbd100cacf2e605b593c90d202ac7d0c9b1d52e0f27b7cad7f"
+  },
+  "reading_catalog.csv": {
+    "bytes": 15748,
+    "sha256": "d85eb15a5ab602c000c54ca994b181a4893f24f9cf659e1cd5fb0349e6270b0c"
+  }
+}

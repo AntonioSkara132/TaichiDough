@@ -1,0 +1,792 @@
+                                                                                                                                                              14678659, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/cgf.14720 by Kenny Erleben - Det Kongelige , Wiley Online Library on [23/11/2022]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+DOI: 10.1111/cgf.14720                                                                                   COMPUTER GRAPHICS forum
+                                                                                                                      Volume 0 (2022), number 0 pp. 1–14
+
+
+
+
+           Differentiable Depth for Real2Sim Calibration of Soft Body
+                                   Simulations
+
+                         K. Arnavaz,1       M. Kragballe Nielsen,1         P. G. Kry,2       M. Macklin3 and K. Erleben1
+
+
+                                                    1 University of Copenhagen, Copenhagen, Denmark
+                                                          2 McGill University, Montreal, Canada
+                                                           3 NVIDIA, Santa Clara, New Zealand
+
+
+
+
+       Abstract
+       In this work, we present a novel approach for calibrating material model parameters for soft body simulations using real data.
+       We use a fully differentiable pipeline, combining a differentiable soft body simulator and differentiable depth rendering, which
+       permits fast gradient-based optimizations. Our method requires no data pre-processing, and minimal experimental set-up, as we
+       directly minimize the L2-norm between raw LIDAR scans and rendered simulation states. In essence, we provide the first marker-
+       free approach for calibrating a soft-body simulator to match observed real-world deformations. Our approach is inexpensive as
+       it solely requires a consumer-level LIDAR sensor compared to acquiring a professional marker-based motion capture system. We
+       investigate the effects of different material parameterizations and evaluate convergence for parameter optimization in both single
+       and multi-material scenarios of varying complexity. Finally, we show that our set-up can be extended to optimize for dynamic
+       behaviour as well.
+       Keywords: animation, physically based animation, methods and applications, robotics, rendering, ray tracing
+       CCS Concepts: • Computing methodologies → Rendering; Physical simulation
+
+
+
+
+1. Introduction                                                                  motion tracking equipment, nor do we need to deal with computer
+                                                                                 vision problems which are common in marker-based methods.
+Selecting correct parameter values in material models is impor-
+                                                                                    Our work is no different from any other approach for calibration
+tant in a wide range of areas such as modelling soft tissue [BT07],
+                                                                                 of parameters in the sense that we are subject to the same funda-
+cloth [BTH*03, WOR11, MBT*12, MTB*13, YLL17, SNW20],
+                                                                                 mental challenges and pitfalls, i.e. changing boundary conditions
+fabrication [BKS*12, STC*13, CLSM15, CLMK17, YLYW18,
+                                                                                 or different deformation modes always lead to different estimated
+WWY*15, WDK*20], haptics [VCO20, PKLD20] and robotics
+                                                                                 values. This is no surprise as data only shows one mode of de-
+[YL16, BCC17, BBPC19, BSB*20, HBBC19, SLK*20]. Our work
+                                                                                 formation, and we optimize for that specific motion. This is not a
+is inspired by the problem of producing a computer model of a
+                                                                                 drawback when using simulation for predicting real-time motions
+soft robot that visually matches reality. In the field of computer
+                                                                                 for control problems, where getting accurately simulated deforma-
+graphics, many works have explored the field of material modelling
+                                                                                 tion is of crucial importance. The same requirement applies when
+to achieve more realistic-looking animations [XSZB15, XB17,
+                                                                                 solving design problems. Hence, the true strength of our work is that
+XLCB15, BJ05, LB15, MTGG11, SGK18, ITF04, WZB17]. In our
+                                                                                 we offer a complete alternative technology that is far less sensitive
+work, we use existing material models as these have been shown
+                                                                                 to the challenges of image capture or difficulties with markers. We
+to work well for the soft robotics cases we present. We use CAD
+                                                                                 have created a simple yet versatile and robust approach for calibrat-
+models directly in our work as we target soft fabricated objects, so
+                                                                                 ing a simulator to the real world.
+there is no need for scanning geometry. We match the simulation
+to the real world without any need for complicated force measure-                   Theoretically, to estimate material parameters, one needs many
+ments. As our approach is markerless, there is no need for expensive             pieces of information: the boundary conditions, force measure-
+
+
+
+© 2022 The Authors. Computer Graphics Forum published by Eurographics - The European Association for Computer Graphics and John Wiley & Sons Ltd.
+This is an open access article under the terms of the Creative Commons Attribution License, which permits use, distribution and reproduction in any medium,
+provided the original work is properly cited.
+                                                                            1
+                                                                                                                                                         14678659, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/cgf.14720 by Kenny Erleben - Det Kongelige , Wiley Online Library on [23/11/2022]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+2                                                    K. Arnavaz et al. / Differentiable Calibration
+
+                                                                               spent setting up data capture and performing parameter tuning. Our
+                                                                               contributions in this work include the following:
+
+                                                                               • A robust marker-less approach to compare real and simulated
+                                                                                 data;
+                                                                               • A straightforward way to perform gradient-based optimization of
+                                                                                 simulator parameters based on image similarity using a fully dif-
+                                                                                 ferential pipeline;
+                                                                               • Multiple real-world examples of both homogeneous and hetero-
+                                                                                 geneous soft bodies.
+Figure 1: Simulations with elastic parameters reported by silicone
+manufacturers (left) and fitted values (right). The depth camera im-              The code and the data including 3D models, images and videos
+age is shown in colour and the simulated objects are in grey. For              are publicly available at https://github.com/diku-dk/DiffCal.
+Ecoflex-50, the nominal Young’s modulus is 83 kPa, which does not
+match the real world when used with a coarse mesh simulation,
+while the value of 65 kPa is calculated by our method for an op-               2. Previous Work
+timal match.
+                                                                               Many works apply stereo-vision using multiple cameras in com-
+                                                                               bination with markers or feature point detection to track deforma-
+ments, knowledge of the material model, the undeformed shape, a                tions of material samples [BBO*09, WOR11, BKS*12, CLMK17,
+sufficiently high mesh resolution so that numerical stiffness is negli-        LLK19, HBBC19, LLKL*20, SB20, GHZ*20, LL20]. In some
+gible and a large enough set of motion samples to capture sufficient           cases, texture and optical flow are used to track a surface grid during
+variations of possible deformations. Expecting such complete infor-            a controlled manipulation setup [MBT*12]. For cloth, there exists
+mation is unrealistic when working in the real world. For instance,            single camera setups that exploit the 2D nature of a cloth sample
+one never knows the undeformed coordinates because gravity al-                 to create a simple way to measure cloth deformations [BTH*03,
+ways creates a bias. Objects have imperfections, thus, no true ho-             WOR11]. Marker-less methods exist and often use a physics-based
+mogeneous solid exists. Running simulations at high resolutions are            probabilistic approach to track the deformation of the soft ob-
+impractical due to memory limitations. This last point has pushed us           ject. This is quite robust to noise and occlusion [YL16, WWY*15,
+to use a coarse mesh to match reality with our simulator, which un-            WDK*20].
+doubtedly results in different elastic values than those measured in
+engineering laboratory settings. Similar to Hahn et al. [HBBC19],                 Our approach has no need for tracking markers or creating kine-
+we argue that plugging engineering measured parameters into a                  matic trajectories of known material positions. Instead, our method
+coarse mesh simulator will fail to predict the real world. Figure 1            minimizes the difference between rendered and captured depth im-
+highlights this phenomenon with a didactic example. Consequently,              ages. Control of light conditions, colours and textures is important
+our focus in this paper has been more on reducing the reality gap              for many works using stereo vision or cameras. Our work is less-
+rather than, for instance, reaching the same elastic parameters listed         dependent on such conditions as we only need depth information
+on data sheets as reported by silicone manufacturers.                          that can be captured by an inexpensive consumer-level LIDAR cam-
+                                                                               era. Other works have also used depth sensors such as Kinect or Intel
+   The key ingredient in our work is to combine differential depth             RealSense [WWY*15, GHZ*20, WDK*20] to capture depth data.
+rendering with differential physics and depth sensors. We create a             In these works, a point-correspondence between the point cloud and
+simple system that uses the chain rule to provide gradient informa-            a virtual model is created. This is used to determine the current
+tion directly from images, which can be easily integrated within ex-           deformation of the object. We have no need for establishing point
+isting optimization frameworks.                                                correspondences, as we compare depth data directly. These works
+                                                                               typically need multiple cameras, as they are sensitive to occlusion
+   Differential rendering is related to inverse rendering and is               events. We show that by selecting camera angles carefully, we can
+an active research field [ZJL20]. Approaches range from finite                 reproduce material behaviour from one camera.
+difference-based approximate differential rendering [LB14], to ray
+tracing [LADL18] and scan conversion [CLG*19]. In this work, we                   Many works have explored optimizing simulation parameters by
+apply a differentiable ray-tracer to emulate a LIDAR scanner.                  minimizing the squared difference between tracked and simulated
+                                                                               positions [WWY*15, dABPSA*18, HBBC19, BBPC19, LLK19,
+   The idea of using differentiable simulators for tuning parameters           DHDw19, LLKL*20, KAMS20, GHZ*20, MMG*21]. Force equi-
+is obvious. Many works estimate mass and friction of rigid bodies              librium constraints can be added to the minimization problem when
+[dABPSA*18, DHDw19, LLKL*20, KAMS20, SB20, MMG*21].                            quasi-static problems are solved. This allows sensitivity analysis
+Most of these use synthetic data generated with simulators such as             to be applied to determine gradients for the objective function
+Bullet or MuJoCo. Others tune material parameters such as stiff-               [MBT*12, BCC17, YLYW18, HBBC19, BBPC19]. If the simulated
+ness and density for cloth and soft bodies [LLK19, LL20, GHZ*20,               positions are known as a function of material parameters, one may
+MMG*21]. As demonstrated in Chen et al. [CLMK17], simulated                    omit the force-equilibrium constraint [YLYW18].
+behaviour depends heavily on the discretization of the soft object.
+Thus, parameters need to be re-calibrated whenever the object, its                Optimization methods that have been applied to find optimal
+discretization or the simulator changes. Our work aims to create a             simulation parameters fall into two categories. One is gradient-
+robust and efficient pipeline, which can significantly reduce time             free approaches like the Nelder–Mead algorithm [WWY*15] and
+
+© 2022 The Authors. Computer Graphics Forum published by Eurographics - The European Association for Computer Graphics and John Wiley & Sons Ltd.
+                                                                                                                                                                 14678659, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/cgf.14720 by Kenny Erleben - Det Kongelige , Wiley Online Library on [23/11/2022]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+                                                    K. Arnavaz et al. / Differentiable Calibration                                                          3
+
+CMA-ES [DHDw19]. The other category is based on gradient in-                  terials without the use of markers. Murthy et al. [MMG*21] were
+formation and cover methods such as BFGS [WOR11, HBBC19],                     the first to suggest using differentiable rendering in combination
+Levenberg–Marquardt [SLK*20], simulated annealing [BTH*03],                   with a differentiable simulator, gradSim. They use a loss function
+descent methods [YLYW18] and similar. Gradient-free methods are               on framebuffer pixels from synthetic examples only. To extend to
+inferior in terms of performance compared to gradient-based ap-               real data, this method will need to address colours, light conditions
+proaches [MMG*21]. Hence, our work uses a gradient-based ap-                  and textures. We demonstrate that depth-based rendering works for
+proach. There is a sub-class of techniques that estimate gradients            real-life data. To elaborate further, the gradSim approach requires
+using finite differences [WOR11], Gaussian processes [PKLD20]                 a photorealistic differentiable render that can reproduce images as
+and sampling [SLK*20]. However, these scale poorly and instead,               captured by a real camera. The DIB-R renderer used in this work
+we use a differentiable simulator to obtain exact gradients.                  will compare poorly with real images captured from a vision sys-
+                                                                              tem. Thus, all gradSim examples only use simulated videos, and the
+   Recently, many works have presented differentiable simula-                 differentiable render relies on flat-shaded renderings of the anima-
+tors for rigid bodies, articulated rigid bodies, cloth and flu-               tions. The work sheds no light on how to handle real-world bias and
+ids [dABPSA*18, SF18, LLK19, DHDw19, LL20, LLKL*20,                           imperfections. In contrast, our work takes data directly from the real
+KAMS20, SB20, HMZS20]. Recent work addressed multi-body                       world as raw LIDAR images without any control of lighting condi-
+simulations of both rigid and soft bodies [MEM*20, GHZ*20]. In                tions. Our differentiable rendering approach is specially tailored to
+our work, we focus on hyper-elastic soft materials that are connected         work with depth rendering.
+to rigid fixed objects. Our approach is most similar to that of Murthy
+et al. [MMG*21]. The techniques used for providing gradient infor-
+mation in differentiable simulators are many. Analytical gradients            3. Method
+can be computed for linear complementary problem, quadratic pro-
+gramming models and staggered projections [dABPSA*18, LLK19,                  We consider a soft body simulation of time t as a differentiable func-
+LLKL*20, LL20, KAMS20, SB20]. Many works rely on reverse                      tion, S (t; p), which depends on the material parameters p and re-
+mode auto differentiation [DHDw19, HMZS20, WAB20]. Recent                     turns the simulation state, st . Similarly, we define a depth-renderer
+work combines the Adjoint method, source code transformation and              as a differentiable function, R(st ), that projects scene geometry to
+taping [GHZ*20, MMG*21]. A programming language for creating                  an image, It . Given a set of n target images, I∗ = {It∗1 , . . . , It∗n }, cap-
+differentiable simulators has even been proposed by Refs. [HLS*19,            tured at times, t = {t1 , ..tn }, we leverage the differentiability of our
+HAL*20].                                                                      pipeline to compute optimal material parameters, p∗ , such that
+                                                                                                              1
+   Wang et al. [WOR11] and Miguel et al. [MBT*12] both address                                p∗ = arg min          R(S (t; p)) − It∗ 2 .               (1)
+cloth. In these works, a piece of square cloth is clamped on both                                         p   n t∈t
+sides and subjected to buckling manipulation. Results show exam-
+ples comparing the buckling of a piece of cloth side-by-side with a              In other words, we choose parameters maximizing visual likeli-
+real capture. Wang et al. [WOR11] show impressive complex drap-               ness between a set of real images I∗ and rendered simulation states.
+ing examples proving that their optimized parameters generalize to            The parameter-wise derivatives w.r.t. each target image is, therefore,
+simulations with complex geometry. It is difficult to assess how such         given by
+complex draping compares to real ground truth data. In contrast, in
+our work, we focus on elastic solids and calibrate our simulations to                          ∂It − It∗ 2   ∂st ∂It ∂It − It∗ 2
+                                                                                                             =    ·   ·              ,                    (2)
+both simple beam-like geometries and more complex shapes, such                                     ∂p          ∂p ∂St      ∂It
+as soft robotic fingers and the XYZ Dragon model. In all our cases,
+we include a quantitative comparison to real data including a study           which we can use to perform gradient-based optimization of mate-
+of the variance. Furthermore, we use a relatively small number of             rial parameters. An overview of our method can be seen in Figure 2.
+Dirichlet conditions. Comparing over-constrained cloth capture to
+solid capture is not within the scope of our work because we in-
+                                                                              3.1. Differentiable rendering
+stead target soft bodies in the context of soft robotics, where soft
+deformable fingers of various designs are often mounted on a fixed            Rendering is not inherently differentiable, as both ray-tracers and
+base and made to move using cables or pneumatic activation. We                rasterization-based graphics pipelines need to deal with discontinu-
+include an example showing a cable-driven soft-robot finger in our            ities in the scene. Rendering depth simplifies the problem of dif-
+results.                                                                      ferentiability, but problems like occlusion events can still occur.
+                                                                              In this work, we use the differentiable ray-tracer presented by Li
+   Chen et al. [CLMK17] focus on elastic solids and their compar-
+                                                                              et al. [LADL18], which solves these problems by computing deriva-
+isons to the real world include optimized geometric designs which
+                                                                              tives using a Monte Carlo approach to estimate the pixel integral and
+improve a user’s ability to produce the desired motion, such as hav-
+                                                                              the Dirac delta terms at occlusion boundaries. Here, we will briefly
+ing a small jumping mechanism leap over an obstacle. Fast opti-
+                                                                              summarize the primary idea from Li et al., but we refer the reader
+mizations are aided by coarse models with tuned mechanical pa-
+                                                                              to the original paper for a more rigorous description.
+rameters so as to avoid numerical stiffening. Our work addresses
+numerical stiffening in coarse models in a similar manner.                       The general 2D pixel filter integral describes the pixel colour
+                                                                                                       
+   Geilinger et al. [GHZ*20] are close to our work. The differences
+are that we use semi-implicit Euler and support heterogeneous ma-                               Ic =          f (x, y)L(x, y)dxdy                (3)
+
+
+© 2022 The Authors. Computer Graphics Forum published by Eurographics - The European Association for Computer Graphics and John Wiley & Sons Ltd.
+                                                                                                                                                                         14678659, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/cgf.14720 by Kenny Erleben - Det Kongelige , Wiley Online Library on [23/11/2022]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+4                                                            K. Arnavaz et al. / Differentiable Calibration
+
+                                                                                       to re-write the integral as
+                                                                                             
+                                                                                                      δ(αi (x, y; st ))∇θ (αi (x, y; st )) fi (x, y; st )dxdy =    (8)
+                                                                                              i
+
+                                                                                                    
+                                                                                                                 ∇αi (x, y; st )
+                                                                                                                                      fi (x, y; st )dσ (x, y),     (8)
+                                                                                              i α (x,y;s )=0
+                                                                                                               ∇x,y αi (x, y; st )2
+                                                                                                 i      t
+
+
+                                                                                       where σ (x, y) is the measure of the length on the edge. For an edge
+                                                                                       with endpoints (ax , ay ) and (bx , by ), the edge equation is given by
+
+                                                                                                  α(x, y) = (ay − by )x + (bx − ax )y + (ax by − bx ay ),          (9)
+Figure 2: The data flow of our differentiable pipeline. The simula-
+tion function S produces a state st using material parameters p. The                   which means the edge equation derivatives are given by
+state, st , is then projected to an image, It , which we compare against                                          ∂α            ∂α
+a target image, It∗ , resulting in a scalar loss, . The chain rule can                                               = by − y,     = x − bx ,                    (10)
+                                                                                                                  ∂ax           ∂ay
+then be applied to compute the derivative of  w.r.t. material param-
+eters p.                                                                                                          ∂α             ∂α
+                                                                                                                      = y − ay ,     = ax − x.                    (10)
+                                                                                                                  ∂bx            ∂by
+for pixel filter f and radiance L, but as we will only be rendering                    We can now propagate the derivatives from the projected triangle
+depth, we can ignore the radiance term. We are interested in com-                      vertices as
+puting pixel-wise derivatives with respect to the simulation state,                                  ∂α       ∂α ∂ak         ∂α ∂bk
+st , so we re-parameterize the pixel filter as f (x, y; st ), yielding the                               =                  +         .            (11)
+                                                                                                     ∂st            ∂ak ∂st   ∂bk ∂st
+state-dependent integral,                                                                                   k∈{x,y}
+                            
+                                                                                       Finally, we can combine the Dirac delta estimated gradients with
+                      Ic =       f (x, y; st )dxdy.                    (4)             the derivatives from the continuous term in Equation (7) to obtain
+                                                                                       the pixel-wise derivatives of our rendered image, I.
+In this work, we will only be rendering the surface of tetrahedral
+meshes, which means discontinuities will occur only at triangle
+edges. Each triangle edge can be seen as splitting the space into two                  3.2. Differentiable physics
+regions: inside and outside of the triangle. Referring to the inside as
+f + and the outside as f − , the space described by the ith edge can be                Our differentiable soft-body physics simulator is based on the work
+modelled as:                                                                           of Murthy et al. [MMG*21]. Our choice is not relevant to the differ-
+                                                                                       entiable depth concept that we are introducing. Any differentiable
+        θ (αi (x, y; s)) fi+ (x, y; s) + θ (−αi (x, y; s)) fi− (x, y; s),   (5)        simulator can be used in principle, although the differences in time-
+                                                                                       stepping are important when considering auto-differentiation. The
+where θ is the Heaviside step function and αi is the edge equation of                  semi-implicit flavour of our choice can deplete memory and call for
+the ith edge. The integral from Equation (4) can therefore be trans-                   taping techniques. Full-implicit can do larger time steps and has no
+formed into a sum of Heaviside step functions as                                       taping thanks to the adjoint method [GHZ*20]. It is a matter of prac-
+                                                                                  tical trade-offs. Our simulator is simpler to implement and fits easily
+         f (x, y; st )dxdy =         θ (αi (x, y; st )) fi (x, y; st )dxdy.            into auto-diff tools but requires taping due to large GPU memory us-
+                                 i                                                     age. We do note that it is likely that using the adjoint method could
+                                                                            (6)        improve the scalability of the method with respect to the number
+                                                                                       of tetrahedral elements used so that the method could be applied to
+The derivative of this integral is written as a sum of two terms:
+                                                                                       more complex geometries.
+      
+   ∇           θ (αi (x, y; st )) fi (x, y; st )dxdy =            (7)                     We use the neo-Hookean constitutive model from Smith
+        i                                                                              et al. [SGK18], which defines the following elastic strain energy
+                                                                                    density:
+                 δ(αi (x, y; st ))∇θ (αi (x, y; st )) fi (x, y; st )dxdy+   (7)
+                                                                                                           μ           λ          μ
+        i
+                                                                                                    =       (IC − 3) + (J − α)2 − log(IC + 1).                   (12)
+                                                                                                        2           2          2
+                 ∇ fi (x, y; st )θ (αi (x, y; st ))dxdy,                    (7)
+                                                                                       Here λ and μ are the Lamé parameters, and α is a constant. The
+        i
+                                                                                       scalar J = det(F) is the relative volume change, and IC = tr(FT F) is
+where δ is the Dirac delta function. Here, ∇ fi (x, y; st ) can be found               the first Cauchy invariant of strain. The matrix F is the deformation
+by automatic differentiation, but to estimate the gradient of the                      gradient, which is a function of the physical state s of the system. In-
+first integral of Equation (7), we need to eliminate the discontin-                    tegrating the energy density from Equation (12) and summing over
+uous Dirac delta function. The Dirac delta function is 0 every-                        each tetrahedral element gives the total elastic potential. We allow
+where except at the edge dividing the space in half; that is, where                    each element to have a unique Young’s modulus, so each contributes
+αi (x, y, st ) = 0. We can, therefore, perform a variable substitution                 one additional variable to the material parameters p. This allows us
+
+© 2022 The Authors. Computer Graphics Forum published by Eurographics - The European Association for Computer Graphics and John Wiley & Sons Ltd.
+                                                                                                                                                           14678659, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/cgf.14720 by Kenny Erleben - Det Kongelige , Wiley Online Library on [23/11/2022]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+                                                       K. Arnavaz et al. / Differentiable Calibration                                                 5
+
+to optimize for heterogeneous materials. We model damping using
+a strain-rate dissipation potential [SBO18] of D = (Ḟ), where Ḟ
+is the time-derivative of the deformation gradient. We control how
+much damping we want in the system by a scaling parameter β,
+which we also add to p.
+
+   Forces are derived from the energy gradient analytically and inte-
+grated using a semi-implicit Euler. To compute gradients of the state
+with respect to material parameters, we use a source-code trans-
+formation approach that generates parallel GPU kernels for reverse
+mode auto-differentiation [HAL*20]. The use of semi-implicit in-
+tegration places some time-step size restrictions on our method that
+can lead to large memory requirements when simulating long time
+spans. To alleviate this, we use checkpointing [GW08], which re-
+plays some computations from snapshots of the state, trading addi-
+tional computation for reduced memory use.
+
+   Conceptually, our physics simulator provides a forward mapping
+from some initial state to the final state s at a time t in the future. In
+addition, it provides a reverse mapping for the gradients by evaluat-
+ing the following:
+                            ∂ ∂s   ∂
+                              ·   =    .                             (13)
+                            ∂s ∂p   ∂p
+Combining this with our differentiable renderer, we can use the
+chain rule to compute gradients of our entire pipeline with respect              Figure 3: The physical set-up for the simple homogeneous soft body
+to material parameters as follows:                                               experiments. Camera angles were chosen arbitrarily, with the only
+                                                                                 requirement that the ArUco markers had to be visible.
+                         ∂ ∂I ∂s   ∂
+                           ·  ·   =    ,                             (14)
+                         ∂I ∂s ∂p   ∂p
+                                                                                 change in the rendered image. For all experiments, the goal of the
+where  is a scalar loss. This allows us to use gradient-based op-
+                                                                                 optimization is to minimize the L2 norm of the difference between
+timization to minimize  and fit simulated material parameters to
+                                                                                 target and rendered images. As we compare the rendered images to
+real-world data.
+                                                                                 the raw depth data, the optimal material parameters might not re-
+                                                                                 sult in a loss of 0, but instead a constant value related to the amount
+4. Experiments and Results                                                       of non-zero background pixels in the target image. We implement
+                                                                                 the loss function and optimizer using PyTorch [PGM*19] to benefit
+We validate our method on a set of real silicone test objects. For               from its automatic differentiation framework. For each object, we
+all objects, we design and 3D-print multi-part moulds. Small dow-                show the mean convergence rate of 10 repeated experiments with
+els are added to each mould part and clamps are used to decrease                 initial Young’s modulus chosen randomly within ±35–45% of the
+the likelihood of leakage. For silicone, we use Ecoflex-50 and                   minimizer. For simplicity, we assume that our materials have a Pois-
+MoldStar-15, which we colour red and blue to make the materials                  son’s ratio of 0.49 for all of our experiments. In principle, one can
+more distinguishable.                                                            optimize for the Poisson ratio too. It is worth noting that calibration
+                                                                                 is often a pre-process and not a run-time system. Hence, we do not
+   We place our test objects in a cube test environment similar to the
+                                                                                 worry about absolute timings but nevertheless, report on iteration
+set-up of Holsten et al. [HENDE19] and force them into desired con-
+                                                                                 counts and convergence behaviours. Table 1 provides an overview
+figurations using 3D-printed clamps. We capture data using a single
+                                                                                 of our experiments and results.
+Intel L515 LIDAR scanner. See Figure 3 for an example of how the
+soft objects were placed in the cube. The clamps are mapped directly
+to Dirichlet boundary conditions, similar to Hahn et al. [HBBC19].               Passive deformation. We start by demonstrating that our differen-
+To match the rendered scene to the physical set-up, we estimate the              tial depth pipeline applies to the simple homogeneous objects from
+camera pose using ArUco [GJMSMCMJ14] markers and construct                       Figure 3 in passive set-ups subject only to gravity. For this experi-
+our projection matrix using the intrinsic parameters of the L515                 ment, the material model is parameterized by a single Young’s mod-
+camera. We place the ArUco marker on the robot clamp, such that                  ulus, which is used to compute the Lamé parameters of our neo-
+we can easily place the soft object in the virtual scene.                        Hookean model. We expect to see convincing convergence towards
+                                                                                 solutions that match real-depth images. Our cases include variation
+   For all experiments, we use the Adam optimizer with decaying                  in camera angles, lighting conditions, shape diversity and materials.
+momentum [CWLK22] using parameters β1 = 0.9, β2 = 0.999 and                      The convergence plot of the loss functions can be found in Figure 4.
+a learning rate, η, scaled such that the sensitivity of the input pa-            As expected, the optimizer converges in a few iterations for all of
+rameters and the output loss is similar. In other words, we select η             the randomly initialized runs. Figure 5 shows a visual comparison
+to ensure that the updated parameters produce an observable visual               between sample starting iterates and minimizers for the MoldStar-
+
+© 2022 The Authors. Computer Graphics Forum published by Eurographics - The European Association for Computer Graphics and John Wiley & Sons Ltd.
+                                                                                                                                                                       14678659, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/cgf.14720 by Kenny Erleben - Det Kongelige , Wiley Online Library on [23/11/2022]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+6                                                         K. Arnavaz et al. / Differentiable Calibration
+
+Table 1: Summary of experimental setup and results. Row numbers 1–10 and 11–12 correspond to passive deformation and viscosity estimation experiments,
+respectively. All experiments are repeated 10 times with random initial parameters. Gravity is applied in all of the experiments. We use silicone in all experiments
+and keep the Poisson’s ratios fixed at 0.49.
+
+
+
+
+Figure 4: Convergence for the cantilever and spine fabricated us-
+ing Ecoflex-50 and MoldStar-15. For all four soft objects, we used                   Figure 5: A visual comparison between starting iterates (left) and
+10 random initial parameters. The mean of the loss function is                       minimizers (right) for the MoldStar-15 cantilever and spine. In all
+shown in bold and its one standard deviation as shaded regions.                      images, the simulated cantilever is rendered in grey.
+
+
+15 cantilever and spine experiments. Here, we show the depth image                   different initial values for the hanging and twisted cantilever can
+captured by the L515 camera with the rendered starting iterates and                  be observed in Figure 6. For all 10 experiments, the two material
+minimizers imposed on top in grey. The digital cantilever consists                   parameters were initially assigned the same value. In Figure 7, vi-
+of 1750 elements, while the spine model has 1327 tetrahedra. For                     sual inspections of sample starting iterates and minimizers can be
+the Ecoflex-50 experiments, we found the mean Young’s modulus                        found for each experiment. The same digital model of the cantilever
+of the minimizers to be 65 and 44 kPa for the cantilever and spine,                  was used for both experiments and consisted of 3414 elements. The
+respectively. The mean Young’s modulus of the minimizers for the                     mean minimizer of the hanging cantilever was found to be 170 and
+MoldStar-15 experiments was given by 149 kPa for cantilever and                      77 kPa for the MoldStar-15 and Ecoflex-50 parts, respectively. For
+110 kPa for spine model.                                                             the twisted cantilever, the mean minimizer was given by 217 and
+                                                                                     119 kPa.
+Heterogeneous materials. Our method easily extends to heteroge-                         In many fabricated objects, where materials have been mixed
+neous materials and can also be applied to larger deformations. We                   unevenly or contain internal structures, manually designing cor-
+fabricate a two-part cantilever and subject it to the same set-up as                 rect material distributions is infeasible. Our method handles this
+its homogeneous counterparts. We then force it into a more stress-                   problem by optimizing directly for tetrahedron-wise material pa-
+ful deformation by twisting the previously free-hanging part 180º.                   rameters. We repeat the 2-material cantilever experiments, but this
+The two set-ups can be found in Figure 6. For both experiments,                      time optimizing for the tetrahedron-wise parameters. For both ex-
+we parameterize the elastic material model by two Young’s modu-                      periments, we use a digital model of the cantilever consisting of
+lus values instead of one, such that each half of the cantilever has                 3414 tetrahedra. In Figure 8, we show an example of a distribution
+its own parameter. The outcome of running 10 experiments from                        of Young’s modulus for minimizers of both experiments as well
+
+© 2022 The Authors. Computer Graphics Forum published by Eurographics - The European Association for Computer Graphics and John Wiley & Sons Ltd.
+                                                                                                                                                          14678659, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/cgf.14720 by Kenny Erleben - Det Kongelige , Wiley Online Library on [23/11/2022]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+                                                    K. Arnavaz et al. / Differentiable Calibration                                                   7
+
+
+
+
+                                                                              Figure 8: The result of optimizing the material parameters of each
+Figure 6: Physical set-up for the 2-material composite cantilever             tetrahedron for the hanging and twisted cantilever. The result-
+experiments and their respective material parameter convergence               ing tetrahedron-wise distribution of Young’s modulus for randomly
+plots. Notice that plots show 10 experiments with random initial              picked minimizers has been visualized next to the convergence plots.
+parameters; the bold lines show the mean of the loss function and             Observe the very small standard deviation (shaded regions) of our
+shaded regions show one standard deviation.                                   10 experiments.
+
+
+
+                                                                              can be added as an extra penalty term to our loss function, or as an
+                                                                              extra derivative term to our pipeline. The fact that we get a more
+                                                                              speckled distribution underlines that one can not expect to throw
+                                                                              real-world values into a fast simulator to match the real world.
+
+                                                                                 From Figures 6 and 8, we note that optimizing for tetrahedron-
+                                                                              wise parameters results in a similar minimum function value as
+                                                                              the low-parameter counterparts. For both cases, we also observe a
+                                                                              less noisy optimization for the tetrahedron-wise experiments, which
+                                                                              indicates that the optimizer benefits from having more tunable
+                                                                              parameters.
+
+
+                                                                              Generalizing to different deformation modes and boundary
+                                                                              conditions. In our experiments, so far we have optimized for only
+                                                                              a single deformation mode. We obtain different results for the same
+                                                                              models and materials depending on the changes in the setup. This is
+Figure 7: A visual inspection of the 2-material experiments. In the           to be expected because the observed individual deformations make
+top row, we visualize a starting iterate and minimizer for the hang-          us fit the simulator to different principal deformation modes of the
+ing cantilever, and in the bottom row, we visualize a starting iterate        physical models. Changing the experimental setup or boundary con-
+and minimizer for the twisting experiment. For both experiments,              ditions will lead to different results as we are fitting to different de-
+the simulated cantilever is rendered in grey.                                 formation modes. This insight is related to how subspace modelling
+                                                                              approaches work. One seeks a subset of individual modes from a
+                                                                              general model, each mode has its own ‘stiffness’ given by a singular
+as the convergence plots. The aim of our experiment is not to get             value or similar. When calibrating a simulator, we have the reverse
+smooth real-world parameter fields. The point of our twist experi-            scenario. We should expose the simulator to data examples—aka de-
+ment is to demonstrate that we can handle heterogeneous solids. A             formation modes—that span the general behaviour one wishes the
+regularizer could be used as a model to achieve smoother solutions,           simulator to cover with high fidelity. This feat is shared by all pa-
+or the tet-wise values could be interpolated from some coarse sam-            rameter estimation methods regardless of them being marker-based
+pling to add more model semantics to the solution. Such extensions            or not.
+
+© 2022 The Authors. Computer Graphics Forum published by Eurographics - The European Association for Computer Graphics and John Wiley & Sons Ltd.
+                                                                                                                                                      14678659, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/cgf.14720 by Kenny Erleben - Det Kongelige , Wiley Online Library on [23/11/2022]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+8                                                   K. Arnavaz et al. / Differentiable Calibration
+
+
+
+
+                                                                              Figure 10: The convergence of the viscosity calibration experiment
+Figure 9: Optimizing for both bending and twisting deformations               for the fine (left) and coarse (right) cantilever models. Experiments
+simultaneously. On the left, the convergence plot of each loss func-          were repeated 10 times with initial random parameters. The mean of
+tion and the combined one is shown. On the right, we have the final           the loss is in bold, and shaded regions show one standard deviation.
+distribution of tet-wise Young’s modulus values. As expected, we ob-
+tain a different solution from that of Figure 8, which is optimized on
+single modes.                                                                    We calibrate for correct viscous behaviour by allowing the op-
+                                                                              timizer to change Young’s modulus of the material, the damping
+   Our approach does allow for an easy combination of different               parameter described in Section 3.2 and the density of the material.
+modes by simply adding loss functions from the individual mod-                We estimate these three parameters for the MoldStar-15 cantilever
+els to obtain a combined loss function. We demonstrate this by                and run the experiment 10 times using randomly initialized parame-
+combining the bending and twisting cantilever beam examples into              ters. The loss is the mean of the L2-norms of the difference between
+one where we optimize for the shared tet-wise Young’s modulus                 target images and rendered simulation states. For this experiment,
+to make the simulator match both modes at the same time. Note                 12 images were captured at 30 Hz, resulting in roughly 0.4 s of mo-
+that both boundary conditions and deformations are different in the           tion. We perform this experiment for two differently discretized can-
+two examples. Figure 9 shows the convergence plots as well as the             tilever models; one consisting of 1750 elements and one consisting
+final distribution of the Young modulus. The undeformed coordi-               of 3414. We show the mean convergence of 10 randomly initialized
+nates are used for the visualization of Young’s modulus solution.             experimental runs in Figure 10, and perform a visual inspection of
+As expected, we obtain a different solution from those of the single-         a randomly selected starting iterate and minimizer pair in Figure 11
+mode optimizations.                                                           for the coarsest mesh. For the coarse mesh, the mean minimizer had
+                                                                              Young’s modulus of 223 kPa, a damping factor, β, of 11.1 and a
+                                                                              density of 1050 kg/m3 . On the other hand, the mean minimizer of
+Viscosity estimation. We wish to show that our method can also be             the fine mesh was given by Young’s modulus of 277 kPa, a damping
+applied to calibrate the viscous behaviour of soft objects. To handle         factor of 8.8 and a density of 1057 kg/m3 .
+the calibration of a dynamic motion, we need data on the soft object
+in motion. During optimization, we then continuously render the
+state of our simulation, corresponding to the captured frames of the          Complex shapes. So far, the soft bodies in our experiments have
+motion. We use a similar set-up to the one we used to capture static          consisted of simple symmetric designs. As our method relies on op-
+deformations, but add a small ledge that can be removed by pulling            timizing for visual likeness between rendered states and captured
+a trigger. This allows us to match the beginning of our simulation to         images, we expect our method to work at least as well for more
+the frame where the ledge was removed.                                        complex objects. This is an important feature of the differentiable
+
+
+
+
+       Figure 11: Visualizations of simulations of a starting iterate (top) and minimizer (bottom) for the dynamic motion experiment.
+
+© 2022 The Authors. Computer Graphics Forum published by Eurographics - The European Association for Computer Graphics and John Wiley & Sons Ltd.
+                                                                                                                                                       14678659, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/cgf.14720 by Kenny Erleben - Det Kongelige , Wiley Online Library on [23/11/2022]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+                                                   K. Arnavaz et al. / Differentiable Calibration                                                 9
+
+                                                                             In general, material parameters are not universal constants but rather
+                                                                             depend on the material model, i.e. the constitutive equation used.
+                                                                             Hence, one cannot simply swap a Young’s modulus value from a
+                                                                             linear material model into a non-linear one and expect to get the
+                                                                             same material behaviour.
+
+                                                                                Our framework optimizes the parameters of any material
+                                                                             model to make the simulated deformations as close as possi-
+                                                                             ble to the observed deformations from the depth images. We
+                                                                             note that the silicone we use has a material behaviour that
+                                                                             corresponds well with the stable neo-Hookean material model.
+                                                                             To demonstrate the influence of the choice of the material
+                                                                             model, we have compared results with Mooney–Rivlin and lin-
+                                                                             ear elasticity models. Figure 14 shows that the obtained defor-
+                                                                             mations are as close to the observations as the models allow
+                                                                             but will have different material parameter values depending on
+                                                                             the model choice. The optimized Young’s modulus for the neo-
+                                                                             Hookean, Mooney–Rivlin and linear elastic models are 57, 95 and
+                                                                             150 kPa, respectively. As expected, we obtained quite different
+                                                                             values.
+Figure 12: The XYZ RGB Dragon set-up and the convergence of
+the material parameter optimization, above an example of a start-               The deformations obtained from the simulation can be different
+ing iterate and minimizer of the optimization. We show the mean of           if one uses different models. The choice of model essentially dic-
+the loss function in bold and its one standard deviation as shaded           tates the feasible sub-space of motions that can be achieved. As a
+regions over 10 random initial parameters.                                   result, a poor choice of model may cause the optimization not to re-
+                                                                             produce the observed deformation very well, as seen in the middle
+pipeline, as it will otherwise be unsuited for performing simulator          and bottom row of Figure 14 to varying degrees.
+calibration for real fabricated objects. We explore this robustness
+towards complex shapes with potential self-occlusions by calibrat-           Beyond elasticity. Lastly, we examine how our approach extends
+ing a simulation of an Ecoflex-50 version of the XYZ RGB Dragon              to optimize for parameters other than elasticity. We focus on ca-
+subject to gravity. The set-up and the results can be found in Fig-          ble control for soft robotic fingers, and therefore, we have added
+ure 12. Note that while the loss function only decreases by a small          cables to a soft finger suspension. We expect our method to visu-
+amount, we still observe a noticeable change in the deformation of           ally achieve similar configurations as the real finger by optimizing
+the dragon. The mean Young’s modulus of the minimizer for the                for cable rest length. Figure 15 shows the target configuration, the
+XYZ RGB Dragon experiment was 95 kPa.                                        minimizer and the convergence of the optimization for three increas-
+                                                                             ingly difficult cable pulls. We observe a good match between sim-
+Numerical coarsening. The differentiable depth approach can be               ulated and real robot fingers. Further, we notice the optimization
+applied to fit coarse meshes suffering from numerical stiffness to           problem becomes more difficult for smaller cable lengths. This is
+the behaviour of high-resolution meshes. We use a rendered image             expected, due to the larger deformations, but our method still han-
+of a high-resolution XYZ RGB Dragon to replace the LIDAR depth               dles the challenge gracefully.
+image and apply our technique to the coarsened versions of the
+Dragon. Dirichlet boundary conditions are placed on the Dragon
+from the hind legs to the tip of the tail, and the target image was          5. Limitations and Discussion
+generated using Young’s modulus of 65 kPa. We anticipate our                 In our experiments, it was sufficient to use a single off-the-shelf LI-
+approach to decrease Young’s modulus of the coarser meshes, in               DAR camera. LIDAR is active light, and therefore, the reflectance
+order to counteract the increasing numerical stiffness. The com-             of dissipative media can create noise near the silhouette of objects.
+putational footprint should increase w.r.t. the number of elements,          Further, the inexpensive equipment has limitations in focal length
+which will reflect on both the computational time of the simulator           which are important for getting sufficiently high-resolution data.
+and the optimizer. The convergence behaviour should be indifferent           Our setup was robust towards these potential limitations in hardware
+to the coarseness of the Dragon as the gradient is largely given             and worked well under different light conditions. Alternatively, one
+by the difference between the rendered target and the iterate. The           may apply object coating if reflectance noise is a huge concern or
+resulting deformations and minimizers can be found in Figure 13.             apply another type of depth sensor technology such as stereo vision
+As seen from the listed results, there is a good agreement between           with specialized lens systems. The benefits of our choice are its in-
+the measurements and our hypotheses.                                         expensiveness and straightforwardness.
+
+Effect of different material models. The choice of the material                All our experiments take full advantage of standard optimization
+model can have a huge influence on the material parameter values.            software on simple L2-norms of depth images and differential depth
+
+
+© 2022 The Authors. Computer Graphics Forum published by Eurographics - The European Association for Computer Graphics and John Wiley & Sons Ltd.
+                                                                                                                                                     14678659, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/cgf.14720 by Kenny Erleben - Det Kongelige , Wiley Online Library on [23/11/2022]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+10                                                 K. Arnavaz et al. / Differentiable Calibration
+
+
+
+
+Figure 13: The XYZ RGB Dragon deformed under gravity for a set of meshes with varying coarseness. The Dragon is kept in place by
+Dirichlet conditions placed on the left part of the abdomen, feet and tail. In the left-most column, a mesh of 17,827 elements can be found,
+which was used to render a target depth image. The target dynamic simulation has Young’s modulus of 65 kPa, and was run until it reached
+static equilibrium after 293.18 s. The Young’s modulus of the material was optimized for each of the coarser meshes in order to minimize the
+L1-norm between the target image and the final rendered simulation state. All mesh resolutions arrived at a minimizer within a small number
+of function evaluations and as expected, arrived at lower optimal material parameters due to numerical stiffness.
+
+
+
+
+                                                                             Figure 15: Convergence of the soft robotic finger actuated by a ca-
+                                                                             ble. From top to bottom the cable was pulled 18, 31 and 46 mm.
+                                                                             Minima are marked by black squares. The soft finger was fabricated
+                                                                             using MoldStar-15. The visual accuracy of our method is verified by
+Figure 14: Comparison of various constitutive models for the                 the depth rendered versions of the finger, actuated according to the
+hanging Ecoflex cantilever experiment. Top row: stable neo-                  minimizer of the objective function.
+Hookean model; middle row: Mooney-Rivlin model; bottom row:
+linear elasticity model. The depth images shown in colour and ren-
+                                                                             render differences. This makes markers and point correspondences
+dered object is overlaid in white. Clearly, one must choose a model
+                                                                             unneeded and thus does not require large data sets for visual appear-
+which is well-matched to the type of material being simulated. Hav-
+                                                                             ance models. In this work, the calibration of the depth sensor and
+ing said that our framework brings the rendered image as close
+                                                                             renderer was handled using ArUco markers, but any other solutions
+to the depth image as the chosen model allows it to. In doing so,
+                                                                             to camera pose estimation can easily be integrated into our pipeline.
+one would obtain different values for material parameters in each
+model.                                                                         Our cost function is fully differentiable. As we used PyTorch,
+                                                                             Adam was a straightforward choice as an optimizer, but other line-
+
+© 2022 The Authors. Computer Graphics Forum published by Eurographics - The European Association for Computer Graphics and John Wiley & Sons Ltd.
+                                                                                                                                                        14678659, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/cgf.14720 by Kenny Erleben - Det Kongelige , Wiley Online Library on [23/11/2022]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+                                                      K. Arnavaz et al. / Differentiable Calibration                                              11
+
+search strategies could also be applied. Unlike the depth images, the           Acknowledgement
+rendered images contain only the object and not the background,
+meaning the loss cannot be minimized to zero. The larger this back-             This project has received funding from Independent Research Fund
+ground noise, the more difficult it would be to reduce the cost func-           Denmark (DFF) under agreement No. 9131-00085B.
+tion. Further, the pixel resolution will affect results too, as we opti-
+mize until the pixel difference is small enough.
+   The depth information provides a lot of extra information for han-
+dling complex geometries as evidenced by our dragon and twisting                References
+cantilever examples. This, combined with the use of a physical sim-
+ulator, addresses occlusion challenges to a certain extent, which are           [BBO*09] Bickel B., Bächer M., Otaduy M. A., Matusik W.,
+known limitations in point cloud or image/video-based approaches.                 Pfister H., Gross M.: Capture and modeling of non-linear het-
+One classical remedy to occlusion is to add more cameras. We re-                  erogeneous soft tissue. ACM Transactions on Graphics (TOG)
+mark that our approach is not technically limited to a single depth               28, 3 (2009), 1–9.
+camera and can easily be extended to multiple cameras in future
+work by rendering from multiple angles.                                         [BBPC19] Bern J. M., Banzet P., Poranne R., Coros S.: Tra-
+                                                                                  jectory optimization for cable-driven soft robot locomotion. In
+   We exploit that all our silicone objects are fabricated and that the           Robotics: Science and Systems XV (Freiburg im Breisgau, Ger-
+reference shapes for all our experiments are known. An interesting                many, 2019), A. Bicchi, H. Kress-Gazit and S. Hutchinson (Eds.),
+result from our heterogeneous experiments is that the same defor-                 University of Freiburg.
+mation can be reached by very different material distributions. Es-
+pecially for the twisting cantilever, we observed an unexpected ma-             [BCC17] Bern J. M., Chang K.-H., Coros S.: Interactive design
+terial distribution in the tet-wise optimization experiment. We also              of animated plushies. ACM Transactions on Graphics (TOG) 36,
+note that the material parameters depended heavily on the discretiza-             4 (2017), 1–11.
+tion of the soft objects. These results emphasize the need for a fast
+way to re-calibrate material parameters, as we cannot rely on values            [BJ05] Barbič J., James D. L.: Real-time subspace integration for
+obtained from traditional parameter estimation set-ups to translate               st. Venant–Kirchhoff deformable models. ACM Transactions on
+to correct simulated behaviour.                                                   Graphics 24, 3 (July 2005), 982–990.
+
+   In our dynamic calibration experiment, we had to restrict the time           [BKS*12]    Bickel B., Kaufmann P., Skouras M.,
+span of the motion due to GPU memory constraints. In future work,                 Thomaszewski B., Bradley D., Beeler T., Jackson P.,
+we would like to solve this issue, such that we can apply our method              Marschner S., Matusik W., Gross M.: Physical face cloning.
+to longer motions, for instance by using the adjoint method. The                  ACM Transactions on Graphics 31, 4 (July 2012), 1–10.
+time span of the captured data has an obvious effect on the number of
+iterations needed to calibrate parameters. However, the convergence             [BSB*20] Bern J. M., Schnider Y., Banzet P., Kumar N., Coros
+rate of the optimizer should be independent of the number of tar-                 S.: Soft robot control with a learned differentiable model. In Pro-
+get frames, as long as the build-up of errors from the semi-implicit              ceedings of the 2020 3rd IEEE International Conference on Soft
+solver remains sufficiently small. If calibration of mass density and             Robotics (RoboSoft) (2020), pp. 417–423.
+damping is less relevant, then static simulations could be considered
+                                                                                [BT07] Becker M., Teschner M.: Robust and efficient estimation
+to improve performance.
+                                                                                  of elasticity parameters using the linear finite element method. In
+                                                                                  Proceedings of the Simulation und Visualisierung 2007 (SimVis
+                                                                                  2007) (Magdeburg, 2007), T. Schulze, B. Preim and H. Schu-
+                                                                                  mann (Eds.), SCS Publishing House e.V., pp. 15–28.
+
+                                                                                [BTH*03] Bhat K. S., Twigg C. D., Hodgins J. K., Khosla
+6. Conclusion                                                                     P. K., Popović Z., Seitz S. M.: Estimating cloth simulation
+                                                                                  parameters from video. In SCA’03: Proceedings of the 2003
+We have demonstrated a differentiable depth calibration method that               ACM SIGGRAPH/Eurographics Symposium on Computer An-
+is inexpensive and easy to set up and use. It is built on the simple              imation (Goslar, DEU, 2003), Eurographics Association, pp.
+principles of back-propagation to evaluate gradients. The method                  37–51.
+relies on image-based loss functions, avoiding the need for textures,
+markers or point correspondences. This novel differentiable depth               [CLG*19] Chen W., Ling H., Gao J., Smith E., Lehti-
+estimation method allows for a vast class of gradient-based optimiz-              nen J., Jacobson A., Fidler S.: Learning to predict 3D ob-
+ers. Our example cases range from passive homogeneous set-ups to                  jects with an interpolation-based differentiable renderer. In Ad-
+more complicated shapes and heterogeneous objects. We robustly                    vances in Neural Information Processing Systems (2019), pp.
+estimate elasticity, density and viscous behaviour. We investigated               9609–9619.
+the impact of numerical coarsening on the estimated values. Finally,
+we used our framework to optimize a cable length of a soft robotic              [CLMK17] Chen D., Levin D. I., Matusik W., Kaufman D.
+finger. The resulting workflow allows for a very agile and robust                 M.: Dynamics-aware numerical coarsening for fabrication de-
+approach to simulator calibration for fabricated objects.                         sign. ACM Transactions on Graphics (TOG) 36, 4 (2017), 1–15.
+
+© 2022 The Authors. Computer Graphics Forum published by Eurographics - The European Association for Computer Graphics and John Wiley & Sons Ltd.
+                                                                                                                                                    14678659, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/cgf.14720 by Kenny Erleben - Det Kongelige , Wiley Online Library on [23/11/2022]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+12                                                 K. Arnavaz et al. / Differentiable Calibration
+
+[CLSM15] Chen D., Levin D. I. W., Sueda S., Matusik W.: Data-                [ITF04] Irving G., Teran J., Fedkiw R.: Invertible finite elements
+  driven finite elements for geometry and material design. ACM                  for robust simulation of large deformation. In SCA’04: Proceed-
+  Transactions on Graphics 34, 4 (July 2015), 1–10.                             ings of the 2004 ACM SIGGRAPH/Eurographics Symposium on
+                                                                                Computer Animation (Goslar, DEU, 2004), Eurographics Asso-
+[CWLK22] Chen J., Wolfe C., Li Z., Kyrillidis A.: Demon:                        ciation, pp. 131–140.
+  Momentum decay for improved neural network training. In 2022
+  IEEE International Conference on Acoustics, Speech, and Signal             [KAMS20] Kandukuri R. K., Achterhold J., Möller M.,
+  Processsing (ICASSP) (2022), pp. 3958–3962 (2022).                           Stückler J.: Learning to identify physical parameters from
+                                                                               video using differentiable physics. http://arxiv.org/abs/2009.
+[dABPSA*18] de Avila Belbute-Peres F., Smith K., Allen K.,                     08292 (2020). Accessed: 15 January 2022.
+  Tenenbaum J., Kolter J. Z.: End-to-end differentiable physics
+  for learning and control. In Advances in Neural Information Pro-           [LADL18] Li T.-M., Aittala M., Durand F., Lehtinen J.: Dif-
+  cessing Systems (2018), S. Bengio, H. Wallach, H. Larochelle, K.             ferentiable Monte Carlo ray tracing through edge sampling. ACM
+  Grauman, N. Cesa-Bianchi and R. Garnett (Eds.), vol. 31, Curran              Transactions on Graphics (TOG) 37, 6 (2018), 1–11.
+  Associates, Inc., pp. 7178–7189.
+                                                                             [LB14] Loper M. M., Black M. J.: OpenDR: An approximate dif-
+[DHDw19] Degrave J., Hermans M., Dambre J., wyffels F.: A                      ferentiable renderer. In Proceedings of the European Conference
+  differentiable physics engine for deep learning in robotics. Fron-           on Computer Vision (2014), Springer, pp. 154–169.
+  tiers in Neurorobotics 13 (2019), 6.
+                                                                             [LB15] Li Y., Barbič J.: Stable anisotropic materials. IEEE Trans-
+[GHZ*20] Geilinger M., Hahn D., Zehnder J., Bächer M.,                         actions on Visualization and Computer Graphics 21, 10 (2015),
+  Thomaszewski B., Coros S.: Add: Analytically differentiable                  1129–1137.
+  dynamics for multi-body systems with frictional contact. ACM
+  Transactions on Graphics 39, 6 (Nov. 2020), 1–15.                          [LL20] Liang J., Lin M. C.: Differentiable physics simulation.
+                                                                               In Proceedings of the ICLR 2020 Workshop on Integration of
+[GJMSMCMJ14] Garrido-Jurado S., Muñoz-Salinas R.,                              Deep Neural Models and Differential Equations (2020). https:
+  Madrid-Cuevas F. J., Marín-Jiménez M. J.: Automatic                          //openreview.net/forum?id=p-SG2KFY2.
+  generation and detection of highly reliable fiducial markers
+  under occlusion. Pattern Recognition 47, 6 (2014), 2280–                   [LLK19] Liang J., Lin M., Koltun V.: Differentiable cloth sim-
+  2292.                                                                        ulation for inverse problems. In Proceedings of the Advances in
+                                                                               Neural Information Processing Systems (2019), H. Wallach, H.
+[GW08] Griewank A., Walther A.: Evaluating Derivatives:                        Larochelle, A. Beygelzimer, F. d’Alché-Buc, E. Fox and R. Gar-
+  Principles and Techniques of Algorithmic Differentiation. SIAM,              nett R. (Eds.), vol. 32, Curran Associates, Inc., pp. 772–781.
+  Philadelphia, 2008.
+                                                                             [LLKL*20] Le Lidec Q., Kalevatykh I., Laptev I., Schmid C.,
+[HAL*20] Hu Y., Anderson L., Li T.-M., Sun Q., Carr N.,                        Carpentier J.: Differentiable Simulation for Physical System
+  Ragan-Kelley J., Durand F.: DifTaichi: Differentiable pro-                   Identification. Working paper or preprint, Nov. 2020. https://hal.
+  gramming for physical simulation. In International Confer-                   archives-ouvertes.fr/hal-03025616.
+  ence on Learning Representations (2020). https://openreview.
+  net/forum?id=B1eB5xSFvr.                                                   [MBT*12] Miguel E., Bradley D., Thomaszewski B., Bickel
+                                                                               B., Matusik W., Otaduy M. A., Marschner S.: Data-driven
+[HBBC19] Hahn D., Banzet P., Bern J. M., Coros S.: Real2sim:                   estimation of cloth simulation models. Computer Graphics Fo-
+  Visco-elastic parameter estimation from dynamic motion. ACM                  rum (Proc. of Eurographics) 31, 2 (May 2012), 519–528.
+  Transactions on Graphics (TOG) 38, 6 (2019), 1–13.
+                                                                             [MEM*20] Macklin M., Erleben K., Müller M., Chen-
+[HENDE19] Holsten F., Engell-Nørregård M. P., Darkner                          tanez N., Jeschke S., Kim T. Y.: Primal/dual descent meth-
+  S., Erleben K.: Data driven inverse kinematics of soft robots us-            ods for dynamics. In SCA’20: Proceedings of the ACM
+  ing local models. In Proceedings of the 2019 International Con-              SIGGRAPH/Eurographics Symposium on Computer Animation
+  ference on Robotics and Automation (ICRA) (2019), IEEE, pp.                  (Goslar, DEU, 2020), Eurographics Association.
+  6251–6257.
+                                                                             [MMG*21] Murthy J. K., Macklin M., Golemo F., Voleti V.,
+[HLS*19] Hu Y., Liu J., Spielberg A., Tenenbaum J. B., Free-                   Petrini L., Weiss M., Considine B., Parent-Lévesque J., Xie
+  man W. T., Wu J., Rus D., Matusik W.: Chainqueen: A real-time                K., Erleben K., Paull L., Shkurti F., Nowrouzezahrai D.,
+  differentiable physical simulator for soft robotics. In Proceedings          Fidler S.: gradSim: Differentiable simulation for system iden-
+  of the 2019 International Conference on Robotics and Automa-                 tification and visuomotor control. In Proceedings of the Inter-
+  tion (ICRA) (2019), pp. 6265–6271.                                           national Conference on Learning Representations (2021). https:
+                                                                               //openreview.net/forum?id=c_E8kFWfhp0.
+[HMZS20] Heiden E., Millard D., Zhang H., Sukhatme G. S.:
+  Interactive differentiable simulation. http://arxiv.org/abs/1905.          [MTB*13] Miguel E., Tamstorf R., Bradley D., Schvartzman
+  10706 (2020). Accessed: 15 January 2022.                                     S. C., Thomaszewski B., Bickel B., Matusik W., Marschner
+
+
+© 2022 The Authors. Computer Graphics Forum published by Eurographics - The European Association for Computer Graphics and John Wiley & Sons Ltd.
+                                                                                                                                                    14678659, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/cgf.14720 by Kenny Erleben - Det Kongelige , Wiley Online Library on [23/11/2022]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+                                                   K. Arnavaz et al. / Differentiable Calibration                                             13
+
+  S., Otaduy M. A.: Modeling and estimation of internal friction             [VCO20] Verschoor M., Casas D., Otaduy M. A.: Tactile ren-
+  in cloth. ACM Transactions on Graphics 32, 6 (Nov. 2013), 1–10.              dering based on skin stress optimization. ACM Transactions on
+                                                                               Graphics 39, 4 (July 2020), 90:1–90:13.
+[MTGG11] Martin S., Thomaszewski B., Grinspun E., Gross
+  M.: Example-based elastic materials. ACM Transactions on                   [WAB20] Wang K., Aanjaneya M., Bekris K.: An end-to-
+  Graphics 30, 4 (July 2011), 1–8.                                             end differentiable but explainable physics engine for tensegrity
+                                                                               robots: Modeling and control. http://arxiv.org/abs/2011.04929
+[PGM*19] Paszke A., Gross S., Massa F., Lerer A., Bradbury                     (2020). Accessed: 15 January 2022.
+  J., Chanan G., Killeen T., Lin Z., Gimelshein N., Antiga L.,
+  Desmaison A., Kopf A., Yang E., DeVito Z., Raison M., Te-                  [WDK*20] Wang B., Deng Y., Kry P., Ascher U., Huang H.,
+  jani A., Chilamkurthy S., Steiner B., Fang L., Bai J., Chin-                 Chen B.: Learning elastic constitutive material and damping
+  tala S.: PyTorch: An imperative style, high-performance deep                 models. Computer Graphics Forum 39, 7 (2020), 81–91.
+  learning library. In Proceedings of the Advances in Neural Infor-
+  mation Processing Systems 32 (2019), H. Wallach, H. Larochelle,            [WOR11] Wang H., O’Brien J. F., Ramamoorthi R.: Data-driven
+  A. Beygelzimer, F. d’Alché-Buc, E. Fox and R. Garnett (Eds.),                elastic models for cloth: Modeling and measurement. In SIG-
+  Curran Associates, Inc., pp. 8024–8035.                                      GRAPH’11: ACM SIGGRAPH 2011 Papers (New York, NY,
+                                                                               USA, 2011), Association for Computing Machinery.
+[PKLD20] Piovarči M., Kaufman D. M., Levin D. I. W., Didyk
+  P.: Fabrication-in-the-loop co-optimization of surfaces and styli          [WWY*15] Wang B., Wu L., Yin K., Ascher U. M., Liu L.,
+  for drawing haptics. ACM Transactions on Graphics 39, 4 (July                Huang H.: Deformation capture and modeling of soft objects.
+  2020), 116:1–116:16.                                                         ACM Transactions on Graphics 34, 4 (2015), 94.
+
+[SB20] Song C., Boularias A.: Learning to slide unknown ob-                  [WZB17] Wang B., Zhao Y., Barbič J.: Botanical materials based
+  jects with differentiable physics simulations. In Proceedings of             on biomechanics. ACM Transactions on Graphics 36, 4 (July
+  the Robotics: Science and Systems (R:SS) (Corvallis, Oregon,                 2017), 1–13.
+  USA, 2020), Oregon State University.
+                                                                             [XB17] Xu H., Barbič J.: Example-based damping design. ACM
+[SBO18] Sánchez-Banderas R. M., Otaduy M. A.: Strain rate                      Transactions on Graphics 36, 4 (July 2017), 1–14.
+  dissipation for elastic deformations. Computer Graphics Forum
+  (Proc. of the ACM SIGGRAPH/Eurographics Symposium on                       [XLCB15] Xu H., Li Y., Chen Y., Barbič J.: Interactive material
+  Computer Animation) 37, 8 (2018), 161–170.                                   design using model reduction. ACM Transactions on Graphics
+                                                                               34, 2 (Mar. 2015), 1–14.
+[SF18] Schenck C., Fox D.: Spnets: Differentiable fluid dynam-
+  ics for deep neural networks. In Proceedings of The 2nd Con-               [XSZB15] Xu H., Sin F., Zhu Y., Barbič J.: Nonlinear material
+  ference on Robot Learning (Oct 2018), A. Billard, A. Dragan, J.              design using principal stretches. ACM Transactions on Graphics
+  Peters and J. Morimoto (Eds.), vol. 87 of Proceedings of Machine             34, 4 (July 2015), 1–11.
+  Learning Research, PMLR, pp. 317–335.
+                                                                             [YL16] Yang S., Lin M. C.: Bayesian estimation of non-rigid me-
+[SGK18] Smith B., Goes F. D., Kim T.: Stable neo-Hookean flesh                 chanical parameters using temporal sequences of deformation
+  simulation. ACM Transactions on Graphics 37, 2 (Mar. 2018),                  samples. In Proceedings of the 2016 IEEE International Con-
+  1–15.                                                                        ference on Robotics and Automation (ICRA) (2016), pp. 4036–
+                                                                               4043.
+[SLK*20] Sengupta A., Lagneau R., Krupa A., Marchand E.,
+  Marchal M.: Simultaneous tracking and elasticity parameter es-             [YLL17] Yang S., Liang J., Lin M. C.: Learning-based cloth mate-
+  timation of deformable objects. In Proceedings of the 2020 IEEE              rial recovery from video. In 2017 IEEE International Conference
+  International Conference on Robotics and Automation (ICRA)                   on Computer Vision (ICCV) (2017), pp. 4393–4403.
+  (2020), pp. 10038–10044.
+                                                                             [YLYW18] Yan G., Li W., Yang R., Wang H.: Inexact descent
+[SNW20] Sperl G., Narain R., Wojtan C.: Homogenized yarn-                      methods for elastic parameter optimization. ACM Transactions
+  level cloth. ACM Transactions on Graphics 39, 4 (July 2020),                 on Graphics 37, 6 (Dec. 2018), 1– 14.
+  48:1–48:15.
+                                                                             [ZJL20] Zhao S., Jakob W., Li T.-M.: Physics-based differentiable
+[STC*13] Skouras M., Thomaszewski B., Coros S., Bickel B.,                     rendering: From theory to implementation. In Proceedings of the
+  Gross M.: Computational design of actuated deformable charac-                ACM SIGGRAPH 2020 Courses, SIGGRAPH 2020 (New York,
+  ters. ACM Transactions on Graphics (TOG) 32, 4 (2013), 1–10.                 NY, USA, 2020), Association for Computing Machinery.
+
+
+
+
+© 2022 The Authors. Computer Graphics Forum published by Eurographics - The European Association for Computer Graphics and John Wiley & Sons Ltd.
+

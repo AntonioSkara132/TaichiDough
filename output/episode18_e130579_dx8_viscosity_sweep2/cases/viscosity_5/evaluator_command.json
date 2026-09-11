@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "python3",
+    "/mnt/Data/studenti/antonio_skara/TaichiDough/scripts/evaluate_dynamic_topview_match.py",
+    "--episode-dir",
+    "/mnt/Data/studenti/antonio_skara/data/DeformPath3/DeformPath3/snimanje_23_10/episode18_kugla",
+    "--taichi-metadata",
+    "/mnt/Data/studenti/antonio_skara/TaichiDough/output/episode18_e130579_dx8_viscosity_sweep2/cases/viscosity_5/simulation/camera_parameters.json",
+    "--calibration",
+    "/mnt/Data/studenti/antonio_skara/data/DeformPath3/DeformPath3/snimanje_23_10/episode18_kugla/scene_calibration_v2.json",
+    "--frame-stride",
+    "1",
+    "--pair-tolerance",
+    "0.0002",
+    "--cell-size",
+    "0.003",
+    "--trim-quantile",
+    "0.005",
+    "--output-dir",
+    "/mnt/Data/studenti/antonio_skara/TaichiDough/output/episode18_e130579_dx8_viscosity_sweep2/cases/viscosity_5/evaluation"
+  ]
+}

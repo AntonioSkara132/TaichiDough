@@ -1,0 +1,18 @@
+{
+  "reference_manifest": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/data/single_episode_calibration/episode18_kugla_fixed_collision_11_9/material_calibration_manifest.json",
+  "reference_manifest_sha256": "4cbb685e0506700ab329867f902ef6064738572af73974e38b1795995edad2af",
+  "reference_simulator_sha256": "6653543ac16c8fcbdc111c73ebaa2c5e2d8c1cdc899e3750dce539b2730a2f07",
+  "corrected_simulator_sha256": "d33f0aec3952fa72282cd181757f678b2e2a48e5b51016c23d40fd05d6a3ac3e",
+  "backend_request": "gpu",
+  "physical_inputs_preserved": [
+    "initial_particles",
+    "geometry",
+    "calibration",
+    "sequence"
+  ],
+  "numerical_changes": [
+    "G2P uses 4/dx^2 with physical offsets.",
+    "Stencil bases use floor; an extra node at -dx preserves support at scene zero."
+  ],
+  "fixed_physical_settings": "Original mass, contact, floor coordinates, grid spacing, time step, damping and constitutive law retained."
+}

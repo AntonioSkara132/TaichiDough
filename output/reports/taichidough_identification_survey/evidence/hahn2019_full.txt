@@ -1,0 +1,899 @@
+Real2Sim: Visco-elastic parameter estimation from dynamic motion
+DAVID HAHN, ETH Zürich
+POL BANZET, ETH Zürich                                                                       (a)
+
+JAMES M. BERN, ETH Zürich
+STELIAN COROS, ETH Zürich
+This paper presents a method for optimizing visco-elastic material parame-
+ters of a finite element simulation to best approximate the dynamic motion
+of real-world soft objects. We compute the gradient with respect to the
+material parameters of a least-squares error objective function using either
+                                                                                             (b)
+direct sensitivity analysis or an adjoint state method. We then optimize the
+material parameters such that the simulated motion matches real-world
+observations as closely as possible. In this way, we can directly build a useful
+simulation model that captures the visco-elastic behaviour of the specimen
+of interest. We demonstrate the effectiveness of our method on various ex-
+amples such as numerical coarsening, custom-designed objective functions,
+and of course real-world flexible elastic objects made of foam or 3D printed
+lattice structures, including a demo application in soft robotics.                           (c)
+CCS Concepts: • Computing methodologies → Physical simulation;
+Motion processing.
+Additional Key Words and Phrases: Deformable Models, Motion Capture,
+Optimization, Physically-based Simulation, Robotics
+ACM Reference Format:
+David Hahn, Pol Banzet, James M. Bern, and Stelian Coros. 2019. Real2Sim:
+Visco-elastic parameter estimation from dynamic motion. ACM Trans. Graph.                   Fig. 1. Application of our method in a soft robotics design pipeline: after
+38, 6, Article 236 (November 2019), 13 pages. https://doi.org/10.1145/3355089.              fabricating a specimen (a), we capture its behaviour and estimate material
+3356548                                                                                     parameters; green curve shows motion capture data, arrows show simulation
+                                                                                            result with optimized parameters. Using these material parameters, (b) we
+1    INTRODUCTION                                                                           can now design a control strategy in simulation (right image shows motor
+Creating fast simulation models that accurately capture the defor-                          control curves), and then (c) execute the motion on the real-world robot
+mation behaviour of real-world objects is not an easy task. Even                            (right image shows tendons along its underside).
+if physical material parameters are known (for instance from spe-
+cialized measurement tools) they may not immediately translate to
+a practical simulation due to various other issues. These problems
+                                                                                               The classical approach to address this question is to first mea-
+include limitations of the chosen numerical method, necessity of
+                                                                                            sure a small sample of the material using standardized tests, then
+high-resolution discretizations to achieve accurate solutions, and
+                                                                                            build a simulation model of sufficient resolution to reproduce the
+mismatches between the tested and simulated deformation range
+                                                                                            measured data, and finally apply that model to the actual object
+for non-linear materials. Many soft materials also exhibit large
+                                                                                            of interest. Achieving satisfactory results requires high accuracy
+variations in visco-elastic parameters across multiple objects fab-
+                                                                                            in each of these steps. Furthermore, many material testing devices,
+ricated from the same base material due to inconsistencies in the
+                                                                                            such as rheometers, only measure the linear deformation range,
+fabrication process.
+                                                                                            i.e. the material’s small-strain behaviour. How to generalize these
+   In the face of these challenges, we aim to answer the following
+                                                                                            measurements to the non-linear range is not entirely clear for many
+question: how can we find a simulation model that (a) captures the
+                                                                                            materials. Overall, even if an accurate simulation model can be
+deformation behaviour of interest, (b) for a non-linear and possibly
+                                                                                            constructed in this way, it might not work for fast, low-resolution
+non-homogeneous material, (c) at a practical resolution?
+                                                                                            simulations due to numerical errors and artefacts, requiring addi-
+Authors’ addresses: David Hahn, CRL, ETH Zürich, david.hahn@inf.ethz.ch; Pol Banzet,        tional corrections such as numerical coarsening before reaching a
+CRL, ETH Zürich, pol.banzet@inf.ethz.ch; James M. Bern, CRL, ETH Zürich, james.             practically useful simulation.
+bern@inf.ethz.ch; Stelian Coros, CRL, ETH Zürich, scoros@inf.ethz.ch.
+                                                                                               Following recent works on parameter estimation, we propose
+Permission to make digital or hard copies of part or all of this work for personal or       a framework to directly fit a general visco-elastic finite element
+                                                                                            simulation to real-world motion data. While various factors, such
+classroom use is granted without fee provided that copies are not made or distributed
+for profit or commercial advantage and that copies bear this notice and the full citation
+on the first page. Copyrights for third-party components of this work must be honored.      as resolution, discretization, time-integration method, etc. will in-
+For all other uses, contact the owner/author(s).                                            fluence the resulting fitted material parameters, we aim for the
+© 2019 Copyright held by the owner/author(s).
+0730-0301/2019/11-ART236                                                                    best match to real-world data that a particular choice of simulation
+https://doi.org/10.1145/3355089.3356548                                                     method can achieve.
+
+                                                                                               ACM Trans. Graph., Vol. 38, No. 6, Article 236. Publication date: November 2019.
+236:2 •      Hahn, Banzet, Bern, and Coros
+
+
+   Even if ground-truth material parameters are known, they are                       Within the computer graphics literature, Pai et al. [1999; 2001]
+useful only when applied to high-resolution models as numerical                    describe a robotic measurement system to collect data from real-
+stiffening can drastically affect simulation results. In our results, we           world specimens and build a linear elastic model based on boundary
+find physically meaningful parameters for standard material models                 Green’s functions. In contrast, Bickel et al. [2009] describe how to
+and reasonably small deformations. Furthermore our formulation                     estimate parameters for elastostatic non-linear materials using a
+provides the flexibility to work on custom-designed material models                finite element method. They use an optical, marker-based surface
+as well. With our approach, we directly obtain a simulation model                  reconstruction method to measure the resulting deformation of the
+suitable for a reasonably coarse mesh, the actual specimen, and the                object’s surface. Both of the aforementioned works rely on experi-
+deformation and motion range of interest. We envision that this                    mental measurements of contact forces using custom-designed force
+work can facilitate model-based applications in soft robotics control              sensors, whereas in this paper, we aim to estimate parameters solely
+or soft object manipulation; see Fig. 1.                                           based on non-intrusive observations of dynamic motion. Miguel et
+                                                                                   al. [2012] also use a custom-built deformation capture and force mea-
+                                                                                   surement system for cloth samples and then estimate elastostatic
+2    RELATED WORK                                                                  parameters in a step-by-step update procedure. They describe the
+In this work, we employ a standard finite element method (FEM) to                  non-linear material response via spline based stress-strain curves
+simulate the behaviour of visco-elastic solid objects. In particular,              and adapt the spline control points automatically. In their follow-
+we discretize these objects in material space (i. e. the undeformed                up work [Miguel et al. 2013] they extend this approach to include
+configuration) with linear tetrahedral elements. As such formula-                  internal friction using force-deformation measurements based on
+tions are very common in computer graphics, we refer the reader                    weights attached to the object of interest. They also present an ex-
+to Irving et al. [2004], Teran et al. [2005], Sifakis and Barbic [2012],           tension to 3D materials instead of cloth [Miguel et al. 2016], again
+and Stomakhin et al. [2012] for further details.                                   estimating parameters for elastostatic deformations, employing di-
+   Modelling the stress-strain response of elastic solids has led to a             rect sensitivity analysis, while using finite differencing for some
+large variety of constitutive equations, such as co-rotational linear              terms. Recently, Wang et al. [2015] describe a complete 3D recon-
+elasticity [Felippa and Haugen 2005; Georgii and Westermann 2008;                  struction and parameter estimation pipeline, where a laser-scanner
+Müller and Gross 2004; Wang et al. 2015], the Saint-Venant-Kirchhoff               is used to capture the object’s geometry and a multi-camera setup
+model [Barbič and James 2005; O’Brien and Hodgins 1999], or the                    provides dynamic motion data. They then fit a basic co-rotational
+Neohookean material model [Bonet and Wood 2008; Smith et al.                       linear elastic model as well as Rayleigh damping coefficients to
+2018], as well as numerous other formulations and variations; see                  match the observed motion in simulation. In doing so, they avoid
+also [Ogden 1997]. Similarly, viscous damping effects due to internal              any gradient computations and instead use a gradient-free Nelder-
+friction have been modelled via either linear (Newtonian) or non-                  Mead optimization algorithm. Consequently, their method is not
+linear constitutive equations relating shear rate to viscous stress                well suited to optimizing inhomogeneous parameter distributions.
+[Bower et al. 1993]. One non-linear example is the power-law (or                      Recently, Torres et al. [2016] presented a numerical coarsening
+de Waele-Ostwald) model. For traditional material testing methods,                 scheme for co-rotational linear elasticity including treatment of high-
+the presence of viscous effects may require additional corrections                 resolution boundary conditions. For non-linear materials, Chen et
+to the measurements as described by [Ngan et al. 2005].                            al. [2015] introduced a data-driven coarse numerical simulation
+   Apart from those well-established material models, recent re-                   approach for object design and fabrication. They later included
+search in computer graphics has also investigated methods for for-                 dynamic motions as well, introducing dynamics-aware numeri-
+mulating richer spaces of material responses, both in terms of elas-               cal coarsening [Chen et al. 2017]. Their approach matches low-
+ticity [Xu et al. 2015] as well as viscosity [Xu and Barbič 2017].                 frequency modes of a high-resolution simulation by adjusting the
+While we focus mostly on standard material models using phys-                      material parameters of a low-resolution mesh in order to preserve
+ical parameters, we demonstrate that our method can be used in                     the behaviour of corresponding modes up to a specified tolerance.
+conjunction with such a generalized model in Figure 14.                            They also use this approach for parameter estimation to match the
+   When simulating a real-world material, not only do we need to                   oscillation frequencies and damping observed in real-world materi-
+formulate a material model, we must also choose its parameters to                  als via high-speed video capture of optical markers. Even though
+best approximate experimental observations. As opposed to direct                   they use a non-linear material model, they determine material pa-
+measurements of material parameters, such as the method described                  rameters for eigenmode oscillations, which implies a linearisation
+by Oliver and Pharr [1992], parameter estimation tries to identify                 around a particular configuration (they usually choose the rest
+material parameters by matching a simulation model to observed                     shape). In contrast, our approach can deal with arbitrary motions,
+behaviour. The recent review by Mahnken [2017] classifies parame-                  including forced oscillations. While numerical coarsening is not our
+ter estimation (or identification) methods into four groups: “hand                 primary goal, we show a basic example in Figure 2.
+fitting”, “trial-and-error”, neural networks, and least-squares fitting.              For fluid simulation, McNamara et al. [2004] solve a control prob-
+The focus of that work, similar to our approach, is mostly on fit-                 lem finding minimal ghost forces such that the simulation pro-
+ting material parameters by solving a minimization problem on the                  duces a desired motion. They employ the adjoint method to derive
+squared difference between observed and simulated data. Common                     the gradient of an objective function with respect to these control
+formulations of the direct sensitivity analysis and adjoint method, as             forces. Their derivation of the adjoint method operates on the time-
+well as standard optimization methods are also summarized there.                   discretized update equations for advection and pressure projection.
+
+ACM Trans. Graph., Vol. 38, No. 6, Article 236. Publication date: November 2019.
+                                                                     Real2Sim: Visco-elastic parameter estimation from dynamic motion • 236:3
+
+
+In this way, the time discretization must be chosen before deriving             and then solve
+the adjoint operations. Wojtan et al. [2006] employ a similar for-                                                              
+                                                                                                         Mvi+1 =     M vi − vi−1
+                                                                                                      3           3     4  1
+mulation for keyframe control of particle systems, such as fluids,                                   2∆t         2∆t    3  3                                     (2)
+flocks, and cloth modelled as a mass-spring system.                                                                          i+1    i+1
+   Bradley [2013], on the other hand, derives the adjoint equations in                                             + f(x           ,v     ) + f ext
+the continuous setting, leaving the choice of discretization scheme             for the unknown velocities. The internal forces f(xi+1, vi+1 ) de-
+open at this point. We also follow this approach and summarize the              pend non-linearly on the end-of-time-step state and we solve Eq. (2)
+resulting equations in Section 3. Auzinger et al. [2018] also success-          with a Newton-Raphson iteration. In each iteration the linearized
+fully employed a similar formulation to optimize 3D printed nanos-              system matrix is found by differentiation with respect to the un-
+tructures for desired light transport properties such as refraction.            known velocities vi+1 , which yields S := 3M/(2∆t ) + 2∆t K/3 + D.
+   Bern et al. [2019] use a direct sensitivity analysis approach to op-         We define the usual tangent stiffness and damping matrices K :=
+timize for cyclic locomotion trajectories of soft robots. We use their          −∂f/∂x and D := −∂f/∂v. Note that K and D depend on the current
+simulation framework combined with our parameter estimation                     iterate for non-linear elastic or damping models respectively.
+system for the demo application shown in Fig. 1.                                   We now assume that the internal forces depend on a vector of
+   In summary, we present the following contributions in this paper:            (material) parameters q, i. e. f(x, v, q) and consequently the simula-
+      • An optimization-based material parameter estimation method              tion state also becomes parameter dependent, i. e. x(t, q), v(t, q). The
+        for arbitrary (differentiable) visco-elastic material models,           ODE system (1) can be viewed as a constraint due to physics. Our
+      • using dynamic motion data without the need for special test-            goal is to optimize an objective function subject to this constraint:
+        ing equipment or force sensors,                                                                    q∗ = arg min Φ(q), where
+      • resulting in efficient simulation models for complex real-                                                ∫ T                                            (3)
+        world soft objects.                                                                               Φ(q) :=     φ(x, v, t, q) d t,
+                                                                                                                      t =0
+3     THEORY                                                                    and {x(t, q), v(t, q)} satisfy Eq. (1) for any given, time-independent
+In this section, we start from a basic finite element method (FEM)              parameter vector q.
+for elastodynamic simulation. We then derive the gradient of an                   In order to solve this minimization problem, we want to compute
+objective function that measures the quality of the entire simulation           the objective function gradient with respect to the parameters q:
+                                                                                                      ∫ T
+trajectory using first direct sensitivity analysis and then the adjoint                        dΦ             ∂φ d x ∂φ d v ∂φ
+state method. As a result we obtain time-continuous, but spatially                                  =       (        +          +    ) dt.         (4)
+                                                                                               dq       t =0 ∂x d q      ∂v d q ∂q
+discretized dynamical systems allowing us to compute the objective
+function gradient. While these equations can in principle be solved             3.2      Direct sensitivity analysis
+with any suitable time integration method, we show their time dis-              In the direct sensitivity analysis approach, as the name suggests, we
+cretization using the second order backward differentiation formula             compute the above integral directly. The sensitivities sx := d x/d q,
+(BDF2). We choose BDF2 because it is relatively easy to implement               and sv := d v/d q must satisfy an ODE that follows from differenti-
+and reduces numerical damping compared to a standard backward                   ating Eq. (1) with respect to q, which yields
+Euler (BDF1) scheme, while retaining its A-stability.
+                                                                                                            sÛx = sv ,
+                                                                                                                                                                 (5)
+3.1    Simulation and optimization                                                                       MÛsv = −Ksx − Dsv + ∂f/∂q.
+Our starting point is a standard FEM discretization of Newtonian                Here we assume that the mass matrix and external forces are in-
+mechanics. Discretizing in space first results in the following sys-            dependent of the parameters for brevity. We can remove this as-
+tem of first-order ordinary differential equations in time, where x             sumption by including the additional derivative terms outlined in
+contains node positions of the mesh, v their velocities, and f the              Section 4. This system of ODEs for the sensitivities can be integrated
+internal forces acting on them:                                                 forward in time along with the simulation of (1). The matrices K and
+                             xÛ := d x/d t = v,                                 D are derivatives with respect to the simulation state, and therefore
+                                                                        (1)     assume that the physics constraint is fulfilled and the corresponding
+                           MÛv = f(x, v) + f ext,                               state is known. Consequently, we can integrate the sensitivities after
+with suitable initial and boundary conditions, which we will dis-               computing each time step of the forward simulation, using the stiff-
+cuss in more detail later; see also Eq. (13). The external forces, f ext ,      ness and damping matrices corresponding to the state computed for
+are independent of the simulation state; in our examples, we only               the end of that time step. As a result, even though the internal forces
+consider gravity as external load.                                              may depend non-linearly on the state, Eq. (5) remains a system of
+   The BDF2 integration rule [Iserles 1996] for an ODE of the form              linear ODEs in sx and sv , and the sensitivities are always found in
+yÛ = h(t, y) is y i+1 = 4y i /3 − y i−1 /3 + 2∆t h(t i+1, y i+1 )/3, where ∆t   a single linear solve per time step in practice.
+is a constant time step. In terms of the coupled dynamics system (1),              The time discretization for the direct sensitivity approach follows
+we choose to first express the end-of-time-step positions as                    in the same way as Eq. (2), except that Eq. (5) is already linear and
+                                                                                the simulation states, as well as the stiffness and damping matrices,
+                  xi+1 = 4xi /3 − xi−1 /3 + 2∆t vi+1 /3                         are already known. Consequently, the BDF2 discretization results
+
+                                                                                      ACM Trans. Graph., Vol. 38, No. 6, Article 236. Publication date: November 2019.
+236:4 •      Hahn, Banzet, Bern, and Coros
+
+
+in the following linear system, using the same system matrix as the                      Equation (11) is again a system of linear first-order ODEs for the
+forward simulation (evaluated for the end-of-time-step state):                           adjoint states. However, the “initial” conditions differ in one impor-
+                    si+1     i        i−1           i+1                                  tant aspect: while we assume the usual initial conditions for the
+                      x = 4sx /3 − sx /3 + 2∆t sv /3,
+                                                                                       forward simulation (1) of the form x(t = 0) = x0 and v(t = 0) = v0 ,
+                   Ssvi+1 =
+                             3
+                                 M svi − svi−1
+                                     4      1                                            the derivation of the adjoint formulation requires that λ x (t = T ) =
+                            2∆t      3      3                                      (6)   λv (t = T ) = 0 at the final time T of the simulation; see [Bradley
+                                                 ∂f
+                                            
+                               4 i     1 i−1                                             2013] for details. Consequently, the ODE system in Eq. (11) must
+                          − K sx − sx          +     .                                   be integrated backwards in time after the forward simulation has
+                               3       3         ∂q
+                                                                                         been completed.
+3.3    Adjoint method                                                                       Applying the BDF2 integration rule backwards in time means the
+The main drawback of the direct method is that the computational                         sign of the time-derivative term changes, which cancels the minus
+cost of finding the objective function gradient in (4) increases with                    signs on the left-hand sides of (11), while ∆t remains a positive
+the number of parameters. The adjoint method provides an elegant                         constant. Also note that λi−1        i−1
+                                                                                                                    x and λv are now the unknown adjoint
+way of reducing this computational cost; see also [McNamara et al.                       states, so time indices (i − 1) and (i + 1) must be swapped.
+2004] and [Bradley 2013]. In order to derive the adjoint equations,                         Discretizing (11) in this way yields
+we first write the state of the simulation as a concatenated vector                                                          ∂φ T
+                                                                                                    λi−1
+                                                                                                            4 i   1 i+1 2
+y := (xT vT )T . Then we rewrite Eq. (1) as h(y, yÛ , t, q) = 0, where                               x = λ x − λ x + ∆t (         − KT λvi−1 ),
+                                                                                                            3     3      3   ∂x
+                                                                                                                                     ∂φ T
+                              
+                        0 I
+                                                                                                                                
+                                                                                                        i−1
+                                                                                                    ST λv =       MT λvi − λvi+1 +
+                                                                                                                3      4   1
+                 h :=            y                                                                                                                          (12)
+                        0 0                                                                                   2∆t      3   3         ∂v
+                                                                      (7)
+                                                                                                                                  2 ∂φ T
+                                                  
+                             0             I 0
+                    +                 −                yÛ .                                                    + λix − λi+1
+                                                                                                                 4      1
+                        f(y) + f ext      0 M                                                                               x + ∆t         .
+                                                                                                                 3      3         3 ∂x
+  Bradley [2013] describes how to derive the general form of the                             All data that is required by the adjoint simulation must be stored
+adjoint method for this case, which reads                                                while performing the forward simulation, leading to a higher mem-
+            ∂φ T
+                     T
+                               d ∂h T       ∂h T Û
+                                                                                         ory cost than the direct method described above. The main difference
+                     ∂h
+                                       
+                 +         −             λ−      λ = 0,      (8)                         is that the direct method needs to compute and store the sensitivities
+             ∂y      ∂y       d t ∂ yÛ      ∂ yÛ                                         sx and sv , which are dense |x| × |q| matrices, where |x| is the num-
+where λ is referred to as the adjoint state. The objective function                      ber of degrees of freedom in the simulation and |q| is the number
+gradient then becomes                                                                    of parameters. While these matrices need to be updated in every
+                         ∫ T 
+                  dΦ           ∂φ        ∂h
+                                                                                         time step, the memory cost remains constant over time. The adjoint
+                                            
+                      =            + λT       d t,              (9)                      method on the other hand reduces the computation to the adjoint
+                  dq      t =0 ∂q        ∂q
+                                                                                         states, which are only |x| × 1 vectors. The memory consumption,
+plus a term that depends on the initial conditions of (1); see Eq. (14).                 however, increases linearly over time as we must store additional
+  The derivatives required to evaluate Eq. (8) follow from Eq. (7):                      data in each time step. Consequently, the direct method is preferable
+                        ∂h T                                                             for simulations that have very few parameters, but cover a longer
+                                             
+                                     I    0
+                             =−                 ,
+                        ∂ yÛ         0 MT                                                time span, while the adjoint method works best for reasonably short
+                                                                                         simulations, but can deal with a large number of parameters.
+                           d ∂h T
+                                   = 0, and                                   (10)
+                          d t ∂ yÛ                                                       3.4   Initial conditions
+                              ∂h T      0 −KT
+                                             
+                                                                                         So far we have assumed that the initial conditions of the forward
+                                   =            .
+                              ∂y        I −DT                                            problem are independent of the parameters q. If this is not the case
+                                                                                         and the initial conditions can be written in the general form
+Note that in the last term, we need to take derivatives of the in-
+ternal forces with respect to the entire state, which means first                                                 g(x, v, q, t = 0) = 0,                    (13)
+w. r. t. positions and then w. r. t. velocities, resulting again in the                  we must account for the additional influence of the parameters
+tangent stiffness and damping matrix respectively. Furthermore,                          on the objective function value that occurs through a change of
+in a Galerkin FEM discretization the mass, stiffness, and damping                        these initial conditions. One important instance of this situation
+matrices are symmetric. Nevertheless, we maintain transpositions                         is starting a dynamic simulation from a state of static equilibrium,
+for the sake of clarity.                                                                 that is f(x(t = 0), 0) + f ext = 0 and v(t = 0) = 0, where the internal
+   Finally, separating the adjoint state into two parts, analogous to                    forces f depend on elastic material parameters.
+the definition of the concatenated state y, corresponding to adjoint                        For the direct sensitivity analysis, Eq. (5), the initial conditions
+states for positions and velocity respectively λ =: (λ xT λvT )T and                     on the sensitivities are the derivative of the initial conditions on (1)
+splitting (8) into two equations accordingly produces                                    with respect to the parameters. For the general implicit form, we
+                      −λÛ x = (∂φ/∂x)T − KT λv , and                                     obtain
+                                                                                                            d g ∂g             ∂g       ∂g
+                    −MT λÛ v = (∂φ/∂v)T + λ x − DT λv .
+                                                                              (11)                               =      sx 0 +    sv0 +    = 0,
+                                                                                                            d q ∂x             ∂v       ∂q
+
+ACM Trans. Graph., Vol. 38, No. 6, Article 236. Publication date: November 2019.
+                                                                     Real2Sim: Visco-elastic parameter estimation from dynamic motion • 236:5
+
+
+where subscript zero indicates quantities at t = 0, in particular
+                                                                                                                                    p
+                                                                                The root-mean-square error per marker is then 2Φ/(NT ), where
+sx 0 := sx (t = 0) and similarly for sv0 . For the elastostatic case this       N is the number of tracked markers. While we choose a marker-
+condition simplifies to sv0 = 0 and K0 sx 0 = ∂f 0 /∂q. Consequently,           based approach due to its ease of use and availability, the theory
+if we find the initial positions by solving for elastostatic equilibrium,       presented so far would equally apply to motion data reconstructed
+we analogously find the initial sensitivities by solving the linearized         from any other capture system, as long as an objective function on
+elastostatic system for the derivative of the internal forces w. r. t. the      the simulation state can be written in terms of the collected data.
+parameters. Note that K0 must be evaluated at the configuration                    One interesting material with recent applications in soft robotics
+x0 that satisfies the initial conditions, i. e. after solving the initial       [Somm et al. 2019] is flexible polyurethane foam. In general this
+elastostatic problem.                                                           material is relatively cheap and easy to work with. In particular,
+   For the adjoint method, the objective function gradient according            we use FlexFoam-iT III and V from Smooth-On, Inc. [2018]. These
+to [Bradley 2013] becomes                                                       foams are shipped as two separate liquid components that have to
+                                               ∂g −1 ∂g
+                                                                                be mixed before moulding; the foam then expands in the mould in
+                dΦ             T ∂h
+                                               
+                     = IT + λ 0                          ,           (14)       about 15 min and cures in a few hours at room temperature. The
+                dq                 ∂ yÛ t =0 ∂y0      ∂q                        resulting material parameters of the cured foam can vary drastically
+where IT represents the time integral term in Eq. (9). This addi-               between multiple samples of the same base material depending
+tional term simplifies to (K0 −T λ x 0 )T (∂f 0 /∂q) for elastostatic initial   on ambient temperature, precise mixing ratio, as well as the exact
+conditions. Consequently, similar to the direct method above, we                amount of material filled into the mould and the resulting pressure
+again need to solve the linearized elastostatics problem, this time             build-up during expansion. We produce several test specimens and
+with the adjoint state as right-hand-side vector.                               the soft robot in Fig. 1 from these foams. It is therefore imperative
+   Finally, note that BDF2 requires initialization of previous values           to enable fast parameter estimation for a particular specimen.
+at t = −∆t . For the forward simulation and the direct sensitivity                 We also design a sparse lattice structure using Autodesk NetFabb
+analysis we can make the assumption that both velocity and ac-                  and 3D print it with a flexible TPU material on a Stratasys F370
+celeration are zero before t = 0. In particular, when starting from             printer [Stratasys, Ltd. 2018]; see Fig. 5a. This particular lattice has
+an elastostatic equilibrium configuration, it is natural to interpret           a unit cell size of 1 cm and a beam thickness of 1.6 mm.
+the initial condition v(t = 0) = 0 as v(t ≤ 0) = 0. Similarly, we
+need to make an assumption on λ x and λv for t ≥ T for the adjoint              4.2      Material models
+states. From Eq. (11) we can see that the adjoint states basically              We implement a couple of different material models to test our
+encode objective function gradients. Consequently, we again as-                 simulation and optimization framework. While these models are
+sume zero change outside of the simulated time interval, extending              based on previous work, in some cases variations exist in the litera-
+the condition on the adjoint states λ x (t = T ) = λv (t = T ) = 0 to           ture, so we briefly summarize their definitions here. In general, we
+λ x (t ≥ T ) = λv (t ≥ T ) = 0.                                                 compute all derivatives using symbolic differentiation unless stated
+                                                                                otherwise.
+4 METHODS AND DETAILS                                                              We primarily employ a Neohookean elasticity model. This model
+4.1 Experimental methods                                                        is defined via the elastic strain energy density
+To collect data that captures the dynamical behaviour of our test                                          λ                   
+specimens, we use a commercial optical motion capture system,                                      Ψ(F) := (J 2 − 1)/2 − ln J
+                                                                                                            2                                     (16)
+consisting of 10 OptiTrack Prime 13 cameras. We use small hemi-                                             µ 
+                                                                                                         + tr(FT F) − 3 − 2 ln J .
+                                                                                                                                   
+spherical reflective markers of 4 mm diameter to track the soft                                             2
+specimens’ deformation. We 3D print rigid clamps that also have                 Here λ is the first Lamé parameter, µ is the shear modulus, F is
+motion capture markers attached and glue our specimens to these                 the deformation gradient (which is piecewise-constant for a linear
+clamps. In this way we can track the motion of the clamps and map               tetrahedral FEM), and J := det F. The nodal force contribution per
+it to Dirichlet boundary conditions in the simulation. We usually use           element is then f nh = −Ve (d Ψ/d x) = −Ve (∂Ψ/∂F)(d F/d x), where
+groups of 4 to 6 spherical reflective markers of 1 or 1.4 cm diameter           Ve is the element’s volume. The first Piola-Kirchhoff stress ∂Ψ/∂F
+to track the rigid transformation of these boundary clamps. This                is found by directly differentiating the energy density function, and
+approach allows us to freely move the clamped boundary during                   the derivative of F is given by the FEM shape function gradients.
+capture and reproduce its motion in the simulation later. Conse-                   In order to model viscous damping forces, i. e. history-independent
+quently, the simulation and the motion capture data share a common              damping due to velocity, we implement a power-law viscosity model,
+coordinate system. Similar to the boundary conditions, we use the               where the viscous stress is defined as
+tracked trajectories of the motion capture markers xi∗ and formulate
+our objective function based on the distance to “virtual markers” x̄i                               σ pl (v) := ν γÛ (h−1) (∇v + ∇vT ),        (17)
+in the simulation:
+                                                                                where γÛ is the shear rate γÛ := 1/2 ∇v + ∇vT F , ν is the viscosity
+                                                                                                                   p
+                      1 T Õ ∗
+                        ∫
+                 Φ :=               xi (t) − x̄i (t) d t,
+                                                    2
+                                                                 (15)           coefficient, and h is the power-law index. For h = 1, this model
+                                 i
+                      2 t =0                                                    simplifies to Newtonian viscosity, h < 1 describes a shear thinning
+where T is the duration for which we recorded motion data (which in             behaviour, whereas h > 1 corresponds to a shear thickening mate-
+turn determines the simulated time as well) and i is the marker index.          rial. In the shear-thinning case, the viscous forces are technically
+
+                                                                                      ACM Trans. Graph., Vol. 38, No. 6, Article 236. Publication date: November 2019.
+236:6 •                Hahn, Banzet, Bern, and Coros
+
+Table 1. Material parameters estimated for coarse meshes of the Stanford bunny given motion data from a high-resolution ground-truth simulation. Errors are
+given for the simulations using first the original and then the optimized parameters. Timings were measured on a 3.9 GHz quad-core desktop CPU; the first
+value gives the runtime of a single simulation (including objective function gradient evaluation), the second value gives the runtime of the entire optimization.
+
+
+                                                    Ground truth (50k)              8.5k mesh           2.7k mesh                 1.2k mesh
+                                               Lamé λ [Pa]      1.20E+04       5.41E+03      45%    5.92E+03       49%        6.30E+03        53%
+                                               Lamé µ [Pa]      1.10E+04       9.97E+03      91%    8.74E+03       79%        6.11E+03        56%
+                                Viscosity coefficient [Pa s]            8           8.12    102%         6.79      85%             2.33       29%
+                                          Power-law index             0.8           0.98    123%         1.14      143%            1.76       220%
+                                 RMS error [mm] (ori/opt)                          14.40     3.82       17.16       4.83          15.94        4.85
+                                  Runtime [min] (sgl/opt)             14.0           2.5     69.8         0.7       42.0            0.4        25.5
+
+
+
+
+                                50k                                   8.5k                                    2.7k                                          1.2k
+
+
+
+
+Fig. 2. Simulations of the Stanford Bunny on meshes of various resolutions (labelled by number of elements per mesh). Light blue curves show the ground
+truth data obtained from the highest resolution mesh; purple, orange, and red curves show the trajectories of virtual markers on both ears, the head, the back,
+and the tail when using optimized material parameters for each mesh. Black curves in inset images show trajectories obtained with ground-truth parameters
+on coarser meshes. The motion is driven by a scripted Dirichlet boundary condition on the base; please also refer to our accompanying video.
+
+
+               0.2                                                            Z              Figures 14 and 15 show results using a principal-stretch based
+                                                                                           material model as described in [Xu et al. 2015]. We briefly summarize
+                     Tbl. 1                                                                the main features of this material model here. They start by defining
+Position [m]
+
+
+
+
+               0.1
+                     Target
+                     New opt.
+                                                                                           the elastic energy density Ψ as a function of principal stretches ς i ,
+                     No opt.                                                  Y            which are computed using a singular value decomposition of the
+                                                                                           deformation gradient: F = UF̂VT, diag(F̂) = (ς 1, ς 2, ς 3 ). The energy
+                                                                                           density is then given by Eq. (11) in [Xu et al. 2015] as
+                0
+                                                                                                         Ψ = f (ς 1 ) + f (ς 2 ) + f (ς 3 ) + h(ς 1ς 2ς 3 )+
+                                                                              X                                                                                    (18)
+                                                                                                                д(ς 1ς 2 ) + д(ς 2ς 3 ) + д(ς 3ς 1 ).
+                                                                                           They show that a Neohookean model can be re-written in this form
+                                  0.25                 0.5                   0.75          by setting
+                                          Time [s]
+                                                                                                             f (x) = µ(x 2 − 1)/2, д ≡ 0,
+                                                                                                                                                        (19)
+Fig. 3. Evaluation of the optimized parameters on the 1.2k element mesh: we                                  h(x) = −µ log x + λ(log x)2 /2,
+simulate a different motion (red solid lines) using the parameters optimized
+for the original motion (Table 1). Blue dashes show the result obtained by
+                                                                                           where (λ, µ) are the Lamé parameters as before. Consequently, we
+optimizing for the new motion instead, green dots show the high-resolution                 always assume д ≡ 0 from now on, as well as in our implementation.
+ground-truth result for this new motion. Thin black lines show motion                      Finally, the components of the first Piola-Kirchhoff stress d Ψ/d F
+graphs when simulating the 1.2k mesh with ground-truth parameters. All                     can be computed as (∂Ψ/∂ς i )(d ς i /d F), where
+curves refer to the bunny’s right ear. The inset image shows results for the
+                                                                                                            ∂Ψ/∂ς 1 = f ′ (ς 1 ) + h ′ (ς 1ς 2ς 3 )ς 2ς 3          (20)
+ground-truth (black) and Table 1 parameters (red) on the coarse mesh.
+                                                                                           and analogously for the other two principal stretches.
+undefined for a vanishing velocity gradient, but are zero in the                              Xu et al. [2015] also describe how to compute the required deriva-
+limit. In our implementation we simply skip any element where the                          tives of the singular value decomposition analytically, as well as
+Frobenius norm of the velocity gradient is less or equal DBL_MIN.                          how to assemble the corresponding stiffness matrix. Recently, Smith
+
+ACM Trans. Graph., Vol. 38, No. 6, Article 236. Publication date: November 2019.
+                                                                  Real2Sim: Visco-elastic parameter estimation from dynamic motion • 236:7
+
+
+
+
+       (a)                                           (b)                          (a)                                                                   (b)
+
+
+Fig. 4. Motion capture data (solid lines) and simulated data (arrows) for    Fig. 5. A 3D printed soft lattice (a) with boundary clamp and motion capture
+different dynamic motion samples. The coloured cylinders show snapshots      markers and (b) real-world motion trajectory (solid line) with simulation
+of a simulation using optimized material parameters for a Neohookean         snapshots at different times during the simulation (green: 0.17 s, blue: 0.75 s,
+elastic and power-law viscous material.                                      beige: 1.4 s). While the real-world specimen is a very complex structure, the
+                                                                             simulation uses less than 120 tetrahedral elements.
+et al. [2019] also investigated similar analytical derivatives. In our
+implementation we represent the two stress-strain response func-             for the log of parameters, the objective function decreases faster and
+tions f ′ and h ′ as cubic Hermite splines following the formulation         further compared to optimizing for the parameter values directly.
+of [Kochanek and Bartels 1984] and we use the autodiff module of             For more complex, real-world motions, attempting to optimize for
+Eigen [Guennebaud et al. 2010] to compute the derivatives of the             the parameter values directly can sometimes fail completely. Obvi-
+spline coefficients with respect to the input control point values.          ously, transforming the parameters also results in a transformation
+These derivatives are required to describe the change of internal            of derivatives as follows: if we replace parameter qi with q̃i := ln qi ,
+forces due to a change in parameter (i. e. control point) values. For        then qi = exp(q̃i ) = d qi /d q̃i and consequently for any quantity y
+convenience, we also use autodiff to compute the SVD derivatives in-         depending on this parameter we find d y/d q̃i = (d y/d qi ) qi .
+stead of implementing the analytical formulation of [Xu et al. 2015].           We can also treat density as an input parameter (either globally
+                                                                             homogeneous, or locally per element). As the density influences
+4.3   Computational methods                                                  both the mass matrix and the external force due to gravity, we need
+During forward simulation, we solve Eq. (2) with a standard Newton-          to account for the additional terms d fext /d q and (d M/d q)Ûv and
+Raphson method; we iterate until the residual force magnitude is less        add them in Eq. (5) and (9). We have skipped these terms in Section
+than 10−6 N, or at most 20 iterations (most examples converge within         3 for the sake of brevity; extending the derivations to include them
+3 to 6 iterations per time step). We use a stabilized bi-conjugate gra-      is straightforward.
+dient solver for the sparse linear sub-problem within each iteration;
+we find this solver to produce numerically more robust results com-          5   RESULTS
+pared to a standard conjugate gradient version. Our implementation           In this section we present results obtained with our method. We start
+builds on the linear algebra library Eigen [Guennebaud et al. 2010];         with some basic verification tests using a ground-truth simulation
+we use their default solver configuration for all of our results. We         as the target motion (Figure 2). Our goal is to find parameters for
+store the solver object, which encapsulates the system matrix, at            standard material models from dynamic motions. We extensively
+the end of each time-step and re-use it to solve the linear problem          test our method on cylindrical specimens using various motion sam-
+for either the sensitivities in Eq. (6) or the adjoint states in Eq. (12).   ples, including oscillations in the first and second harmonic modes
+   We use the LBFGS algorithm [Nocedal 1980] to solve the parame-            (Fig. 4), as well as strong bending deformation (Fig. 8). Similarly, we
+ter optimization problem, Eq. (3); our implementation is based on            also match the fast oscillation of a flexible 3D printed lattice struc-
+the publicly available LBFGS++ library [Qiu 2019]. The optimiza-             ture simulated with a very coarse mesh (Fig. 5). Finally, the adjoint
+tion algorithm is limited to at most 150 iterations, with at most 20         method allows us to optimize local parameters per element. We test
+function evaluations (i. e. simulation runs) per iteration. In each          our approach on a manually designed deformation target (Fig. 10),
+iteration we perform a line search using regular Wolfe conditions            as well as on an inhomogeneous real-world specimen (Fig. 13). For
+with curvature coefficient 0.999.                                            all of these examples, we usually optimize for the logarithm of the
+   The physical material parameters we optimize for are usually              material parameters as described in Section 4. Figure 11 shows a
+expected to be non-negative; furthermore their values can have dra-          comparison of convergence behaviour with and without applying
+matically different orders of magnitude. For instance, the power-law         the log-transform on a simple test case.
+index h is expected to be close to 1, whereas the shear modulus could           As an introductory example, we first show how our method can be
+easily be on the order of 106 Pa. We found that in these situations          used to adjust material parameters for a sequence of coarser meshes,
+optimizing for the logarithm of the parameters, instead of the pa-           counteracting increasing numerical stiffness and damping as the
+rameter values directly, can greatly improve the convergence of the          resolution reduces. We first run a ground-truth, high-resolution
+optimization algorithm and ensures positivity without additional             simulation (ca. 50k tetrahedra) on the Stanford bunny with a homo-
+constraints. Figure 11 compares the convergence behaviour of a               geneous Neohookean material and power-law viscous damping. In
+homogeneous material parameter estimation with and without this              this example the bunny is actuated by a moving Dirichlet boundary
+logarithm transform on a very simple example. When optimizing                condition on its base, performing a scripted motion composed of
+
+                                                                                 ACM Trans. Graph., Vol. 38, No. 6, Article 236. Publication date: November 2019.
+ 236:8 •                  Hahn, Banzet, Bern, and Coros
+
+Table 2. Material parameters estimated from motion capture data for single-type foam cylinder specimens actuated by one boundary clamp. The simulation
+uses a Neohookean elastic and power-law viscous material. Timings show the CPU time (4 × 3.9 GHz) for a single simulation with objective function gradient
+evaluation first, then the runtime for the entire optimization.
+
+
+                                            Foam type              III         III           III                          V            V              V             V
+                                                 Figure                                                                   4a           4b                           8
+                                           Lamé λ [Pa]       1.17E+04      1.17E+04       1.18E+04                    1.28E+04      1.23E+04       1.25E+04     1.67E+04
+                                           Lamé µ [Pa]       1.27E+05      1.26E+05       1.10E+05                    1.50E+05      1.53E+05       1.57E+05     9.80E+05
+                            Viscosity coefficient [Pa s]           8.74          8.64           7.28                        1.94          8.51           3.65         0.20
+                                      Power-law index              0.44          0.57           0.49                        0.98          0.49           0.78         2.95
+                              Runtime [min] (sgl/opt)        1.2 / 76.5   3.8 / 263.9     1.4 / 44.9                 1.5 / 111.5   1.7 / 181.1    3.5 / 209.3   1.1 / 46.6
+
+
+                      Y                                                                                               X
+               0.4                                                                                             0.5
+                                                                                                                                                                                 P. 4a
+Position [m]
+
+
+
+
+                                                                                                Position [m]
+                                                                                                                                                                                 Target
+               0.2                                                                                                                                                               Opt.
+                      X
+                                                                                                               0.3 Y
+                 0
+                                                                                 P. 4a
+                                                                                 Target                               Z
+               -0.2                                                              Opt.
+                      Z
+                                                                                                               0.1
+                  0            0.5            1              1.5           2                                     0                               0.5                         1
+                                                  Time [s]                                                                                         Time [s]
+
+ Fig. 6. Comparison of parameters: motion graphs for the example of Fig. 4b                        Fig. 7. Comparison of parameters: motion graphs for the example of Fig. 8
+ simulated with parameters optimized for the motion of Fig. 4a (red solid                          simulated with parameters optimized for the motion of Fig. 4a (red solid
+ lines). Green dots show the recorded target motion of the physical specimen;                      lines). Green dots show the recorded target motion of the physical specimen;
+ blue dashes show the optimal result for this motion. All curves refer to the                      blue dashes show the optimal result for this motion. All curves refer to the
+ top marker on the unconstrained end of the specimen.                                              marker in the middle of the specimen as in Fig. 8.
+
+two sinusoid displacements oscillating at 17Hz and 13Hz respec-                                    trajectories closer to the target motion, at some point the resonant
+tively. We record the motion trajectories of five “virtual” markers                                behaviour will be lost, so the optimal result shows a compromise
+due to this actuation as shown in Fig. 2. Our method then finds                                    between these cases.
+optimal material parameters for three coarser meshes (8.5k, 2.7k,                                     We then test whether the material parameters optimized for the
+and 1.2k elements respectively) such that the trajectories of these                                original motion (Fig. 2) generalize to a different one using the coars-
+virtual markers match the ground-truth simulation as closely as pos-                               est mesh in both cases. In the original case, the boundary condition
+sible. Each optimization runs independently using the ground-truth                                 on the base of the bunny moves in the x-y-plane, whereas the new
+data as initial parameter values. As coarser elements introduce nu-                                motion proceeds in the y-z-plane with similar oscillation frequen-
+merical stiffness, the optimization in turn results in softer material                             cies. Using the ground truth material parameters for the coarse mesh
+parameters than the ground truth, as expected.                                                     leads to an RMS error of 6.7 mm, whereas the optimal result for
+   The resulting material parameters are summarized in Table 1.                                    this motion yields 2.6 mm. Using the parameters optimized for the
+The bulk modulus drops to about 62.4%, 60.7%, and 53.7% of the                                     original motion results in an RMS error of 2.9 mm, and a very similar
+original value respectively, while the shear modulus drops to 90.6%,                               motion as the optimal parameters as shown in Fig. 3. The optimal
+79.4%, and 55.5% respectively. The damping parameters move from                                    shear modulus differs by about 5.5% between the two motions.
+the initial shear-thinning behaviour towards shear-thickening pa-                                     Our primary goal is to estimate parameters of real-world materi-
+rameters while the viscosity coefficients drop to just under 30% on                                als. We first focus on (mostly) homogeneous specimens, where we
+the coarsest mesh as numerical damping increases. As shown in                                      only need to optimize for a small number of parameters. In particu-
+Fig. 2, the motion trajectories of the ears are noticeably different                               lar, we aim to find the stiffness in terms of the Lamé parameters of a
+between the three coarse versions and the high-resolution version,                                 Neohookean elastic model, as well as the parameters of a power-law
+whereas the trajectories for the head, back, and tail match up quite                               damping model.
+well. We suspect that the noticeable differences between the ear                                      We fabricate two cylindrical specimens, 20 cm tall and 2 cm in di-
+trajectories are due to heavy numerical stiffening around the part                                 ameter, made of FlexFoam type III and type V respectively. We place
+that has the smallest cross-section area just above the head. While                                hemispherical motion capture markers of 4 mm diameter on the
+one might expect lowering the stiffness further would help to get the                              surface of the cylinders. These markers are represented by slightly
+
+ACM Trans. Graph., Vol. 38, No. 6, Article 236. Publication date: November 2019.
+                                                                  Real2Sim: Visco-elastic parameter estimation from dynamic motion • 236:9
+
+
+
+
+                                                                                 (a)                                          (b)
+
+Fig. 8. An example showing large bending deformation and fast “snap-
+                                                                             Fig. 9. A 3D printed soft hand (a) with boundary clamp and motion capture
+through” motion using two boundary clamps. For this situation the material
+                                                                             markers and (b) simulated (arrows) and real-world motion trajectories (solid)
+parameters of a Neohookean model need to be much stiffer compared to
+                                                                             of the thumb and middle finger. The objective function measures trajectories
+the slower, less deformed motions in Fig.4.
+                                                                             of all five fingers.
+
+elevated triangles on the surface of the simulation mesh (see also           whereas the stiffness is quite similar for both cases and the motion
+Fig. 8). For the cylindrical specimens we use data from at most 9            is simulated well with both parameter sets.
+markers, spaced evenly along the surface, as well as one on the                  Fitting a two-parameter damping model to these motions con-
+unconstrained end of the cylinder. For the soft robot in Fig. 1 we           taining a single predominant frequency seems to be somewhat
+use only 4 markers, one on the end of each leg. We have not ex-              ill-conditioned, in the sense that lowering the power-law index
+perimented with more complex marker placement patterns as we                 while increasing the viscosity may yield very similar results. Our
+position them by hand in our experiments. In order to determine the          third motion sample for the type-V foam specimen (see video) com-
+optimal material parameters, we minimize the squared distance be-            bines oscillations at two different frequencies and yields damping
+tween the simulation and real-world marker positions, as observed            parameters in a similar range, see also Table 2. We show further
+by the motion capture system; see Eq. (15).                                  comparisons in our accompanying video, including motions using
+   Figure 4 shows example simulations obtained for the type V                (a) the initial guess parameters that are generally too soft and over-
+foam specimen. Note that we find very similar material parameters            damped, (b) using parameters optimized for another motion sample
+independently for both motion samples: the first motion (Fig. 4a)            as in Fig. 6, as well as (c) an example with stiffness increased by
+oscillates in the object’s base harmonic mode, whereas the second            20% over the optimal value. The latter example results in a fairly
+motion (Fig. 4b) oscillates in the second harmonic mode. The root            acceptable simulation but deviations from the target motion are
+mean square error per marker is 17.9 mm in example (a) and 13.1 mm           visually obvious.
+in (b); note that we do not tune possible constant offsets of marker             Using a setup with two boundary clamps, we can apply strong
+positions in any way. Further results are summarized in Table 2. The         bending deformations and create a “snapping” motion of the real-
+initial parameter values for all these optimizations are λ = 10 kPa,         world specimen. For this motion, we observe a strong increase of the
+µ = 20 kPa, ν = 12 Pa s, and h = 1, which means the material is              apparent stiffness, suggesting that the non-linearity of the real foam
+initially simulated softer and overdamped compared to the optimal            for these deformations is stronger than predicted by the Neohookean
+results. For these homogeneous cases we have not observed notable            model. For the result shown in Fig. 8, the shear modulus is 980 kPa.
+differences in the optimal results due to different initial values.          Similarly, rheometry experiments at higher oscillation frequencies
+   We also tested two separate small material samples of the type V          also reach these values around 50 Hz for small strains. Comparing
+foam in a Paar Physica MCR300 rheometer to measure their shear               the optimal simulated motion for this example to a motion obtained
+modulus under small-strain forced oscillations. At 15 Hz actuation           from material parameters optimized for the slower motion of Fig. 4a
+frequency the measured shear modulus was 175 kPa and 186 kPa                 shows that these parameters match the deformation reasonably well
+for the two samples respectively. In general, a higher actuation             overall, but fail to damp out some oscillations during the fast “snap”;
+frequency resulted in increased shear moduli, whereas lower fre-             see Fig. 7 around t = 0.5 s. Please see our video for the full motion
+quencies were unreliable due to limitations of the testing equipment.        sample and further comparison to the parameters optimized for the
+In contrast the motion shown in Fig. 4a corresponds to roughly 5 Hz          motion in Fig. 4a.
+and Fig. 4b to about 10 Hz. Nevertheless, our results of around                  We can also estimate the bulk behaviour of flexible lattice struc-
+150 kPa are acceptably close to these measurements, especially con-          tures as shown in Fig. 5 and 9. As these structures are very complex
+sidering the variations between different specimens made of the              (the geometry file used for 3D printing the sample in Fig. 5 contains
+same foam type. In Fig. 6 we compare the simulated motion of Fig. 4b         over 130k surface triangles), we want to avoid simulating their dy-
+using either the parameters optimized for the motion of Fig. 4a or           namics at full resolution. Instead we approximate the geometry in
+4b respectively. Even though the optimal damping parameters for              Fig. 5a by a simple bar, meshed with ca. 120 tetrahedral elements.
+these two motions seem quite different, damping is fairly low overall,       Simulating the motion illustrated in Fig. 5b then takes about 4 s,
+
+                                                                                ACM Trans. Graph., Vol. 38, No. 6, Article 236. Publication date: November 2019.
+236:10     • Hahn, Banzet, Bern, and Coros
+
+
+while the entire optimization finds suitable bulk material parameters              being stretched under gravity. We manually define an objective
+in about 5 minutes using 77 individual simulation runs. While the                  function that measures the position of the bottom face after a fixed
+simulation matches the observed oscillation frequency and damp-                    simulated time of 0.2 s. The target position of each point on this face
+ing quite well, the RMS error in this case is 10.2 mm. This error is               is set to a vertical distance of 2 cm (stretching the cylinder by 100%
+mostly due to a larger deflection orthogonal to the oscillation direc-             along its axis) and proportionally offset towards the face’s centroid
+tion in the simulation. We surmise that the real-world structure is                by 20%. In this example, we use a Neohookean elastic and a Newto-
+not entirely isotropic, restricting this deflection more than what our             nian damping model. We first run a global parameter optimization
+isotropic Neohookean model can capture. We leave investigations                    to find the closest solution using homogeneous material parameters.
+into anisotropic material models as interesting future work.                       This intermediate solution matches the target reasonably well on
+   Similarly, we only mesh the overall geometry of the hand model                  average, however, the bottom face must bend as the material drops
+in Fig. 9, without representing the lattice structure in simulation.               under gravity, forming a bowl-like shape. Our objective function, on
+The fingers are made of silicone, 3D printed by SpectroPlast [2019].               the other hand, asks for this face to remain planar. We now optimize
+We again work with a homogeneous, isotropic material in simula-                    per-element elasticity parameters, starting from the homogeneous
+tion, whereas the real-world specimen clearly has denser regions                   solution. As shown in Fig. 10a, the resulting local material param-
+around the base and the fingertips. Nevertheless, we find material                 eters form a stiff core in the centre, and soften towards the edges to
+parameters that capture the overall motion behaviour well using                    approach a planar final configuration. We can similarly optimize for
+this simple simulation model.                                                      local densities instead of local stiffnesses, resulting conversely in a
+   Finally, we show an application of our method to soft robotics                  lighter core and a heavier rim as shown in Fig. 10b. Both examples
+design in Figure 1. We first fabricate a soft robot prototype from                 use the same mesh consisting of 8.7k tetrahedral elements, which
+type-III foam using the technique described by [Somm et al. 2019].                 means that we optimize for 17.4k elastic parameters, or 8.7k density
+Then we capture short motion samples for this particular specimen                  parameters respectively.
+and estimate material parameters for homogeneous Neohookean                           In order to test the capabilities of this per-element material pa-
+elasticity and Newtonian viscosity for a reasonably coarse mesh.                   rameter estimation method on a real-world scenario, we fabricate a
+Figure 1a shows the collected motion trajectories alongside the                    cylinder consisting of type-III (softer) foam on one end and type-V
+best matching simulated ones. We then use the same mesh and                        (stiffer) foam on the other. Figures 12 and 13 show results obtained
+parameters, adding some elements representing the weight of the                    for this specimen. The example shown in Fig. 12 uses a single bound-
+motors, and design a control strategy for this robot in simulation.                ary clamp. In this case, the optimization finds the onset of the softer
+The ground contact and tendon actuation forces are simulated using                 region, as well as a very stiff region where the physical sample is
+the method of [Bern et al. 2019]. The use of an intentionally coarse               glued to the rigid clamp (highlighted with a red ellipse in the image).
+mesh greatly speeds up motion planning. Furthermore, the foam’s                    However, for this particular motion, the softer tip is not captured by
+material properties vary among different specimens, depending                      the optimization; this result is likely due to the fact that only one of
+on details of the fabrication process that are difficult to control.               seven motion capture markers sits on the very end of the cylinder,
+After estimating material parameters for this particular specimen                  which has relatively little influence on the objective function value.
+and simulation mesh, we successfully design motion control curves                  Furthermore, the range of stiffness values is unrealistically large.
+using this simulation model. Our robot then performs the designed
+                                                                                                                   100
+motion, achieving a satisfactory match between simulation and
+                                                                                   normalized objective function
+
+
+
+
+real-world behaviour as shown in our accompanying video.
+                                                                                                                                                   homogeneous
+   Using the adjoint method combined with the LBFGS algorithm,
+                                                                                                                                                   per element
+we can optimize a large number of parameters simultaneously. To
+                                                                                                                                                   gradient magnitude
+                                                                                                                   10-2
+demonstrate the effectiveness of this approach, we consider a cylin-
+                                                                                                                                                   hom. non-log.
+der of 5 cm radius and 2 cm height, fixed to the ceiling on the top,
+
+
+
+                                                                                                                   10-4
+
+
+                                                                                                                          0   10   20      30     40     50      60
+                                                                                                                                        runtime [min]
+                              (a)                                      (b)         Fig. 11. Convergence of LBFGS optimizing for the logarithm of visco-elastic
+                                                                                   material parameters. Starting from an initial guess that is too soft, we first
+Fig. 10. A cylinder dropping from the ceiling under gravity. The objective         optimize globally homogeneous material parameters (blue) and then per-
+function requires the bottom face to match the green disk. We optimize for         element stiffnesses (red) arriving at the result shown in Fig. 10a. We optimize
+local (per-element) elastic Lamé parameters (a), or densities (b). Insets show     for the logarithm of the material parameters by default and compare to opti-
+bottom view.                                                                       mizing for their values directly during the homogeneous part (blue dashes).
+
+
+ACM Trans. Graph., Vol. 38, No. 6, Article 236. Publication date: November 2019.
+                                                                     Real2Sim: Visco-elastic parameter estimation from dynamic motion •                     236:11
+
+
+
+
+Fig. 12. Optimization result for per-element elasticity (and global viscosity)   Fig. 13. Optimization result for per-element elasticity (and global viscosity)
+parameters on a multi-foam cylinder specimen. Single boundary clamp.             parameters on a multi-foam cylinder specimen. Two boundary clamps.
+
+
+
+                                                                                 Xu et al. [2015]. We use a uniaxial and a volumetric strain-stress re-
+In contrast, if we add a second boundary clamp on the other side                 sponse function and initialize the model to a Neohookean initial con-
+of the cylinder as well and optimize for the combination of both                 figuration according to Eq. (25) in [Xu et al. 2015], see also Eq. (19).
+motions simultaneously, we see a clearer distinction between the                 We then optimize for the spline control point values, while the con-
+softer part on the left of the image and the stiffer part on the right,          trol point locations in strain space remain constant. As pointed out
+with a mixed region in between. The overall range of parameters is               by Xu et al., a generic spline function can easily lead to a material
+also more reasonable, see Fig. 13. In this example we use a smoothly             model that causes unstable simulations unless some precautions
+rotating motion of the two boundary clamps, with noticeable, but                 are taken. We found that adding a regularization term to our objec-
+not excessive bending of the cylinder; please also refer to the ac-              tive function that slightly penalizes negative first derivatives of the
+companying video. For this motion, optimizing only for globally                  splines is sufficient to produce acceptable results. If a simulation
+homogeneous elastic parameters results in a root-mean-square error               becomes unstable during the optimization procedure, we simply
+per motion capture marker of 6.64 mm, whereas optimizing for local               return DBL_MAX as objective function value, which causes the
+per-element parameters cuts this error to less than half at 3.13 mm              line search to backtrack towards the previous (stable) configuration.
+(which is less than the diameter of our motion capture markers).                 Figure 14 shows results using 5 and 21 control points per spline re-
+   Our tests, as summarized in Figures 3, 6, and 7, show that ho-                spectively. The root-mean-square errors (in terms of distances from
+mogeneous material parameters estimated with our method can                      the given target) are 0.45 mm and 0.42 mm respectively. In com-
+generalize to motions that exhibit a similar deformation range and               parison, optimizing for homogeneous material parameters results
+frequency. As our examples mostly capture shear wave propagation                 in an error of 0.81 mm, whereas local elastic parameters (Fig. 10a)
+behaviour, the material’s shear modulus is fitted best. In constrast,            achieve a slightly lower RMS error of 0.33 mm, while optimizing
+optimizing for only an elastostatic snapshot, instead of a dynamic               for local densities instead results in an error of just 0.08 mm.
+motion, can lead to errors in the shear modulus of over 30% and                     As this model still represents a globally homogeneous material, it
+would not reproduce the desired motion well in simulation (of course             cannot reach the target as precisely as a per-element optimization; it
+damping parameters would need to be determined by some other                     does, however, achieve a better result than a standard Neohookean
+method in this case).                                                            model. In our tests we have observed some issues with our imple-
+   When optimizing for inhomogeneous parameters on the other                     mentation of this material model, which if addressed, could further
+hand, we must expect to encounter many local minima. We choose                   improve results. First, representing the material response curves
+to start from the homogeneous optimal parameters, and apply a                    as interpolating splines can lead to unwanted oscillations of the
+gradient based optimization method, which means we expect to find                splines for some control point values, which tend to result in unsta-
+a local minimum near the homogeneous configuration. Nevertheless,                ble simulations. While the line search ensures stability of the final
+using only a single motion sample (Fig. 12) can lead to exaggerated              result, as described above, it also limits the step size and causes the
+and unrealistic parameter distributions. In this case, combining two             optimization to converge more slowly. Furthermore, without addi-
+motion samples (Fig. 13) improves the result considerably and yields             tional constraints, the optimization can introduce residual forces at
+a physically plausible parameter distribution.                                   the rest configuration, which is not physically meaningful. A more
+   While our primary goal is to estimate parameters of well estab-               carefully constructed parametrization could improve the practical
+lished physical material models, such as Neohookean elasticity, as               utility of this, or a similar, material model in the future.
+well as Newtonian or power-law viscous damping, the optimiza-
+tion framework is equally suited to handle more generic material
+models (so long as partial derivatives of the internal forces can
+be computed efficiently). To demonstrate this capability, we imple-
+mented a principal-stretch-based elastic material as described by
+
+                                                                                    ACM Trans. Graph., Vol. 38, No. 6, Article 236. Publication date: November 2019.
+236:12        • Hahn, Banzet, Bern, and Coros
+
+
+                                                                                      We have demonstrated the flexibility of our method in various ex-
+                                                                                   amples, including real-world specimens, custom-designed objective
+                                                                                   functions or material models, as well as numerical coarsening. The
+                                                                                   latter example fits a low-resolution simulation to a high-resolution
+                                                                                   one, Fig. 2, automatically adjusting the simulation parameters to
+     5                                    21                                       counteract the effects of numerical stiffness and dissipation.
+                                                                                      When optimizing for a small number of homogeneous material
+                                                                                   parameters, the advantage in terms of total run time of the adjoint
+                                                                                   method is fairly small compared to the direct approach, while the
+                                                                                   adjoint method consumes more memory. In terms of the resulting
+                                                                                   gradient, the two methods are equivalent. As most of our exam-
+                                                                                   ples use reasonably short recorded motion data, we use the adjoint
+Fig. 14. The same simulation as in Fig. 10, now using a principal-stretch-
+based elasticity model. We optimize for global spline control point values         method for most of our results, using less than the available 16 GB
+representing the material’s strain-stress response. Image labels specify the       of memory. If memory consumption is a concern and the number
+number of control points per spline.                                               of parameters is low, or the sensitivies themselves are required
+                                                                                   for other reasons, direct differentiation should be used instead. We
+                                                                                   use the direct approach for the homogeneous phase of Fig. 11 for
+         10         f ' (uniaxial)                                                 demonstration purposes.
+                    h ' (volumetric)                                                  We also show an example using a custom-designed objective
+                                                                                   function to find a material distribution that achieves a desired defor-
+          0                                                                        mation behaviour; Fig. 10. Furthermore, we can use more elaborate
+                                                                                   material models with an arbitrary number of parameters as shown
+                                                                                   in Fig. 14. However, creating real-world motion samples that result
+     -10                                                                           in a generic predictive material model without further assumptions
+       10-1              100             101             102             103       on the type of non-linearity remains an open problem.
+                                  Stretch ratio                                       Another interesting direction for future work are anisotropic
+                                                                                   material models. While extending our optimization framework to
+Fig. 15. Resulting spline curves for the principal stretch material using 21       these models should be relatively straightforward, the question
+control points per spline, using a uniaxial and a volumetric response function     of how to obtain sufficient information about the material’s real-
+as described in [Xu et al. 2015].
+                                                                                   world behaviour becomes more challenging to answer. Similarly, any
+                                                                                   history-dependent material model (such as plasticity) would require
+6    DISCUSSION                                                                    us to track further internal state variables and their derivatives in
+In this paper we have introduced a new method to estimate visco-                   the simulation. We leave such models as an interesting avenue for
+elastic material parameters of real-world specimens from dynamic                   future research.
+motion data without any force measurements or specialized testing                     Our objective function definition for real-world specimens uses
+equipment. We build upon a standard finite element simulation and                  motion capture data including precise timing of the observed be-
+compute objective function gradients analytically through either                   haviour. Consequently, a relatively small, yet visually noticeable,
+a direct sensitivity analysis or an adjoint state method. Using a                  mismatch of the recorded and simulated motion trajectories does
+standard LBFGS algorithm, we find the optimal material parameters                  not incur as high an objective function penalty as, for instance, a
+that allow a chosen simulation model to match the observed motion                  simulation that matches the trajectory well initially but drifts out of
+target in a least-squares sense. We fabricate our specimens by either              phase due to mismatches of the harmonic oscillation frequencies. As
+foam moulding or 3D printing, and we assume that the design ge-                    a result, we often observe noticeable differences in the trajectories
+ometry coincides with the rest pose of the fabricated objects for our              (such as in Fig. 1 and 4). This situation does, however, mean that
+simulations. As we are interested in the viscous damping properties                we do not need to calibrate the marker placement exactly, or worry
+as well as the elastic ones, we use BDF2 time integration (which                   about errors introduced by the motion capture. Finally, weighting
+causes much less numerical damping than the common backward                        functions emphasizing certain markers, or specific time intervals,
+Euler method) in all of our examples. We generally run simulations                 during optimization could be introduced into our method. As we
+at the same frame rate as the motion capture system, which is 180 Hz               aim to present the capabilities of our system without further hyper-
+for most examples. As this frame rate is relatively high compared                  parameter tuning we have not implemented such weights in our
+to the stiffness of our specimens, we do not require any addtional                 results.
+stability aids in our FEM framework and use a standard Newton                         While we only use parameter dependent (elastostatic) initial con-
+method to solve the non-linear dynamics problem. Of course, any                    ditions in our examples and keep the boundary conditions indepen-
+existing FEM implementation including such improvements could                      dent, the presented theory could be extended to cover parameter
+be used as well, as long as the derivative terms required for the                  dependent boundary conditions in an analogous way by considering
+objective function gradient calculations are provided at the end of                the derivatives of forces with respect to the parametrization of the
+each time step.                                                                    boundary data. Similarly, we have not used dynamic re-meshing in
+
+ACM Trans. Graph., Vol. 38, No. 6, Article 236. Publication date: November 2019.
+                                                                               Real2Sim: Visco-elastic parameter estimation from dynamic motion •                            236:13
+
+
+our examples. For cases where mesh adaption would be required dur-                              J. Hughes) (2017). https://doi.org/10.1002/9781119176817.ecm2043
+ing the simulation, the sensitivities computed by the direct method                          Antoine McNamara, Adrien Treuille, Zoran Popović, and Jos Stam. 2004. Fluid control
+                                                                                                using the adjoint method. ACM Transactions on Graphics 23, 3 (2004), 449. https:
+can in principle be interpolated from the old to the new mesh along-                            //doi.org/10.1145/1015706.1015744
+side all other simulation state data. However, it is currently not clear                     E. Miguel, D. Bradley, B. Thomaszewski, B. Bickel, W. Matusik, M. A. Otaduy, and S.
+                                                                                                Marschner. 2012. Data-Driven Estimation of Cloth Simulation Models. Computer
+if the same approach would also work in the adjoint setting, where                              Graphics Forum 31 (2012). https://doi.org/10.1111/j.1467-8659.2012.03031.x
+the adjoint state is integrated backwards in time.                                           Eder Miguel, David Miraut, and Miguel A. Otaduy. 2016. Modeling and Estimation of
+    The main application of our system is to estimate physical pa-                              Energy-Based Hyperelastic Objects. Computer Graphics Forum 35, 2 (2016), 385–396.
+                                                                                                https://doi.org/10.1111/cgf.12840
+rameters for complex visco-elastic materials, such as PU foams or                            E. Miguel, R. Tamstorf, D. Bradley, S. C. Schvartzman, B. Thomaszewski, B. Bickel, W.
+3D printed flexible structured materials. In this way, our method                               Matusik, S. Marschner, and M. A. Otaduy. 2013. Modeling and estimation of internal
+circumvents the need for (a) measuring material parameters with                                 friction in cloth. ACM Transactions on Graphics 32 (2013).
+                                                                                             Matthias Müller and Markus Gross. 2004. Interactive Virtual Materials. In Proceedings
+highly specialized testing instruments, then (b) implementing an                                of Graphics Interface 2004. 239–246.
+accurate small-scale simulation model, and finally (c) performing                            A.H.W. Ngan, H.T. Wang, B. Tang, and K.Y. Sze. 2005. Correcting power-law vis-
+                                                                                                coelastic effects in elastic modulus measurement using depth-sensing indenta-
+numerical coarsening (or homogenization) resulting in bulk ma-                                  tion. International Journal of Solids and Structures 42, 5-6 (2005), 1831–1846.
+terial parameters for fast, coarse simulation models. Instead we                                https://doi.org/10.1016/j.ijsolstr.2004.07.018
+directly find the parameters for the coarse simulation. In the end,                          Jorge Nocedal. 1980. Updating quasi-Newton matrices with limited storage. Math.
+                                                                                                Comp. 35, 151 (1980), 773–773. https://doi.org/10.1090/s0025-5718-1980-0572855-7
+the overall visco-elastic behaviour of our real-world test specimens                         James F. O’Brien and Jessica K. Hodgins. 1999. Graphical modeling and animation of
+is approximated very well by our optimized simulation models.                                   brittle fracture. In Proceedings of the 26th annual conference on Computer graphics
+                                                                                                and interactive techniques - SIGGRAPH’99. ACM Press.
+                                                                                             R. W. Ogden. 1997. Non-Linear Elastic Deformations. Dover Publications Inc.
+ACKNOWLEDGMENTS                                                                              W. C. Oliver and G. M. Pharr. 1992. An improved technique for determining hardness
+                                                                                                and elastic modulus using load and displacement sensing indentation experiments.
+This work was supported by the ETH Zürich Postdoctoral Fellow-                                  Journal of Materials Research 7, 06 (1992), 1564–1583.
+ship 18-1 FEL-09. This work is licensed under a Creative Commons                             Dinesh K. Pai, Jochen Lang, John Lloyd, and Robert J. Woodham. 1999. ACME, a
+Attribution-NonCommercial-ShareAlike International 4.0 License.                                 telerobotic active measurement facility. In Experimental Robotics VI. Springer London,
+                                                                                                391–400. https://doi.org/10.1007/bfb0119417
+                                                                                             Dinesh K. Pai, Kees van den Doel, Doug L. James, Jochen Lang, John E. Lloyd, Joshua L.
+REFERENCES                                                                                      Richmond, and Som H. Yau. 2001. Scanning physical interaction behavior of 3D
+                                                                                                objects. In Proceedings of the 28th annual conference on Computer graphics and
+Thomas Auzinger, Wolfgang Heidrich, and Bernd Bickel. 2018. Computational design                interactive techniques - SIGGRAPH '01. ACM Press.
+    of nanostructural color for additive manufacturing. ACM Transactions on Graphics         Yixuan Qiu. 2019. LBFGS++. http://yixuan.cos.name/LBFGSpp. 2019-03-12.
+    37, 4 (2018), 1–16. https://doi.org/10.1145/3197517.3201376                              Eftychios Sifakis and Jernej Barbic. 2012. FEM simulation of 3D deformable solids. In
+Jernej Barbič and Doug L. James. 2005. Real-Time subspace integration for St. Venant-           ACM SIGGRAPH 2012 Courses. ACM Press. https://doi.org/10.1145/2343483.2343501
+    Kirchhoff deformable models. ACM Transactions on Graphics 24, 3 (2005), 982.             Breannan Smith, Fernando De Goes, and Theodore Kim. 2018. Stable Neo-Hookean
+    https://doi.org/10.1145/1073204.1073300                                                     Flesh Simulation. ACM Transactions on Graphics 37, 2 (2018), 1–15. https://doi.org/
+James M. Bern, Pol Banzet, Roi Poranne, and Stelian Coros. 2019. Trajectory opti-               10.1145/3180491
+    mization for cable-driven soft robot locomotion. Robotics: Science and Systems           Breannan Smith, Fernando De Goes, and Theodore Kim. 2019. Analytic Eigensystems
+    (2019).                                                                                     for Isotropic Distortion Energies. ACM Transactions on Graphics 38, 1 (2019), 1–15.
+B. Bickel, M. Bächer, M. A. Otaduy, W. Matusik, H. Pfister, and M. Gross. 2009. Capture         https://doi.org/10.1145/3241041
+    and modeling of non-linear heterogeneous soft tissue. ACM Transactions on Graphics       Smooth-On, Inc. 2018. FlexFoam-iT!™ Series, Technical Overview. http://www.
+    28, 3 (2009), 1. https://doi.org/10.1145/1531326.1531395                                    smooth-on.com/tb/files/FLEXFOAM-IT_SERIES.pdf.
+Javier Bonet and Richard D. Wood. 2008. Nonlinear Continuum Mechanics for Fi-                Luca Somm, David Hahn, Nitish Kumar, and Stelian Coros. 2019. Expanding Foam as
+    nite Element Analysis. Cambridge University Press. https://doi.org/10.1017/                 the Material for Fabrication, Prototyping and Experimental Assessment of Low-Cost
+    cbo9780511755446                                                                            Soft Robots With Embedded Sensing. IEEE Robotics and Automation Letters 4, 2
+A. F. Bower, N. A. Fleck, A. Needleman, and N. Ogbonna. 1993. Indentation of a Power            (2019), 761–768. https://doi.org/10.1109/lra.2019.2893416
+    Law Creeping Solid. Proceedings of the Royal Society A: Mathematical, Physical and       SpectroPlast. 2019. https://spectroplast.com/.
+    Engineering Sciences 441, 1911 (1993), 97–124. https://doi.org/10.1098/rspa.1993.0050    Alexey Stomakhin, Russell Howes, Craig Schroeder, and Joseph M. Teran. 2012. Energet-
+Andrew M. Bradley. 2013. PDE-constrained optimization and the adjoint method. Tech-             ically Consistent Invertible Elasticity. In ACM SIGGRAPH/Eurographics Symposium
+    nical Report. Stanford University. https://cs.stanford.edu/~ambrad/adjoint_tutorial.        on Computer Animation (SCA ’12). 25–32.
+    pdf                                                                                      Stratasys, Ltd. 2018. The Stratasys F123 Series. http://www.stratasys.com/-/media/
+Desai Chen, David I. W. Levin, Wojciech Matusik, and Danny M. Kaufman. 2017.                    files/printer-spec-sheets/pss_fdm_f123series_1017a.pdf
+    Dynamics-aware numerical coarsening for fabrication design. ACM Transactions on          Joseph Teran, Eftychios Sifakis, Geoffrey Irving, and Ronald Fedkiw. 2005. Robust
+    Graphics 36, 4 (2017), 1–15. https://doi.org/10.1145/3072959.3073669                        quasistatic finite elements and flesh simulation. In ACM SIGGRAPH/Eurographics
+Desai Chen, David I. W. Levin, Shinjiro Sueda, and Wojciech Matusik. 2015. Data-driven          Symposium on Computer Animation. ACM Press. https://doi.org/10.1145/1073368.
+    finite elements for geometry and material design. ACM Transactions on Graphics 34,          1073394
+    4 (2015), 74:1–74:10. https://doi.org/10.1145/2766889                                    Rosell Torres, Alejandro Rodríiguez, José M. Espadero, and Miguel A. Otaduy. 2016.
+C.A. Felippa and B. Haugen. 2005. A unified formulation of small-strain corotational            High-resolution interaction with corotational coarsening models. ACM Transactions
+    finite elements: I. Theory. Computer Methods in Applied Mechanics and Engineering           on Graphics 35, 6 (2016), 1–11. https://doi.org/10.1145/2980179.2982414
+    194, 21-24 (2005), 2285–2335. https://doi.org/10.1016/j.cma.2004.07.035                  Bin Wang, Longhua Wu, KangKang Yin, Uri Ascher, Libin Liu, and Hui Huang. 2015.
+Joachim Georgii and Rüdiger Westermann. 2008. Corotated Finite Elements Made Fast               Deformation capture and modeling of soft objects. ACM Transactions on Graphics
+    and Stable. https://doi.org/10.2312/pe/vriphys/vriphys08/011-019                            34, 4 (2015), 94:1–94:12. https://doi.org/10.1145/2766911
+Gaël Guennebaud, Benoît Jacob, et al. 2010. Eigen v3. http://eigen.tuxfamily.org.            Chris Wojtan, Peter J. Mucha, and Greg Turk. 2006. Keyframe Control of Com-
+G. Irving, J. Teran, and R. Fedkiw. 2004. Invertible Finite Elements for Robust Simulation      plex Particle Systems Using the Adjoint Method. In ACM SIGGRAPH/Eurographics
+    of Large Deformation. ACM SIGGRAPH/Eurographics Symposium on Computer                       Symposium on Computer Animation (SCA ’06). Eurographics Association, 15–23.
+    Animation (2004), 131–140. https://doi.org/10.1145/1028523.1028541                          http://dl.acm.org/citation.cfm?id=1218064.1218067
+Arieh Iserles. 1996. A First Course in the Numerical Analysis of Differential Equations      Hongyi Xu and Jernej Barbič. 2017. Example-based damping design. ACM Transactions
+    (Cambridge Texts in Applied Mathematics). Cambridge University Press.                       on Graphics 36, 4 (2017), 1–14. https://doi.org/10.1145/3072959.3073631
+Doris H. U. Kochanek and Richard H. Bartels. 1984. Interpolating splines with local          Hongyi Xu, Funshing Sin, Yufeng Zhu, and Jernej Barbič. 2015. Nonlinear material
+    tension, continuity, and bias control. ACM SIGGRAPH Computer Graphics 18, 3                 design using principal stretches. ACM Transactions on Graphics 34, 4 (2015), 75:1–
+    (1984), 33–41. https://doi.org/10.1145/964965.808575                                        75:11. https://doi.org/10.1145/2766917
+R. Mahnken. 2017. Identification of Material Parameters for Constitutive Equations.
+    Encyclopedia of Computational Mechanics, Second Edition (eds E. Stein, R. Borst and T.
+
+
+                                                                                                 ACM Trans. Graph., Vol. 38, No. 6, Article 236. Publication date: November 2019.
+

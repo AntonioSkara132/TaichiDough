@@ -1,0 +1,551 @@
+{
+  "indexed": {
+    "date-parts": [
+      [
+        2026,
+        9,
+        10
+      ]
+    ],
+    "date-time": "2026-09-10T19:50:12Z",
+    "timestamp": 1789069812429,
+    "version": "build-2803163510"
+  },
+  "reference-count": 26,
+  "publisher": "Oxford University Press (OUP)",
+  "issue": "15",
+  "content-domain": {
+    "domain": [],
+    "crossmark-restriction": false
+  },
+  "short-container-title": [],
+  "published-print": {
+    "date-parts": [
+      [
+        2009,
+        8,
+        1
+      ]
+    ]
+  },
+  "abstract": "<jats:title>Abstract</jats:title><jats:p>Motivation: Mathematical description of biological reaction networks by differential equations leads to large models whose parameters are calibrated in order to optimally explain experimental data. Often only parts of the model can be observed directly. Given a model that sufficiently describes the measured data, it is important to infer how well model parameters are determined by the amount and quality of experimental data. This knowledge is essential for further investigation of model predictions. For this reason a major topic in modeling is identifiability analysis.</jats:p><jats:p>Results: We suggest an approach that exploits the profile likelihood. It enables to detect structural non-identifiabilities, which manifest in functionally related model parameters. Furthermore, practical non-identifiabilities are detected, that might arise due to limited amount and quality of experimental data. Last but not least confidence intervals can be derived. The results are easy to interpret and can be used for experimental planning and for model reduction.</jats:p><jats:p>Availability: An implementation is freely available for MATLAB and the PottersWheel modeling toolbox at http://web.me.com/andreas.raue/profile/software.html.</jats:p><jats:p>Contact:  andreas.raue@me.com</jats:p><jats:p>Supplementary information:  Supplementary data are available at Bioinformatics online.</jats:p>",
+  "DOI": "10.1093/bioinformatics/btp358",
+  "type": "journal-article",
+  "created": {
+    "date-parts": [
+      [
+        2009,
+        6,
+        9
+      ]
+    ],
+    "date-time": "2009-06-09T00:27:15Z",
+    "timestamp": 1244507235000
+  },
+  "page": "1923-1929",
+  "source": "Crossref",
+  "is-referenced-by-count": 1327,
+  "title": [
+    "Structural and practical identifiability analysis of partially observed dynamical models by exploiting the profile likelihood"
+  ],
+  "prefix": "10.1093",
+  "volume": "25",
+  "author": [
+    {
+      "given": "A.",
+      "family": "Raue",
+      "sequence": "first",
+      "affiliation": [
+        {
+          "name": "1 Physics Institute, University of Freiburg, 79104 Freiburg, Germany, 2 Department of Systems Biology, Harvard Medical School, 02115 Boston, MA, USA, 3 Division of Systems Biology of Signal Transduction, DKFZ-ZMBH Alliance, German Cancer Research Center, 69120 Heidelberg and 4 Freiburg Institute for Advanced Studies, University of Freiburg, 79104 Freiburg, Germany"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "C.",
+      "family": "Kreutz",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "1 Physics Institute, University of Freiburg, 79104 Freiburg, Germany, 2 Department of Systems Biology, Harvard Medical School, 02115 Boston, MA, USA, 3 Division of Systems Biology of Signal Transduction, DKFZ-ZMBH Alliance, German Cancer Research Center, 69120 Heidelberg and 4 Freiburg Institute for Advanced Studies, University of Freiburg, 79104 Freiburg, Germany"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "T.",
+      "family": "Maiwald",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "1 Physics Institute, University of Freiburg, 79104 Freiburg, Germany, 2 Department of Systems Biology, Harvard Medical School, 02115 Boston, MA, USA, 3 Division of Systems Biology of Signal Transduction, DKFZ-ZMBH Alliance, German Cancer Research Center, 69120 Heidelberg and 4 Freiburg Institute for Advanced Studies, University of Freiburg, 79104 Freiburg, Germany"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "J.",
+      "family": "Bachmann",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "1 Physics Institute, University of Freiburg, 79104 Freiburg, Germany, 2 Department of Systems Biology, Harvard Medical School, 02115 Boston, MA, USA, 3 Division of Systems Biology of Signal Transduction, DKFZ-ZMBH Alliance, German Cancer Research Center, 69120 Heidelberg and 4 Freiburg Institute for Advanced Studies, University of Freiburg, 79104 Freiburg, Germany"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "M.",
+      "family": "Schilling",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "1 Physics Institute, University of Freiburg, 79104 Freiburg, Germany, 2 Department of Systems Biology, Harvard Medical School, 02115 Boston, MA, USA, 3 Division of Systems Biology of Signal Transduction, DKFZ-ZMBH Alliance, German Cancer Research Center, 69120 Heidelberg and 4 Freiburg Institute for Advanced Studies, University of Freiburg, 79104 Freiburg, Germany"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "U.",
+      "family": "Klingmüller",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "1 Physics Institute, University of Freiburg, 79104 Freiburg, Germany, 2 Department of Systems Biology, Harvard Medical School, 02115 Boston, MA, USA, 3 Division of Systems Biology of Signal Transduction, DKFZ-ZMBH Alliance, German Cancer Research Center, 69120 Heidelberg and 4 Freiburg Institute for Advanced Studies, University of Freiburg, 79104 Freiburg, Germany"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "J.",
+      "family": "Timmer",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "1 Physics Institute, University of Freiburg, 79104 Freiburg, Germany, 2 Department of Systems Biology, Harvard Medical School, 02115 Boston, MA, USA, 3 Division of Systems Biology of Signal Transduction, DKFZ-ZMBH Alliance, German Cancer Research Center, 69120 Heidelberg and 4 Freiburg Institute for Advanced Studies, University of Freiburg, 79104 Freiburg, Germany"
+        },
+        {
+          "name": "1 Physics Institute, University of Freiburg, 79104 Freiburg, Germany, 2 Department of Systems Biology, Harvard Medical School, 02115 Boston, MA, USA, 3 Division of Systems Biology of Signal Transduction, DKFZ-ZMBH Alliance, German Cancer Research Center, 69120 Heidelberg and 4 Freiburg Institute for Advanced Studies, University of Freiburg, 79104 Freiburg, Germany"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    }
+  ],
+  "member": "286",
+  "published-online": {
+    "date-parts": [
+      [
+        2009,
+        6,
+        8
+      ]
+    ]
+  },
+  "reference": [
+    {
+      "key": "2023013112044633600_B1",
+      "doi-asserted-by": "crossref",
+      "first-page": "7",
+      "DOI": "10.1152/ajpregu.1980.239.1.R7",
+      "article-title": "Parameter and structural identifiability concepts and ambiguities: a critical review and analysis",
+      "volume": "239",
+      "author": "Cobelli",
+      "year": "1980",
+      "journal-title": "Am. J. Physiol. Regul. Integr. Comp. Physiol."
+    },
+    {
+      "key": "2023013112044633600_B2",
+      "first-page": "1135",
+      "article-title": "Model selection–an overview",
+      "volume": "80",
+      "author": "Ghosh",
+      "year": "2001",
+      "journal-title": "Curr. Sci."
+    },
+    {
+      "key": "2023013112044633600_B3",
+      "doi-asserted-by": "crossref",
+      "first-page": "2612",
+      "DOI": "10.1093/bioinformatics/btm382",
+      "article-title": "Data-based identifiability analysis of non-linear dynamical models",
+      "volume": "23",
+      "author": "Hengl",
+      "year": "2007",
+      "journal-title": "Bioinformatics"
+    },
+    {
+      "key": "2023013112044633600_B4",
+      "doi-asserted-by": "crossref",
+      "first-page": "201",
+      "DOI": "10.1016/0025-5564(85)90098-7",
+      "article-title": "Numerical parameter identifiability and estimability: integrating identifiability, estimability, and optimal sampling design",
+      "volume": "77",
+      "author": "Jacquez",
+      "year": "1985",
+      "journal-title": "Math. Biosci."
+    },
+    {
+      "key": "2023013112044633600_B5",
+      "doi-asserted-by": "crossref",
+      "first-page": "447",
+      "DOI": "10.1016/j.ymben.2006.04.003",
+      "article-title": "Exploiting the bootstrap method for quantifying parameter confidence intervals in dynamical systems",
+      "volume": "8",
+      "author": "Joshi",
+      "year": "2006",
+      "journal-title": "Metab. Eng."
+    },
+    {
+      "key": "2023013112044633600_B6",
+      "doi-asserted-by": "crossref",
+      "first-page": "1",
+      "DOI": "10.1038/msb4100011",
+      "article-title": "International alliances for quantitative modeling in systems biology",
+      "volume": "1",
+      "author": "Kitano",
+      "year": "2005",
+      "journal-title": "Mol. Syst. Biol."
+    },
+    {
+      "key": "2023013112044633600_B7",
+      "doi-asserted-by": "crossref",
+      "DOI": "10.1016/B978-0-08-034929-9.50009-1",
+      "article-title": "Volterra and generating power series approaches to identifiability testing",
+      "volume-title": "Identifiability of Parametric Models.",
+      "author": "Lecourtier",
+      "year": "1987"
+    },
+    {
+      "key": "2023013112044633600_B8",
+      "doi-asserted-by": "crossref",
+      "DOI": "10.1007/978-1-4757-2769-2",
+      "volume-title": "Theory of point estimation.",
+      "author": "Lehmann",
+      "year": "1983"
+    },
+    {
+      "key": "2023013112044633600_B9",
+      "doi-asserted-by": "crossref",
+      "first-page": "265",
+      "DOI": "10.1016/0005-1098(94)90029-9",
+      "article-title": "On global identifiability for arbitrary model parametrizations",
+      "volume": "30",
+      "author": "Ljung",
+      "year": "1994",
+      "journal-title": "Automatica"
+    },
+    {
+      "key": "2023013112044633600_B10",
+      "doi-asserted-by": "crossref",
+      "first-page": "805",
+      "DOI": "10.1002/bit.260180604",
+      "article-title": "Time delay in simple chemostat models",
+      "volume": "18",
+      "author": "MacDonald",
+      "year": "1976",
+      "journal-title": "Biotechnol. Bioeng."
+    },
+    {
+      "key": "2023013112044633600_B11",
+      "doi-asserted-by": "crossref",
+      "first-page": "2037",
+      "DOI": "10.1093/bioinformatics/btn350",
+      "article-title": "Dynamical modeling and multi-experiment fitting with PottersWheel",
+      "volume": "24",
+      "author": "Maiwald",
+      "year": "2008",
+      "journal-title": "Bioinformatics"
+    },
+    {
+      "key": "2023013112044633600_B12",
+      "doi-asserted-by": "crossref",
+      "first-page": "1",
+      "DOI": "10.1016/S0025-5564(01)00079-7",
+      "article-title": "Differential algebra methods for the study of the structural identifiability of rational function state-space models in the biosciences",
+      "volume": "174",
+      "author": "Margaria",
+      "year": "2001",
+      "journal-title": "Math. Biosci."
+    },
+    {
+      "key": "2023013112044633600_B13",
+      "doi-asserted-by": "crossref",
+      "first-page": "48",
+      "DOI": "10.1080/00031305.1995.10476112",
+      "article-title": "Teaching about approximate confidence regions based on maximum likelihood estimation",
+      "volume": "49",
+      "author": "Meeker",
+      "year": "1995",
+      "journal-title": "Am. Stat."
+    },
+    {
+      "key": "2023013112044633600_B14",
+      "doi-asserted-by": "crossref",
+      "first-page": "449",
+      "DOI": "10.1080/01621459.2000.10474219",
+      "article-title": "On profile likelihood",
+      "volume": "95",
+      "author": "Murphy",
+      "year": "2000",
+      "journal-title": "J. Am. Stat. Assoc."
+    },
+    {
+      "key": "2023013112044633600_B15",
+      "doi-asserted-by": "crossref",
+      "first-page": "113",
+      "DOI": "10.1023/A:1025681223921",
+      "article-title": "The use of likelihood-based confidence intervals in genetic models",
+      "volume": "27",
+      "author": "Neale",
+      "year": "1997",
+      "journal-title": "Behav. Genet."
+    },
+    {
+      "key": "2023013112044633600_B16",
+      "doi-asserted-by": "crossref",
+      "first-page": "21",
+      "DOI": "10.1016/0025-5564(78)90063-9",
+      "article-title": "System identifiability based on the power series expansion of the solution",
+      "volume": "41",
+      "author": "Pohjanpalo",
+      "year": "1978",
+      "journal-title": "Math. Biosci."
+    },
+    {
+      "key": "2023013112044633600_B17",
+      "volume-title": "Numerical Recipes: FORTRAN",
+      "author": "Press",
+      "year": "1990"
+    },
+    {
+      "key": "2023013112044633600_B18",
+      "doi-asserted-by": "crossref",
+      "first-page": "376",
+      "DOI": "10.1177/1536867X0700700305",
+      "article-title": "Profile likelihood for estimation and confidence intervals",
+      "volume": "7",
+      "author": "Royston",
+      "year": "2007",
+      "journal-title": "Stata J."
+    },
+    {
+      "key": "2023013112044633600_B19",
+      "doi-asserted-by": "crossref",
+      "first-page": "514",
+      "DOI": "10.1093/bioinformatics/bti799",
+      "article-title": "Systems biology toolbox for matlab: a computational platform for research in systems biology",
+      "volume": "22",
+      "author": "Schmidt",
+      "year": "2006",
+      "journal-title": "Bioinformatics"
+    },
+    {
+      "key": "2023013112044633600_B20",
+      "doi-asserted-by": "crossref",
+      "first-page": "1028",
+      "DOI": "10.1073/pnas.0237333100",
+      "article-title": "Identification of nucleocytoplasmic cycling as a remote sensor in cellular signaling by databased modeling",
+      "volume": "100",
+      "author": "Swameye",
+      "year": "2003",
+      "journal-title": "Proc. Natl Acad. Sci. USA"
+    },
+    {
+      "key": "2023013112044633600_B21",
+      "doi-asserted-by": "crossref",
+      "first-page": "2069",
+      "DOI": "10.1142/S0218127404010461",
+      "article-title": "Modeling the nonlinear dynamics of cellular signal transduction",
+      "volume": "14",
+      "author": "Timmer",
+      "year": "2004",
+      "journal-title": "Int. J. Bifurcat. Chaos"
+    },
+    {
+      "key": "2023013112044633600_B22",
+      "doi-asserted-by": "crossref",
+      "first-page": "191",
+      "DOI": "10.1080/00986448908940662",
+      "article-title": "Qualitative and quantitative identifiability analysis of nonlinear chemical kinetic models",
+      "volume": "83",
+      "author": "Vajda",
+      "year": "1989",
+      "journal-title": "Chem. Eng. Commun."
+    },
+    {
+      "key": "2023013112044633600_B23",
+      "doi-asserted-by": "crossref",
+      "first-page": "217",
+      "DOI": "10.1016/0025-5564(89)90024-2",
+      "article-title": "Similarity transformation approach to identifiability analysis of nonlinear compartmental models",
+      "volume": "93",
+      "author": "Vajda",
+      "year": "1989",
+      "journal-title": "Math. Biosci."
+    },
+    {
+      "key": "2023013112044633600_B24",
+      "doi-asserted-by": "crossref",
+      "first-page": "87",
+      "DOI": "10.2307/2347496",
+      "article-title": "A method for computing profile-likelihood-based confidence intervals",
+      "volume": "37",
+      "author": "Venzon",
+      "year": "1988",
+      "journal-title": "Appl. Stat."
+    },
+    {
+      "key": "2023013112044633600_B25",
+      "doi-asserted-by": "crossref",
+      "first-page": "77",
+      "DOI": "10.1016/S0025-5564(01)00080-3",
+      "article-title": "The structural identifiability and parameter estimation of a multispecies model for the transmission of mastitis in dairy cows",
+      "volume": "174",
+      "author": "White",
+      "year": "2001",
+      "journal-title": "Math. Biosci."
+    },
+    {
+      "key": "2023013112044633600_B26",
+      "doi-asserted-by": "crossref",
+      "first-page": "563",
+      "DOI": "10.1081/PRE-120024426",
+      "article-title": "Modeling ethylene/butene copolymerization with multi-site catalysts: parameter estimability and experimental design",
+      "volume": "11",
+      "author": "Yao",
+      "year": "2003",
+      "journal-title": "Polym. React. Eng."
+    }
+  ],
+  "container-title": [
+    "Bioinformatics"
+  ],
+  "original-title": [],
+  "language": "en",
+  "link": [
+    {
+      "URL": "https://academic.oup.com/bioinformatics/article-pdf/25/15/1923/48992533/bioinformatics_25_15_1923.pdf",
+      "content-type": "application/pdf",
+      "content-version": "vor",
+      "intended-application": "syndication"
+    },
+    {
+      "URL": "https://academic.oup.com/bioinformatics/article-pdf/25/15/1923/48992533/bioinformatics_25_15_1923.pdf",
+      "content-type": "unspecified",
+      "content-version": "vor",
+      "intended-application": "similarity-checking"
+    }
+  ],
+  "deposited": {
+    "date-parts": [
+      [
+        2024,
+        3,
+        14
+      ]
+    ],
+    "date-time": "2024-03-14T13:03:00Z",
+    "timestamp": 1710421380000
+  },
+  "score": 1,
+  "resource": {
+    "primary": {
+      "URL": "https://academic.oup.com/bioinformatics/article/25/15/1923/213246"
+    }
+  },
+  "subtitle": [],
+  "short-title": [],
+  "issued": {
+    "date-parts": [
+      [
+        2009,
+        6,
+        8
+      ]
+    ]
+  },
+  "references-count": 26,
+  "journal-issue": {
+    "issue": "15",
+    "published-print": {
+      "date-parts": [
+        [
+          2009,
+          8,
+          1
+        ]
+      ]
+    }
+  },
+  "URL": "https://doi.org/10.1093/bioinformatics/btp358",
+  "relation": {},
+  "ISSN": [
+    "1367-4811",
+    "1367-4803"
+  ],
+  "issn-type": [
+    {
+      "value": "1367-4811",
+      "type": "electronic"
+    },
+    {
+      "value": "1367-4803",
+      "type": "print"
+    }
+  ],
+  "subject": [],
+  "published-other": {
+    "date-parts": [
+      [
+        2009,
+        8,
+        1
+      ]
+    ]
+  },
+  "published": {
+    "date-parts": [
+      [
+        2009,
+        6,
+        8
+      ]
+    ]
+  }
+}

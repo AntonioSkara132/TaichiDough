@@ -1,0 +1,554 @@
+                                                             DiffCloud: Real-to-Sim from Point Clouds with
+                                                     Differentiable Simulation and Rendering of Deformable Objects
+                                                                          Priya Sundaresan1† , Rika Antonova1∗ , and Jeannette Bohg1
+
+
+                                            Abstract— Research in manipulation of deformable objects
+                                         is typically conducted on a limited range of scenarios, be-
+                                         cause handling each scenario on hardware takes significant
+                                         effort. Realistic simulators with support for various types of
+                                         deformations and interactions have the potential to speed up
+arXiv:2204.03139v2 [cs.RO] 13 May 2025
+
+
+
+
+                                         experimentation with novel tasks and algorithms. However, for
+                                         highly deformable objects it is challenging to align the output
+                                         of a simulator with the behavior of real objects. Manual tuning
+                                         is not intuitive, hence automated methods are needed. We view
+                                         this alignment problem as a joint perception-inference challenge
+                                         and demonstrate how to use recent neural network architec-
+                                         tures to successfully perform simulation parameter inference
+                                         from real point clouds. We analyze the performance of various               Fig. 1. Experimental setup. We execute deformable manipulation trajecto-
+                                         architectures, comparing their data and training requirements.              ries using a Kinova Gen3 arm. We post-process observations recorded from
+                                         Furthermore, we propose to leverage differentiable point cloud              two stereo depth cameras (Intel D435) to generate merged point clouds with
+                                                                                                                     the robot arm masked from view. These observations are fed to our proposed
+                                         sampling and differentiable simulation to significantly reduce
+                                                                                                                     method D IFF C LOUD for real-to-sim parameter estimation.
+                                         the time to achieve the alignment. We employ an efficient way
+                                         to propagate gradients from point clouds to simulated meshes
+                                         and further through to the physical simulation parameters,                  deformables from point clouds. Nonetheless, data collection
+                                         such as mass and stiffness. Experiments with highly deformable              and training for these can be computationally demanding.
+                                         objects show that our method can achieve comparable or                         In this work, we propose an alternative approach that
+                                         better alignment with real object behavior, while reducing
+                                                                                                                     employs a differentiable simulator to allow adjusting sim-
+                                         the time needed to achieve this by more than an order of
+                                         magnitude. Videos and supplementary material are available                  ulation parameters directly via gradient descent without
+                                         at diffcloud.github.io.                                                     the need for dataset collection and pre-training. Our ap-
+                                                                                                                     proach combines differentiable point cloud rendering and
+                                                                 I. I NTRODUCTION                                    differentiable simulation to bring the behavior of simulated,
+                                            We consider the real-to-sim problem of inferring param-                  highly deformable objects closer to that of real objects.
+                                         eters of general-purpose simulators from real observations                  We instantiate a scene with a simulated object and create
+                                         such that the gap between reality and simulation is re-                     an end-to-end differentiable pipeline that lets us seamlessly
+                                         duced [1]–[4]. A common approach to solving this problem                    propagate the gradients from real point clouds to the low-
+                                         is to train an inverse model on data generated with a black-                level physical simulation parameters. For highly deformable
+                                         box (non-differentiable) simulator using a wide range of                    objects, even small changes in these parameters can have
+                                         parameter settings. The input to such models usually consists               a significant impact on the behavior of the object. We
+                                         of trajectories of a low-dimensional state of the system,                   show that establishing end-to-end differentiability yields a
+                                         e.g. position and orientation of rigid objects in the scene.                faster alignment between simulation and reality, compared
+                                         The output are parameters, such as mass, friction, and other                to training inverse models with a black-box (i.e. gradient-
+                                         physical object properties.                                                 free) treatment of the simulator.
+                                            The state of a highly deformable object cannot be captured                  We conduct a set of experiments where a robot manip-
+                                         by only its position and orientation, since the object deforms              ulates highly deformable real objects, such as cloth and
+                                         during motion. Hence, we represent objects with point clouds                paper towels. We show that our approach successfully infers
+                                         as observed through depth cameras. Recent neural network                    simulation parameters, such as mass and stiffness, making
+                                         architectures, such as PointNet++ [5] and MeteorNet [6],                    the behavior of simulated deformables match the real ones.
+                                         are well suited for learning to process point clouds. As                    In simulation experiments, we explore interactions of the
+                                         we will show, they can yield inverse models that offer a                    deformables with rigid objects: stretching a band on a pole,
+                                         viable solution to the challenging task of real-to-sim for                  and hanging a vest onto a rigid pole. Overall, our experiments
+                                           1 Department of Computer Science, Stanford University, Stanford, CA       show that we can obtain similar or better alignment between
+                                         94305, USA {priyasun, rika.antonova, bohg}@stanford.edu                     the simulated and the target object, compared to the inverse
+                                           † P. Sundaresan was supported by the NSF Graduate Research Fellowship.    model baselines. The major benefit of our approach is that
+                                           ∗ Supported by the National Science Foundation grant No.2030859 to the
+                                                                                                                     it obtains such an alignment after on average 10 minutes
+                                         Computing Research Association for the CIFellows Project.
+                                           This project was supported in part by a research award from Meta. The     of direct gradient descent, replacing 2.5 – 5.5 hours of data
+                                         authors also thank Krishna Murthy Jatavallabhula for helpful discussions.   collection and training for the inverse models.
+                     II. BACKGROUND                              assignment of triangular mesh faces) fully differentiable, in-
+A. Real-to-Sim for Deformable Objects                            cluding DIB-R [29] and SoftRAS [30]. Other works explore
+                                                                 making the processes of ray tracing [31] and volumetric ren-
+   Many approaches in deformable object manipulation are
+                                                                 dering [32], [33] differentiable. Toolkits, such as Kaolin [34]
+limited to specific scenarios due to the complexity of real
+                                                                 and PyTorch3D [35] provide batched implementations of
+hardware setups [7]–[12]. Furthermore, there is a lack of eas-
+                                                                 differentiable rasterization, allowing a significant speedup
+ily tunable yet realistic simulators that support deformables
+                                                                 of these computationally expensive processes. In this work,
+and could aid experimentation with novel tasks. Hence,
+                                                                 we aim to do correspondence-free alignment of simulated
+automated ways to find simulation parameters are needed to
+                                                                 object states, such as meshes, with real visual observations.
+make the behavior of simulated deformables resemble that
+                                                                 While images are one such observation space to bridge
+of their real-world counterpart. In robotics, this real-to-sim
+                                                                 the gap, achieving close alignment between images that
+problem has been extensively studied for rigid objects [13]–
+                                                                 are differentiably rendered from simulated meshes and real
+[18]. However, these methods assume access to a low-
+                                                                 images still remains an open challenge due to the range
+dimensional state, such as object poses. Recent surveys
+                                                                 of colors, textures, and fine details present in real images.
+have reviewed learning-based approaches for manipulation
+                                                                 Thus, we use point clouds to represent objects and build
+and perception of deformables [19]–[21], including methods
+                                                                 on PyTorch3D [35], which offers a way to differentiably
+for tracking and registration. However, such methods either
+                                                                 sample a point cloud from a given mesh such that gradients
+employ markers [22], assume a known and simplified de-
+                                                                 from losses in the point clouds propagate to the mesh vertex
+formation model [23], or show applicability only to specific
+                                                                 gradients. Furthermore, PyTorch3D library exposes efficient
+cases, e.g. a rope lying flat on a surface [24]. As of now,
+                                                                 data structures and CUDA-enabled batched operations for
+there is no generic tracking or registration approach for
+                                                                 3D meshes and point clouds, allowing seamless integration
+deformables that is robust in a wide range of scenarios.
+                                                                 into simulator backends that support PyTorch.
+B. Inverse Models for Real-to-Sim                                   Differentiable simulation is a promising paradigm that
+   One approach towards real-to-sim is to learn an inverse       allows to adapt simulators by propagating gradients of the
+model that maps from a sequence of sensor observations to        simulator outputs w.r.t. the lower-level physical simulation
+simulation parameters [25]. In robotics, several earlier works   parameters. Recent differentiable simulators with support for
+explored using inverse models for highly deformable objects.     deformables include [36]–[45]. Most of these only support
+For example, in [26] the authors propose a piecewise linear      a limited set of interactions and types of deformation.
+elastic material model for cloth, then they fit the material     For example, out of the above, only [36] (a differentiable
+model to real cloths by applying controlled forces and           version of ARCSim [46]) supports arbitrary meshes and
+measuring the deformation response. This results in a paired     modeling interactions of rigid and deformable objects. From
+dataset of cloth types and estimated material parameters,        the simulators listed above, only gradSim [37] provides a
+but limits generalization to unseen cloths without additional    combination of differentiable RGB rendering and simulation.
+physical measurements. In [27], the authors propose using        This approach is conceptually related to our work, but is still
+the dataset of [26] as a source of supervision for training a    substantially different, since it does not handle point clouds,
+network to regress material parameters from RGB videos           does not support interactions between rigid and deformable
+of cloth. This supervised training approach relies heavily       objects, and presents only sim-to-sim results with simple
+on domain randomization to achieve generalization to cloths      simulated images and plain textures. The differentiable simu-
+with unseen colors or patterns. Additionally, the proposed       lation framework proposed in [47] shows results on inferring
+regression framework discretizes the space of outputs to deal    deformation properties of a real object from point clouds.
+with the high dimensional model of cloth deformation, limit-     We do not build on this approach directly, because it has
+ing the range of cloth types that can ultimately be accurately   several key limitations. First, there are limitations in the
+modelled. In this work, we use a sequence of depth images        underlying simulator: the model is aimed for objects with
+(converted to point clouds) as input to our models. Using        low-to-medium levels of deformability, such as tight plush
+point clouds instead or RGB images allows us to circumvent       toys and pillows. In contrast, we are interested in highly
+the need for extensive domain randomization and for con-         deformable objects, such as cloth, garments, and stretchable
+trasting textures (for foreground/background segmentation).      bands. Second, there are limitations in the loss formulation:
+We adopt established methods for processing point clouds,        the point cloud loss proposed in [47] relies on a simple dif-
+such as PointNet/PointNet++ [5], [28], MeteorNet [6] and         fusion of the observed deformation into a deformation field.
+train them to regress to continuous simulation parameters.       This is not suitable for the case of highly deformable objects
+                                                                 that rapidly and drastically change shape under gravity and
+C. Differentiable Rendering and Differentiable Simulation        upon interacting with other objects. Finally, this prior work
+   Differentiable rendering of images allows using 2D obser-     is geared towards analyzing cases with passive dynamics of
+vations to inform 3D understanding, by propagating gradients     a single object falling and colliding with the table or bending
+from images to illumination models, 3D objects in the scene,     under gravity; the simulator also lacks support for modeling
+and camera pose. Various works have explored making the          frictional contacts. We are instead interested in actuating
+rasterization process (coloring image pixels based on the        a robot to perform manipulation with highly deformable
+Fig. 2. Overview of D IFF C LOUD: the proposed method for real-to-sim parameter estimation from point clouds. D IFF C LOUD combines differentiable
+point cloud sampling with a differentiable mesh-based simulator to propagate losses computed between simulated (blue) and real (green, with red noise
+artifacts) point clouds to the underlying simulation properties. We visualize updating mass and stiffness of a simulated cloth lifted off of a table.
+
+objects that can also interact in non-trivial ways with rigid                alleviate noise, but some amount is likely to remain. For
+objects in the scene. We found that [36] is the only available               example, see the red patches highlighted in the real point
+simulator that readily supports such functionality, hence we                 cloud in Figure 1. Our insight is that a loss that disregards
+incorporate it into our approach.                                            noise artifacts can be obtained by using a unidirectional
+                                                                             Chamfer distance. This yields a loss that relieves the pressure
+              III. O UR A PPROACH : D IFF C LOUD                             for the simulated point clouds to match the noisy parts of
+   Our objective is to discover the physical simulation pa-                  the real point clouds:
+rameters (e.g. stiffness, mass, friction) that would cause the                                              X
+behavior of the simulated deformable objects to match the                      dsim→real
+                                                                                 Chamf (P
+                                                                                           sim
+                                                                                               , P real ) =       min ||x    xsim − x real ||22 . (2)
+                                                                                                              x real ∈P real
+behavior of observed real objects. We start by recording a                                               x sim ∈P sim
+
+sequence of point cloud observations of the scene, where a                      While the naive computation of the Chamfer distance can
+robot manipulates a deformable object. Then, we construct                    be expensive, PyTorch3D provides an efficient GPU-based
+a simulated environment in a differentiable simulator that                   implementation (see Section 3.1 in [35]). With that, we can
+can load meshes of deformable & rigid objects in the scene                   quickly propagate gradients from the point clouds through
+and simulate their interactions. To obtain simulated point                   the mesh representation to optimize the low-level physical
+clouds we implement a differentiable point cloud sampler:                    parameters of the simulator. We found that including point
+we sample points on the surface of the simulated objects                     clouds from one or two depth cameras is sufficient to con-
+using PyTorch3D [35]. By defining a differentiable loss                      struct a partially occluded point cloud that is still informative
+between the simulated and real point cloud sequences we                      enough for the overall optimization to be successful.
+can backpropagate all the way to the simulation parameters.
+Figure 2 gives an overview of our approach.                                  B. Gradient Propagation
+   In this work, we assume that the initial geometry of                          We build upon the differentiable simulator DiffSim [36],
+objects in the scene is known. This allows us to initialize                  which supports mesh-based simulation and contact-handling
+the simulation start state to match the real scene. We also                  of rigid objects and thin-shell deformables (e.g. cloth). In
+assume that the location of the grasp is known, so we can                    DiffSim, the simulation state is represented by general-
+grasp the object in the simulated scene in the same way as                   ized coordinates q = [q1 T , q2 T , . . . , qn T ]T of all ob-
+in reality (with a simulated gripper or gripper anchors). With               jects in the simulation with corresponding velocities q̇ =
+that, we can control the simulated gripper (or anchors) along                [q̇T1 , q̇T2 , . . . , q̇Tn ]T . The generalized coordinates of a rigid
+the trajectory of the end effector that was recorded in reality.             body have qi ∈ R6 for rigid objects, denoting position and
+                                                                             orientation, and qi ∈ R3 for deformable nodes with 3 DoF
+A. Loss Definition
+                                                                             for position alone. Here, n is the cumulative total of the
+  One candidate for a loss function on point clouds is the                   number of deformable nodes and rigid bodies in the scene.
+Chamfer distance:                                                            DiffSim uses the implicit Euler method to compute q, q̇ at
+                                                                             each time step and performs collision resolution in localized
+                                 X
+    dChamf (P a , P b ) = |P1a |         xa − x b ||22
+                                   min ||x
+                                         x b ∈P b                            impact zones. A given mesh has a body frame with the
+                                 x a ∈P a
+                                        X                              (1)   origin set to its center of mass at the start of simulation.
+                            + |P1b |          min    xb − x a ||22 .
+                                                   ||x
+                                              a  a
+                                               x ∈P                          A mesh vertex p has coordinate p0 = (px , py , pz )T in the
+                                       x b ∈P b
+                                                                             body frame and world coordinate p = f (q) = [r]p0 + t,
+Here, P a , P b denote two point clouds; x a , x b are 3D points             where r = (ϕ, θ, ψ)T and t = (tx , ty , tz ) is the 6-DoF
+in P a and P b respectively. This distance metric is frequently              pose of the mesh. Propagating gradients from vertex p to the
+used to compare the alignment between two point clouds                       generalized coordinates q involves computing the Jacobian
+that are either complete (sampled from meshes) or are                        ∇f and obtaining the partial derivatives ∂f (q)/∂q. In this
+generated by perception with the same camera perspective                     way, DiffSim is able to solve sim-to-sim optimizations by
+and noise properties. In our case of using low-cost depth                    comparing current mesh states to target mesh states and
+sensors, the challenge of constructing the loss function on                  propagating gradients from observed positional differences.
+the real and simulated point clouds is that we need to avoid                     Since ground truth mesh states are not readily available
+paying attention to the noise artifacts in the real point cloud.             for real deformables, we use point clouds as an observation
+Statistical outlier filtering and post-processing techniques can             space. To allow losses in the point cloud space to be
+propagated to simulated cloth vertices, we implement a
+differentiable point cloud sampling step. A triangular mesh
+face can be represented by its enclosing vertices p1 , p2 , p3 .
+In barycentric coordinates, a random point on the surface of
+the face can be generated by sampling 3 random numbers
+(u, v, w) such that u + v + w ≤ 1 [35]. Hence, we can obtain
+a random point x inside the triangle as:
+                      x = up1 + vp2 + wp3 .                      (3)
+   To generate an N -point, uniform-density point cloud
+from a mesh, we first sample N triangular faces
+                                                                       Fig. 3. Left: We visualize the average compute times across all methods
+{(pi,1 , pi,2 , pi,3 )}i=1,...,N , weighted proportionally to the      for performing parameter estimation in the real lift and fold scenarios.
+area of each face. This step ensures that the resulting                Compared to the baseline inverse models, D IFF C LOUD achieves more than
+point cloud is evenly distributed over the surface of the              an order of magnitude speedup, since it eliminates the need to pre-generate a
+                                                                       dataset and train on it. Right: The optimized D IFF C LOUD parameters found
+mesh, instead of being disproportionately dense in regions             in the lift scenario correspond to the intuitive physical properties of real
+where the mesh has closely packed faces. For the ith sam-              cloths, ranging from highly deformable to shape retaining. Each darkened
+pled face (pi,1 , pi,2 , pi,3 ), we generate random coefficients       circle represents the category median across three trajectories per cloth type.
+(ui , vi , wi ) and use Equation 3 to compute a point x i              propagated across all frames of the simulation and used to
+that lies on the face. Concatenating the points obtained               update the underlying parameters of the deformable object.
+by applying this procedure to the N sampled faces and                  This procedure is repeated for a fixed number of iterations
+coefficients yields the point cloud P = {x       xi }i=1,...,N . We    or until the Chamfer distance falls below a threshold.
+connect the PyTorch3D [35] implementation of this sampling
+procedure to the output of a differentiable simulator. With                                      IV. E XPERIMENTS
+that, gradients from loss functions operating on {x    xi }i=1,...,N      In this section, we compare D IFF C LOUD with non-
+can be propagated to mesh vertices (pi,1 , pi,2 , pi,3 ) via chain     differentiable methods for parameter estimation: we evaluate
+rule, observing that:                                                  the degree of point cloud alignment between simulated and
+   ∂x xi /∂pi,1 = ui ∂x    xi /∂pi,2 = vi ∂x xi /∂pi,3 = wi (4)        real trajectories and the compute efficiency across methods.
+
+C. Optimization                                                        A. Baseline Inverse Models
+   We consider scenarios where a robot executes a trajectory              As experimental baselines, we use methods that view
+to manipulate a deformable object, which potentially also              simulators as black-box, i.e. not treating observations as
+interacts with other objects in the scene. For each scenario,          end-to-end differentiable w.r.t the parameters. These inverse
+we get a real point cloud sequence     of length T and a reso-         models are implemented as regression networks that take
+                                                          T           point cloud sequences as inputs and predict k simulation
+lution of N points per frame: Ptreal = {x   xreal
+                                              i }i=1,...,N t=1 .
+We instantiate each real scenario in DiffSim using represen-           parameters. They are trained on simulated point cloud se-
+tative meshes to model the deformable and rigid objects in             quences generated by simulations with various simulation
+the scene initially. Next, we begin optimizing the material            parameters.
+properties of the simulated cloth such that the discovered             • M ETEOR N ET : An architecture for learning representations
+parameters best explain the observed target point cloud data.             of 3D point cloud sequences from [6], which we modify
+Each simulated scenario involves manipulating a simulated                 to predict k simulation parameters. Specifically, we use
+cloth with the same trajectory as in real. Even with identical            MeteorNet-cls (Appendix D.2 in [6]).
+trajectory execution, we expect a discrepancy between the              • P OINT N ET ++: A regressor similar to the above, but using
+real and simulated point cloud sequences due to mismatch                  the multi-scale group architecture from [5] (Appendix B.1)
+in the motion of the deformables, whose physical properties               to extract features from a single point cloud; uses three set
+we aim to optimize. For each iteration of optimization, we                abstraction layers followed by three fully connected layers
+run the simulation for the number of steps in the scenario                with output sizes (512, 256, k).
+horizon using the current set of estimated parameters. At              • MLP: A regressor with a fully connected network that
+each timestep t, we sample the simulated object surfaces in               also operates on a single frame; uses five 2D convolu-
+the scene according to Equation 3 to obtain a point cloud.                tional layers with output sizes (64, 64, 64, 128, 1024), a
+The concatenated point clouds across frames give the sim-                symmetric max pooling layer, two fully connected layers
+                                                           T
+ulated point cloud sequence: Ptsim = {x     xsim
+                                              i }i=1,...,N t=1 .
+                                                                          with output sizes (512, 256), a dropout layer, and a final
+In practice, we compute the unidirectional Chamfer distance               fully connected layer with k outputs.
+(Equation 2) on (Ptsim , Ptreal ) for the corresponding point             Real point cloud sequences suffer from partial observabil-
+clouds observed at time t. For most experiments, we found              ity, self-occlusion, and noise. To minimize the gap between
+that using only the last frame works well, i.e. t = T , as             simulation and reality, we aim to generate a training dataset
+in [36], [37]. Other frames can be used, and their selec-              for each of the regressor methods that is as realistic as
+tion could be considered as a hyperparameter. This loss is             possible. As training data for the regressors (M ETEOR N ET,
+P OINT N ET ++, MLP), we initialize N simulations with                These parameters serve as input to the simulation engine.
+uniformly sampled parameters and record the resulting point           We then run the simulator using the inferred parameters
+cloud sequences and ground truth parameters. This yields             and generate point clouds from the simulated meshes. We
+                                                     N
+a dataset D = {x    xt }Tt=1 , w = [wstiff , wmass ] i=1 . For each   compute the Chamfer distance between the point clouds
+simulation run, we generate a point cloud sequence from               generated by the baselines and the real point cloud, then
+mesh states according to Equation 3, but bias the sampling of         compare this against the loss from running D IFF C LOUD on
+points to be on a subset instead of all faces of the deformable       the real point cloud.
+to mimic a partial point cloud with occlusion. Then, we apply            Efficiency: Aside from alignment, we also evaluate the
+random Gaussian noise to this point cloud to mimic the effect         computational resources of all methods. Across experiments,
+of real sensor noise. We generate a dataset of 1500 training          we report (1) the time it takes to run D IFF C LOUD optimiza-
+and 375 test point cloud sequences with 3,500 points per              tion on trajectories and (2) the combined dataset generation,
+frame across methods. For comparison, M ETEOR N ET was                training, and inference times for the supervised baselines.
+trained on a dataset of 576 examples and the PointNet++ [5]
+literature uses thousands of examples.                                D. Real Experimental Setup
+   We train the M ETEOR N ET regressor to learn a mapping                1) Hardware Setup: Our hardware setup consists of a
+f : {xx}Ti=1 → w , which maps an input point cloud sequence
+                                                                      Kinova Gen3 robot arm with a Robotiq 2F-85 gripper and
+{xxt }Tt=1 to simulator parameters w that would generate the
+                                                                      two Intel RealSense D435 cameras (Figure 1). The table
+observed behavior. P OINT N ET ++ and MLP methods learn a             workspace measures 50×43 cm, with one camera mounted
+function g : x t → w mapping only a single frame t (selected          overhead and another mounted on the side. For each scenario
+from a sequence) to the material parameters. In practice,             outlined below, we execute trajectories using velocity control
+we choose the frame t to be the same frame for which we               in the Cartesian (end-effector) space and record robot joint
+compute the unidirectional Chamfer distance in D IFF C LOUD           states and point cloud observations at each step. We merge
+optimization. We train each network using L1 loss between             point clouds from both camera views and use a transfor-
+the predicted and ground truth parameters, using the Adam             mation obtained from standard checkerboard calibration to
+optimizer with a learning rate of 0.001 for 100 epochs.               obtain point clouds in the frame of reference of the robot,
+We run dataset generation on an Intel i5-9400F CPU. We                which has a corresponding frame of reference in simulation.
+use an NVIDIA GeForce GTX 1070 GPU for training and                   Using recorded joint states and known robot geometry, we
+optimization.                                                         mask out the end-effector from the point clouds as depicted
+B. D IFF C LOUD Implementation Details                                in Figure 1. This yields a set of real, post-processed point
+                                                                      cloud observations {x    xt real }Tt=1 .
+   D IFF C LOUD is our proposed approach described in Sec-
+                                                                         2) Real Scenarios: We consider two real manipulation
+tion III. For all simulations we use DiffSim [36] – a differ-
+                                                                      scenarios using cloth as the deformable object of interest.
+entiable version of the garment simulator ARCSim [46]. As
+                                                                      The lift scenario involves grasping and lifting a cloth from
+in [27], we initialize the deformable, in this case cloth, to a
+                                                                      a flat start state on a table surface. At the end of the trajectory,
+basis material and learn two scalar multipliers (wstiff , wmass )
+                                                                      the cloth is lifted off the table and suspended mid-air. The
+for the stiffness and mass tensors. These multipliers represent
+                                                                      fold scenario involves folding a cloth in half, starting from
+the simulation parameters we aim to learn. We initialize
+                                                                      a diamond shape and ending in a triangular configuration.
+them to the midpoint of each parameter range. We empir-
+                                                                      We perform both scenarios on 5 different fabrics grouped
+ically determine this range as [0.1, 10] simulation units for
+                                                                      into three categories: highly deformable, medium, and shape
+all parameters, so that forward simulation is numerically
+                                                                      retaining. The highly deformable class consists of cloths
+stable. We want to encourage small changes in the learnable
+                                                                      that are especially low stiffness and collapsible, such as
+parameters to make a visually compelling difference in defor-
+                                                                      silk-like materials. The medium class consist of cloths with
+mation. Thus, instead of directly optimizing (wstiff , wmass ),
+                                                                      modest deformation that can still crumple subject to enough
+we optimize intermediate variables (sstiff , smass ), where
+                                                                      force. The shape retaining class contains cloths that resist
+(wstiff , wmass ) = σ(sstiff , smass ) × (10 − 0.1) + 0.1, and
+                                                                      deformation more than the other categories, such as paper
+σ(x) = 1+e1−x is the standard sigmoid function. Intuitively,
+                                                                      towels and stiff washcloths. For each fabric, we execute
+this maps (sstiff , smass ) first to the range [0, 1] via the
+                                                                      3 trajectories for a total of 15 trajectories per scenario.
+sigmoid function, and then interpolates this value within the
+                                                                      Each trajectory is ≈ 2.5 seconds long with robot commands
+parameter range of [0.1, 10]. We choose the final parameters
+                                                                      sent at 10 Hz., resulting in a horizon length of T = 25.
+to be those that incurred the lowest loss during optimization.
+                                                                      During the lift and fold trajectories, the cloth either collapses
+C. Evaluation Metrics                                                 or maintains its shape depending on the underlying cloth
+                                                                      properties (which we attempt to learn).
+   Alignment: For quantitative evaluation we use unidirec-
+tional Chamfer distance (Equation 2) that characterizes how
+                                                                      E. Real Robot Experiments
+well the motions of the simulated and real point clouds
+align. For each of the baselines, we first infer the predicted          We aim to infer cloth stiffness and mass from the lift
+parameters using the target point cloud trajectory as input.          and fold scenarios discussed in Section IV-D.
+                                                                                 Fig. 5. Left: D IFF C LOUD correctly learns to approximate low mass/high
+                                                                                 stiffness for the shape retaining cloth (1st row) such that three corners lift
+Fig. 4. Left: A Kinova robot executes trajectories to lift real cloths from      off the table mid-fold (2nd row, 2nd column), and high mass/low stiffness
+a flat starting state. From these trajectories, D IFF C LOUD accurately infers   result for the heavy, highly deformable polka dot fabric (3rd row) such that
+stiffness and mass parameters capturing the observed degree of collapsibility    all ungrasped corners rest on the table mid-fold (4th row, 2nd column).
+in the real cloths. Right: Across all cloth types, D IFF C LOUD achieves lower   Right: Compared to data-driven baselines, D IFF C LOUD achieves lower or
+loss on average than all competing baselines on the lift scenario.               comparable loss in 13/15 trajectories across categories. We note that all
+                                                                                 methods struggle to robustly estimate parameters for 2/15 paper towel (shape
+   1) D IFF C LOUD S PECIFICATIONS: For specifying the                           retaining) manipulation trajectories, which appear as outliers. This is due to
+D IFF C LOUD loss and evaluation metrics, we need to use                         difficulties perceiving very thin sheets in motion, which affects all methods.
+the frames for which deformation is most visible. The lift
+                                                                                 for variations in deformation during execution, such as
+trajectory exhibits least occlusion at the end of the trajectory
+                                                                                 collapsing inwards mid-fold or maintaining shape (Figure 5).
+when the cloth is off the table. For folding, the cloth is
+                                                                                 The severity of self-occlusion is more prominent in the fold
+most visible in the middle of the trajectory. The level of
+                                                                                 scenario, making robust parameter estimation more difficult.
+occlusion at the end of real lift trajectories is minimal,
+                                                                                 Still, D IFF C LOUD achieves a loss on par with the baselines,
+so simulated point clouds are generated by sampling from
+                                                                                 which are (1) trained from thousands of examples, (2) use
+all cloth faces. In the fold scenario, the half of the real
+                                                                                 data augmentations to be invariant to varying degrees of
+cloth that remains flat on the table does not appear in the
+                                                                                 self-occlusion, and (3) require significantly more compute
+real point cloud. Hence, we sample simulated point clouds
+                                                                                 time. D IFF C LOUD takes on average 10 minutes per trajectory
+only from cloth faces on the upper half of the cloth in
+                                                                                 in the lift and fold scenarios to optimize the simulation
+simulation, as a heuristic for generating occlusion-sensitive
+                                                                                 parameters (Figure 3). While the baseline regressors all have
+point clouds. Occlusion handling is out of scope with the
+                                                                                 inference times on the order of milliseconds, each method
+sampling procedure discussed in Section III-B, but we hope
+                                                                                 incurs an up-front cost of more than two hours of dataset
+to relax this in future work. The simulated counterparts
+                                                                                 generation. Furthermore, the training procedure requires
+for the lift and fold scenarios both use a 2D cloth mesh
+                                                                                 an additional 40 minutes to multiple hours per scenario.
+consisting of a 7 × 7 grid of 49 vertices, where we keyframe
+                                                                                 With significantly less computational footprint, D IFF C LOUD
+the position of the top corner vertex to produce the same
+                                                                                 achieves parameter estimation results on real data that are
+motion that is executed in real for T = 25 steps. For
+                                                                                 comparable and in some cases better than baselines.
+both scenarios, we run D IFF C LOUD for 50 iterations using
+the Adam optimizer with a learning rate of 0.2 to infer
+                                                                                 F. Further Simulation Experiments
+(wstiff , wmass ).
+   2) Results: We find that D IFF C LOUD is able to estimate                        1) Simulation Scenarios: We further evaluate the perfor-
+mass and stiffness cloth parameters that visually explain the                    mance of D IFF C LOUD on two additional simulated scenar-
+observed real point cloud behavior in the lift (Figure 4) and                    ios: hanging one shoulder of a vest onto a pole (vest
+fold (Figure 5) scenarios. We note that D IFF C LOUD achieves                    hang), and stretching an elastic band against a pole (band
+a lower loss than M ETEOR N ET, P OINT N ET ++, and MLP                          stretch), shown in Figure 6. The mass and stiffness of the
+across the 3 cloth categories in the lift scenario (Figure 4),                   vest mesh determine the outline of the vest when hung on
+according to the evaluation metric from Section IV-C. We                         the pole. The mass and stiffness of the elastic band dictate
+also visualize the final parameters found by D IFF C LOUD                        the extent to which the band travels up or down along the
+and observe that the parameters align with the qualitative                       pole when pulled taut. We aim to analyze how the contact-
+descriptions of the 3 categories of cloth types considered                       rich aspects of these scenarios influence the performance of
+(Figure 3). For instance, D IFF C LOUD discovers high mass,                      various methods. To separate these effects from point cloud
+low stiffness parameters for the polka dot cloth and low                         quality considerations, we use fully observable noise-free
+mass, high stiffness parameters for the red black cloth,                         point cloud observations. Aside from skipping augmentations
+which belong to the highly deformable and shape retaining                        (random jittering, dropout of cloth faces) during dataset
+categories, respectively. Similarly, for the fold scenario, we                   generation, we use an identical training procedure for MLP,
+find that D IFF C LOUD is able to find parameters that account                   P OINT N ET ++, and M ETEOR N ET as in Section IV-E.
+                                                                            Fig. 7. D IFF C LOUD optimizes for the mass and stiffness parameters of
+                                                                            simulated deformables to match a highly deformable target elastic band
+                                                                            (top row) and a shape retaining target vest (bottom row). Starting from
+                                                                            an initial guess for the parameters (black), D IFF C LOUD takes gradient
+                                                                            steps to update the parameters such that the loss taken between point
+Fig. 6. We evaluate all competing methods using the metric provided         cloud observations with optimized parameters (blue) and target point clouds
+in Section IV-C on parameter estimation in two contact-rich, simulated      (green) is minimized. The optimization terminates once the loss falls below
+scenarios: band stretch and vest hang. Across 10 runs per scenario,         a threshold of 0.0005, denoting close visual alignment.
+D IFF C LOUD achieves alignment between simulated and target point clouds
+in all runs, while baseline regressors achieve mixed success.
+                                                                                        V. C ONCLUSION AND F UTURE W ORK
+   2) D IFF C LOUD Specifications: D IFF C LOUD performs                       In this work, we proposed D IFF C LOUD: an approach to
+optimization using the Adam optimizer (with learning rate                   combine differentiable point cloud sampling with differen-
+0.3 for vest hang, 0.4 for band stretch). We take                           tiable simulation for solving the real-to-sim problems with
+the unidirectional Chamfer loss on the last frame for band                  highly deformable objects. For comparison, we employed re-
+stretch. For vest hang, most of the deformation hap-                        cently developed neural network architectures for processing
+pens in the second half of the trajectory, so we pick an                    point clouds to learn inverse models that infer simulation
+intermediate frame in this part of the trajectory (instead of               parameters without treating the simulator as differentiable.
+the final frame). We compute the loss between the simulated                 Our experiments showed that D IFF C LOUD reduced the time
+cloth point cloud only (no poles) and the entire target                     needed for obtaining real-to-sim alignment by more than
+scene (including poles). This focuses optimization on the                   an order of magnitude. This result opens the way to more
+deformables. Since synthetic point clouds are noiseless, it                 agile experimentation with real-to-sim for highly deformable
+is possible to choose a termination criteria for D IFF C LOUD               objects, while still treating the problem as a joint perception-
+based on when the computed loss falls below a pre-defined                   inference task, i.e. not requiring dedicated methods to find
+threshold. In practice, we find that a loss threshold of 0.0005             correspondences between the depth camera observations
+corresponds to a well-aligned match. Thus, for each target                  (point clouds) and simulated meshes.
+trajectory, we run D IFF C LOUD until the loss falls below                     Possible avenues for future work include relaxing the
+this threshold or until the number of optimization iterations               need for robot masking by including the robot model into
+exceeds 50, as in the lift and fold scenarios.                              simulation; improving point cloud rendering with realistic
+   3) Results: For evaluation purposes, we generate a held-                 occlusion and camera noise models; and jointly optimizing
+out test set of 10 simulated episodes for each scenario                     robot actions along with physical simulation parameters.
+with mass and stiffness parameters sampled uniformly at                     Furthermore, it would be interesting to apply D IFF C LOUD
+random in the range [0.1, 10]. For each episode, we render                  to contact-rich multi-stage tasks that involve multiple rigid
+the corresponding point cloud sequences according to the                    and deformable objects. Another interesting direction is to
+procedure from Section III-B without additional augmen-                     use D IFF C LOUD to infer the starting state of the simulation,
+tations. We evaluate the performance of all methods on                      including learning the morphology of object meshes. This
+estimating the parameters of this set of target point cloud                 would allow us to eliminate the need for manual specification
+sequences. Across all target point cloud sequences in both                  of object meshes and initial simulation states, opening the
+scenarios, we find that D IFF C LOUD is able to converge to                 way for creating new realistic simulation scenes ‘on the fly.’
+a set of parameters that yield a Chamfer distance below
+the threshold. The baselines are only able to achieve sub-                                              R EFERENCES
+threshold alignment in 50-80% of runs (Figure 6). Due
+to the threshold-based stopping criteria for D IFF C LOUD in                 [1] A. Prakash, S. Debnath, J.-F. Lafleche, E. Cameracci, S. Birchfield,
+                                                                                 M. T. Law et al., “Self-supervised real-to-sim scene generation,” in
+the simulated experiments, running optimization for a given                      Proceedings of the IEEE/CVF International Conference on Computer
+target point cloud sequence takes 5 minutes averaged across                      Vision, 2021, pp. 16 044–16 054.
+the vest hang and band stretch scenarios, compared                           [2] P. Chang and T. Padif, “Sim2real2sim: Bridging the gap between
+                                                                                 simulation and real-world in flexible object manipulation,” in 2020
+to a combined dataset generation, training, and inference time                   Fourth IEEE International Conference on Robotic Computing (IRC).
+on the order of hours for the baselines.                                         IEEE, 2020, pp. 56–62.
+ [3] J. Zhang, L. Tai, P. Yun, Y. Xiong, M. Liu, J. Boedecker, and               [24] T. Tang, C. Wang, and M. Tomizuka, “A framework for manipulating
+     W. Burgard, “Vr-goggles for robots: Real-to-sim domain adaptation                deformable linear objects by coherent point drift,” IEEE Robotics and
+     for visual control,” IEEE Robotics and Automation Letters, vol. 4,               Automation Letters, vol. 3, no. 4, pp. 3426–3433, 2018.
+     no. 2, pp. 1148–1155, 2019.                                                 [25] J. Willard, X. Jia, S. Xu, M. Steinbach, and V. Kumar, “Integrating
+ [4] F. Liu, Z. Li, Y. Han, J. Lu, F. Richter, and M. C. Yip, “Real-to-sim            physics-based modeling with machine learning: A survey,” arXiv
+     registration of deformable soft tissue with position-based dynamics for          preprint arXiv:2003.04919, vol. 1, no. 1, pp. 1–34, 2020.
+     surgical robot autonomy,” in 2021 IEEE International Conference on          [26] H. Wang, J. F. O’Brien, and R. Ramamoorthi, “Data-driven elastic
+     Robotics and Automation (ICRA). IEEE, 2021, pp. 12 328–12 334.                   models for cloth: modeling and measurement,” ACM transactions on
+ [5] C. R. Qi, L. Yi, H. Su, and L. J. Guibas, “Pointnet++: Deep                      graphics (TOG), vol. 30, no. 4, pp. 1–12, 2011.
+     hierarchical feature learning on point sets in a metric space,” Advances    [27] S. Yang, J. Liang, and M. C. Lin, “Learning-based cloth material
+     in neural information processing systems, vol. 30, 2017.                         recovery from video,” in Proceedings of the IEEE International
+ [6] X. Liu, M. Yan, and J. Bohg, “Meteornet: Deep learning on dynamic                Conference on Computer Vision, 2017, pp. 4383–4393.
+     3d point cloud sequences,” in ICCV, 2019.                                   [28] C. R. Qi, H. Su, K. Mo, and L. J. Guibas, “Pointnet: Deep learning
+ [7] E. Yoshida, K. Ayusawa, I. G. Ramirez-Alpizar, K. Harada, C. Duriez,             on point sets for 3d classification and segmentation,” in Proceedings
+     and A. Kheddar, “Simulation-based optimal motion planning for                    of the IEEE conference on computer vision and pattern recognition,
+     deformable object,” in 2015 IEEE international workshop on advanced              2017, pp. 652–660.
+     robotics and its social impacts (ARSO). IEEE, 2015, pp. 1–6.                [29] W. Chen, H. Ling, J. Gao, E. Smith, J. Lehtinen, A. Jacobson, and
+ [8] J. Matas, S. James, and A. J. Davison, “Sim-to-real reinforcement                S. Fidler, “Learning to predict 3d objects with an interpolation-based
+     learning for deformable object manipulation,” in Conference on Robot             differentiable renderer,” Advances in Neural Information Processing
+     Learning. PMLR, 2018, pp. 734–743.                                               Systems, vol. 32, 2019.
+ [9] S. D. Klee, B. Q. Ferreira, R. Silva, J. P. Costeira, F. S. Melo, and       [30] S. Liu, T. Li, W. Chen, and H. Li, “Soft rasterizer: A differentiable ren-
+     M. Veloso, “Personalized assistance for dressing users,” in Interna-             derer for image-based 3d reasoning,” in Proceedings of the IEEE/CVF
+     tional Conference on Social Robotics. Springer, 2015, pp. 359–369.               International Conference on Computer Vision, 2019, pp. 7708–7717.
+[10] A. Kapusta, Z. Erickson, H. M. Clever, W. Yu, C. K. Liu, G. Turk, and       [31] S. Tulsiani, T. Zhou, A. A. Efros, and J. Malik, “Multi-view supervi-
+     C. C. Kemp, “Personalized collaborative plans for robot-assisted dress-          sion for single-view reconstruction via differentiable ray consistency,”
+     ing via optimization and simulation,” Autonomous Robots, vol. 43,                in Proceedings of the IEEE conference on computer vision and pattern
+     no. 8, pp. 2183–2207, 2019.                                                      recognition, 2017, pp. 2626–2634.
+[11] A. Clegg, W. Yu, J. Tan, C. K. Liu, and G. Turk, “Learning to dress:        [32] M. Niemeyer, L. Mescheder, M. Oechsle, and A. Geiger, “Differ-
+     Synthesizing human dressing motion via deep reinforcement learning,”             entiable volumetric rendering: Learning implicit 3d representations
+     ACM Transactions on Graphics (TOG), vol. 37, no. 6, pp. 1–10, 2018.              without 3d supervision,” in Proceedings of the IEEE/CVF Conference
+[12] S. Li, N. Figueroa, A. Shah, and J. A. Shah, “Provably Safe and                  on Computer Vision and Pattern Recognition, 2020, pp. 3504–3515.
+     Efficient Motion Planning with Uncertain Human Dynamics,” in                [33] B. Mildenhall, P. P. Srinivasan, M. Tancik, J. T. Barron, R. Ra-
+     Robotics: Science and Systems (RSS), 2021.                                       mamoorthi, and R. Ng, “Nerf: Representing scenes as neural radiance
+[13] Y. Chebotar, A. Handa, V. Makoviychuk, M. Macklin, J. Issac,                     fields for view synthesis,” in European conference on computer vision.
+     N. Ratliff, and D. Fox, “Closing the sim-to-real loop: Adapting simula-          Springer, 2020, pp. 405–421.
+     tion randomization with real world experience,” in 2019 International       [34] K. M. Jatavallabhula, E. Smith, J.-F. Lafleche, C. F. Tsang, A. Rozant-
+     Conference on Robotics and Automation (ICRA). IEEE, 2019, pp.                    sev, W. Chen, T. Xiang, R. Lebaredian, and S. Fidler, “Kaolin: A
+     8973–8979.                                                                       pytorch library for accelerating 3d deep learning research,” arXiv
+[14] F. Ramos, R. C. Possas, and D. Fox, “BayesSim: adaptive domain                   preprint arXiv:1911.05063, 2019.
+     randomization via probabilistic inference for robotics simulators,” in      [35] N. Ravi, J. Reizenstein, D. Novotny, T. Gordon, W.-Y. Lo, J. Johnson,
+     Robotics: Science and Systems (RSS), 2019.                                       and G. Gkioxari, “Accelerating 3d deep learning with pytorch3d,”
+[15] L. Barcelos, R. Oliveira, R. Possas, L. Ott, and F. Ramos, “Disco:               arXiv preprint arXiv:2007.08501, 2020.
+     Double likelihood-free inference stochastic control,” in 2020 IEEE          [36] Y.-L. Qiao, J. Liang, V. Koltun, and M. Lin, “Scalable differentiable
+     International Conference on Robotics and Automation (ICRA). IEEE,                physics for learning and control,” in International Conference on
+     2020, pp. 10 969–10 975.                                                         Machine Learning. PMLR, 2020, pp. 7847–7856.
+[16] B. Mehta, M. Diaz, F. Golemo, C. J. Pal, and L. Paull, “Active domain       [37] K. M. Jatavallabhula, M. Macklin, F. Golemo, V. Voleti, L. Petrini,
+     randomization,” in Conference on Robot Learning. PMLR, 2020, pp.                 M. Weiss, B. Considine, J. Parent-Levesque, K. Xie, K. Erleben
+     1162–1176.                                                                       et al., “gradsim: Differentiable simulation for system identification
+[17] F. Muratore, T. G. Gruner, F. Wiese, B. Belousov, M. Gienger, and                and visuomotor control,” 2021.
+     J. Peters, “Neural posterior domain randomization,” in Conference on        [38] Y. Hu, L. Anderson, T.-M. Li, Q. Sun, N. Carr, J. Ragan-Kelley,
+     Robot Learning. PMLR, 2021.                                                      and F. Durand, “Difftaichi: Differentiable programming for physical
+[18] M. Hwasser, D. Kragic, and R. Antonova, “Variational auto-                       simulation,” 2020.
+     regularized alignment for sim-to-real control,” in 2020 IEEE Inter-         [39] J. Liang, M. Lin, and V. Koltun, “Differentiable cloth simulation
+     national Conference on Robotics and Automation (ICRA). IEEE,                     for inverse problems,” Advances in Neural Information Processing
+     2020, pp. 2732–2738.                                                             Systems, vol. 32, 2019.
+[19] R. Herguedas, G. López-Nicolás, R. Aragüés, and C. Sagüés, “Survey    [40] Y. Hu, J. Liu, A. Spielberg, J. B. Tenenbaum, W. T. Freeman, J. Wu,
+     on multi-robot manipulation of deformable objects,” in IEEE Interna-             D. Rus, and W. Matusik, “Chainqueen: A real-time differentiable
+     tional Conference on Emerging Technologies and Factory Automation                physical simulator for soft robotics,” in 2019 International conference
+     (ETFA), 2019.                                                                    on robotics and automation (ICRA). IEEE, 2019, pp. 6265–6271.
+[20] V. E. Arriola-Rios, P. Guler, F. Ficuciello, D. Kragic, B. Siciliano, and   [41] D. Hahn, P. Banzet, J. M. Bern, and S. Coros, “Real2sim: Visco-elastic
+     J. L. Wyatt, “Modeling of deformable objects for robotic manipulation:           parameter estimation from dynamic motion,” ACM Transactions on
+     A tutorial and review,” Frontiers in Robotics and AI, vol. 7, p. 82,             Graphics (TOG), vol. 38, no. 6, pp. 1–13, 2019.
+     2020.                                                                       [42] M. Geilinger, D. Hahn, J. Zehnder, M. Bächer, B. Thomaszewski,
+[21] H. Yin, A. Varava, and D. Kragic, “Modeling, learning, perception,               and S. Coros, “Add: Analytically differentiable dynamics for multi-
+     and control methods for deformable object manipulation,” Science                 body systems with frictional contact,” ACM Transactions on Graphics
+     Robotics, vol. 6, no. 54, 2021.                                                  (TOG), vol. 39, no. 6, pp. 1–15, 2020.
+[22] D. Navarro-Alarcon, Y.-H. Liu, J. G. Romero, and P. Li, “Model-             [43] T. Du, K. Wu, P. Ma, S. Wah, A. Spielberg, D. Rus, and W. Matusik,
+     free visually servoed deformation control of elastic objects by robot            “DiffPD: Differentiable projective dynamics with contact,” arXiv e-
+     manipulators,” IEEE Transactions on Robotics, vol. 29, no. 6, pp.                prints, pp. arXiv–2101, 2021.
+     1457–1468, 2013.                                                            [44] M. Lutter, J. Silberbauer, J. Watson, and J. Peters, “Differentiable
+[23] W. Sun, M. Çetin, R. Chan, and A. S. Willsky, “Learning the dynamics            physics models for real-world offline model-based reinforcement
+     and time-recursive boundary detection of deformable objects,” IEEE               learning,” in 2021 IEEE International Conference on Robotics and
+     Transactions on Image Processing, vol. 17, no. 11, pp. 2186–2200,                Automation (ICRA). IEEE, 2021, pp. 4163–4170.
+     2008.                                                                       [45] M. A. Z. Mora, M. P. Peychev, S. Ha, M. Vechev, and S. Coros, “Pods:
+     Policy optimization via differentiable simulation,” in International
+     Conference on Machine Learning. PMLR, 2021, pp. 7805–7817.
+[46] R. Narain, A. Samii, and J. F. O’brien, “Adaptive anisotropic
+     remeshing for cloth simulation,” ACM transactions on graphics
+     (TOG), vol. 31, no. 6, pp. 1–10, 2012. [Online]. Available:
+     graphics.berkeley.edu/resources/ARCSim
+[47] S. Weiss, R. Maier, D. Cremers, R. Westermann, and N. Thuerey,
+     “Correspondence-free material reconstruction using sparse surface
+     constraints,” in Proceedings of the IEEE/CVF Conference on Com-
+     puter Vision and Pattern Recognition, 2020, pp. 4686–4695.
+

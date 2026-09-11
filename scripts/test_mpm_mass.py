@@ -158,6 +158,9 @@ class MpmMassTests(unittest.TestCase):
         grid = 16
         self.assertTrue(mpm.mpm_grid_stencil_is_safe([0.5 / grid, 0.5 / grid, 0.5 / grid], grid))
         self.assertTrue(mpm.mpm_grid_stencil_is_safe([(0.5 - 1e-6) / grid] * 3, grid))
+        self.assertTrue(mpm.mpm_grid_stencil_is_safe([0.5, 0.0, 0.5], grid))
+        self.assertTrue(mpm.mpm_grid_stencil_is_safe([-0.5 / grid] * 3, grid))
+        self.assertFalse(mpm.mpm_grid_stencil_is_safe([(-0.5 - 1e-6) / grid] * 3, grid))
         self.assertTrue(mpm.mpm_grid_stencil_is_safe([(grid - 1.5001) / grid] * 3, grid))
         self.assertFalse(mpm.mpm_grid_stencil_is_safe([(-0.6) / grid] * 3, grid))
         self.assertFalse(mpm.mpm_grid_stencil_is_safe([(grid - 1.5) / grid] * 3, grid))

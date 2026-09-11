@@ -1,0 +1,664 @@
+{
+  "indexed": {
+    "date-parts": [
+      [
+        2026,
+        9,
+        11
+      ]
+    ],
+    "date-time": "2026-09-11T07:38:38Z",
+    "timestamp": 1789112318513,
+    "version": "build-2803163510"
+  },
+  "reference-count": 51,
+  "publisher": "Association for Computing Machinery (ACM)",
+  "issue": "4",
+  "license": [
+    {
+      "start": {
+        "date-parts": [
+          [
+            2013,
+            7,
+            21
+          ]
+        ],
+        "date-time": "2013-07-21T00:00:00Z",
+        "timestamp": 1374364800000
+      },
+      "content-version": "vor",
+      "delay-in-days": 0,
+      "URL": "https://www.acm.org/publications/policies/copyright_policy#Background"
+    }
+  ],
+  "funder": [
+    {
+      "DOI": "10.13039/100000015",
+      "name": "U.S. Department of Energy",
+      "doi-asserted-by": "publisher",
+      "award": [
+        "09-LR-04-116741-BERA"
+      ],
+      "award-info": [
+        {
+          "award-number": [
+            "09-LR-04-116741-BERA"
+          ]
+        }
+      ],
+      "id": [
+        {
+          "id": "10.13039/100000015",
+          "id-type": "DOI",
+          "asserted-by": "publisher"
+        }
+      ]
+    },
+    {
+      "DOI": "10.13039/100000006",
+      "name": "Office of Naval Research",
+      "doi-asserted-by": "publisher",
+      "award": [
+        "N000140310071, N000141010730, N000141210834"
+      ],
+      "award-info": [
+        {
+          "award-number": [
+            "N000140310071, N000141010730, N000141210834"
+          ]
+        }
+      ],
+      "id": [
+        {
+          "id": "10.13039/100000006",
+          "id-type": "DOI",
+          "asserted-by": "publisher"
+        }
+      ]
+    },
+    {
+      "DOI": "10.13039/100017818",
+      "name": "Disney Research",
+      "doi-asserted-by": "crossref",
+      "id": [
+        {
+          "id": "10.13039/100017818",
+          "id-type": "DOI",
+          "asserted-by": "crossref"
+        }
+      ]
+    },
+    {
+      "DOI": "10.13039/100000143",
+      "name": "Division of Computing and Communication Foundations",
+      "doi-asserted-by": "publisher",
+      "award": [
+        "DMS-0502315, DMS-0652427, CCF-0830554"
+      ],
+      "award-info": [
+        {
+          "award-number": [
+            "DMS-0502315, DMS-0652427, CCF-0830554"
+          ]
+        }
+      ],
+      "id": [
+        {
+          "id": "10.13039/100000143",
+          "id-type": "DOI",
+          "asserted-by": "publisher"
+        }
+      ]
+    },
+    {
+      "DOI": "10.13039/100000121",
+      "name": "Division of Mathematical Sciences",
+      "doi-asserted-by": "publisher",
+      "award": [
+        "DMS-0502315, DMS-0652427, CCF-0830554"
+      ],
+      "award-info": [
+        {
+          "award-number": [
+            "DMS-0502315, DMS-0652427, CCF-0830554"
+          ]
+        }
+      ],
+      "id": [
+        {
+          "id": "10.13039/100000121",
+          "id-type": "DOI",
+          "asserted-by": "publisher"
+        }
+      ]
+    },
+    {
+      "DOI": "10.13039/100002418",
+      "name": "Intel Corporation",
+      "doi-asserted-by": "publisher",
+      "award": [
+        "20112360"
+      ],
+      "award-info": [
+        {
+          "award-number": [
+            "20112360"
+          ]
+        }
+      ],
+      "id": [
+        {
+          "id": "10.13039/100002418",
+          "id-type": "DOI",
+          "asserted-by": "publisher"
+        }
+      ]
+    }
+  ],
+  "content-domain": {
+    "domain": [
+      "dl.acm.org"
+    ],
+    "crossmark-restriction": true
+  },
+  "short-container-title": [
+    "ACM Trans. Graph."
+  ],
+  "published-print": {
+    "date-parts": [
+      [
+        2013,
+        7,
+        21
+      ]
+    ]
+  },
+  "abstract": "<jats:p>\n                    Snow is a challenging natural phenomenon to visually simulate. While the graphics community has previously considered accumulation and rendering of snow, animation of snow dynamics has not been fully addressed. Additionally, existing techniques for solids and fluids have difficulty producing convincing snow results. Specifically,\n                    <jats:italic>wet</jats:italic>\n                    or\n                    <jats:italic>dense</jats:italic>\n                    snow that has both solid- and fluid-like properties is difficult to handle. Consequently, this paper presents a novel snow simulation method utilizing a user-controllable elasto-plastic constitutive model integrated with a hybrid Eulerian/Lagrangian Material Point Method. The method is continuum based and its hybrid nature allows us to use a regular Cartesian grid to automate treatment of self-collision and fracture. It also naturally allows us to derive a grid-based semi-implicit integration scheme that has conditioning independent of the number of Lagrangian particles. We demonstrate the power of our method with a variety of snow phenomena including complex character interactions.\n                  </jats:p>",
+  "DOI": "10.1145/2461912.2461948",
+  "type": "journal-article",
+  "created": {
+    "date-parts": [
+      [
+        2013,
+        7,
+        16
+      ]
+    ],
+    "date-time": "2013-07-16T14:06:45Z",
+    "timestamp": 1373983605000
+  },
+  "page": "1-10",
+  "update-policy": "https://doi.org/10.1145/crossmark-policy",
+  "source": "Crossref",
+  "is-referenced-by-count": 416,
+  "title": [
+    "A material point method for snow simulation"
+  ],
+  "prefix": "10.1145",
+  "volume": "32",
+  "author": [
+    {
+      "given": "Alexey",
+      "family": "Stomakhin",
+      "sequence": "first",
+      "affiliation": [
+        {
+          "name": "Walt Disney Animation Studios and University of California Los Angeles"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Craig",
+      "family": "Schroeder",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "University of California, Los Angeles"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Lawrence",
+      "family": "Chai",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Walt Disney Animation Studios"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Joseph",
+      "family": "Teran",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Walt Disney Animation Studios and University of California Los Angeles"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    },
+    {
+      "given": "Andrew",
+      "family": "Selle",
+      "sequence": "additional",
+      "affiliation": [
+        {
+          "name": "Walt Disney Animation Studios"
+        }
+      ],
+      "role": [
+        {
+          "vocabulary": "crossref",
+          "role": "author"
+        }
+      ]
+    }
+  ],
+  "member": "320",
+  "published-online": {
+    "date-parts": [
+      [
+        2013,
+        7,
+        21
+      ]
+    ]
+  },
+  "reference": [
+    {
+      "key": "e_1_2_1_1_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/2019406.2019410"
+    },
+    {
+      "key": "e_1_2_1_2_1",
+      "volume-title": "Proc. of Congreso Español de Informática Gráfica",
+      "volume": "1",
+      "author": "Alduán I.",
+      "unstructured": "Alduán , I. , Tena , A. , and Otaduy , M . 2009. Simulation of high-resolution granular media . In Proc. of Congreso Español de Informática Gráfica , vol. 1 . Alduán, I., Tena, A., and Otaduy, M. 2009. Simulation of high-resolution granular media. In Proc. of Congreso Español de Informática Gráfica, vol. 1."
+    },
+    {
+      "key": "e_1_2_1_3_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1276377.1276397"
+    },
+    {
+      "key": "e_1_2_1_4_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1073368.1073379"
+    },
+    {
+      "key": "e_1_2_1_5_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/0021-9991(86)90211-1"
+    },
+    {
+      "key": "e_1_2_1_6_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1063/1.327394"
+    },
+    {
+      "key": "e_1_2_1_7_1",
+      "volume-title": "Proc., 27--35",
+      "author": "Chanclou B.",
+      "unstructured": "Chanclou , B. , Luciani , A. , and Habibi , A . 1996. Physical models of loose soils dynamically marked by a moving object. In Comp. Anim.'96 . Proc., 27--35 . Chanclou, B., Luciani, A., and Habibi, A. 1996. Physical models of loose soils dynamically marked by a moving object. In Comp. Anim.'96. Proc., 27--35."
+    },
+    {
+      "key": "e_1_2_1_8_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1778765.1778775"
+    },
+    {
+      "key": "e_1_2_1_9_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1837026.1837042"
+    },
+    {
+      "key": "e_1_2_1_10_1",
+      "first-page": "43",
+      "article-title": "Snow as an elastic viscoplastic bonded continuum: a modelling approach",
+      "volume": "4",
+      "author": "Cresseri S.",
+      "year": "2005",
+      "unstructured": "Cresseri , S. , and Jommi , C. 2005 . Snow as an elastic viscoplastic bonded continuum: a modelling approach . Italian Geotechnical J. 4 , 43 -- 58 . Cresseri, S., and Jommi, C. 2005. Snow as an elastic viscoplastic bonded continuum: a modelling approach. Italian Geotechnical J. 4, 43--58.",
+      "journal-title": "Italian Geotechnical J."
+    },
+    {
+      "key": "e_1_2_1_11_1",
+      "doi-asserted-by": "crossref",
+      "unstructured": "Cresseri S. Genna F. and Jommi C. 2010. Numerical integration of an elastic--viscoplastic constitutive model for dry metamorphosed snow. Intl. J. for Num. and Anal. Meth. in geomechanics 34 12 1271--1296. Cresseri S. Genna F. and Jommi C. 2010. Numerical integration of an elastic--viscoplastic constitutive model for dry metamorphosed snow. Intl. J. for Num. and Anal. Meth. in geomechanics 34 12 1271--1296.",
+      "DOI": "10.1002/nag.864"
+    },
+    {
+      "key": "e_1_2_1_12_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1090/qam/48291"
+    },
+    {
+      "key": "e_1_2_1_13_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1111/j.1467-9590.2010.00511.x"
+    },
+    {
+      "key": "e_1_2_1_14_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/344779.344809"
+    },
+    {
+      "key": "e_1_2_1_16_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1242073.1242231"
+    },
+    {
+      "key": "e_1_2_1_17_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1015706.1015746"
+    },
+    {
+      "key": "e_1_2_1_18_1",
+      "unstructured": "Gray D. and Male D. 1981. Handbook of snow: principles processes management & use. Pergamon Press. Gray D. and Male D. 1981. Handbook of snow: principles processes management & use . Pergamon Press."
+    },
+    {
+      "key": "e_1_2_1_19_1",
+      "volume-title": "Eurographics Ireland Workshop Series",
+      "volume": "9",
+      "author": "Hinks T.",
+      "unstructured": "Hinks , T. , and Museth , K . 2009. Wind-driven snow buildup using a level set approach . In Eurographics Ireland Workshop Series , vol. 9 , 19--26. Hinks, T., and Museth, K. 2009. Wind-driven snow buildup using a level set approach. In Eurographics Ireland Workshop Series, vol. 9, 19--26."
+    },
+    {
+      "key": "e_1_2_1_20_1",
+      "volume-title": "Workshop on Virtual Reality Interaction and Phys. Sim., 53--60",
+      "author": "Ihmsen M.",
+      "unstructured": "Ihmsen , M. , Wahl , A. , and Teschner , M . 2012. High-resolution simulation of granular material with SPH . In Workshop on Virtual Reality Interaction and Phys. Sim., 53--60 . Ihmsen, M., Wahl, A., and Teschner, M. 2012. High-resolution simulation of granular material with SPH. In Workshop on Virtual Reality Interaction and Phys. Sim., 53--60."
+    },
+    {
+      "key": "e_1_2_1_21_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1028523.1028541"
+    },
+    {
+      "key": "e_1_2_1_22_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.5555/2386366.2386387"
+    },
+    {
+      "key": "e_1_2_1_23_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1401032.1401041"
+    },
+    {
+      "key": "e_1_2_1_24_1",
+      "volume-title": "Proc 2003 ACM SIGGRAPH/Eurographics Symp. Comput. Anim., 86--97",
+      "author": "Kim T.",
+      "unstructured": "Kim , T. , and Lin , M . 2003. Visual simulation of ice crystal growth . In Proc 2003 ACM SIGGRAPH/Eurographics Symp. Comput. Anim., 86--97 . Kim, T., and Lin, M. 2003. Visual simulation of ice crystal growth. In Proc 2003 ACM SIGGRAPH/Eurographics Symp. Comput. Anim., 86--97."
+    },
+    {
+      "key": "e_1_2_1_25_1",
+      "volume-title": "Proc. 2006 ACM SIGGRAPH/Eurographics Symp. Comput. Anim., 167--176",
+      "author": "Kim T.",
+      "unstructured": "Kim , T. , Adalsteinsson , D. , and Lin , M . 2006. Modeling ice dynamics as a thin-film Stefan problem . In Proc. 2006 ACM SIGGRAPH/Eurographics Symp. Comput. Anim., 167--176 . Kim, T., Adalsteinsson, D., and Lin, M. 2006. Modeling ice dynamics as a thin-film Stefan problem. In Proc. 2006 ACM SIGGRAPH/Eurographics Symp. Comput. Anim., 167--176."
+    },
+    {
+      "key": "e_1_2_1_26_1",
+      "volume-title": "ACM SIGGRAPH 2012 talks.",
+      "author": "Klohn K.",
+      "unstructured": "Klohn , K. , O'Brien , M. , Speltz , T. , and Wichitsripornkul , T . 2012. Building the snow footprint pipeline on Brave . In ACM SIGGRAPH 2012 talks. Klohn, K., O'Brien, M., Speltz, T., and Wichitsripornkul, T. 2012. Building the snow footprint pipeline on Brave. In ACM SIGGRAPH 2012 talks."
+    },
+    {
+      "key": "e_1_2_1_27_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1111/j.1467-8659.2009.01360.x"
+    },
+    {
+      "key": "e_1_2_1_28_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/2010324.1964931"
+    },
+    {
+      "key": "e_1_2_1_29_1",
+      "unstructured": "Luciani A. Habibi A. and Manzotti E. 1995. A multi-scale physical model of granular materials. In Graphics Interface 136--136. Luciani A. Habibi A. and Manzotti E. 1995. A multi-scale physical model of granular materials. In Graphics Interface 136--136."
+    },
+    {
+      "key": "e_1_2_1_30_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1111/j.1467-8659.2009.01614.x"
+    },
+    {
+      "key": "e_1_2_1_31_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1531326.1531368"
+    },
+    {
+      "key": "e_1_2_1_32_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1061/(ASCE)0733-9399(1996)122:7(591)"
+    },
+    {
+      "key": "e_1_2_1_33_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/237170.237222"
+    },
+    {
+      "key": "e_1_2_1_34_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/0097-8493(89)90078-2"
+    },
+    {
+      "key": "e_1_2_1_35_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1882261.1866195"
+    },
+    {
+      "key": "e_1_2_1_36_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1007/s10035-004-0159-9"
+    },
+    {
+      "key": "e_1_2_1_37_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1111/1467-8659.00173"
+    },
+    {
+      "key": "e_1_2_1_38_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/566654.566579"
+    },
+    {
+      "key": "e_1_2_1_39_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1073204.1073296"
+    },
+    {
+      "key": "e_1_2_1_40_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1007/11861201_46"
+    },
+    {
+      "key": "e_1_2_1_41_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1360612.1360663"
+    },
+    {
+      "key": "e_1_2_1_42_1",
+      "volume-title": "Snow Mech. Symp., 155",
+      "author": "St Lawrence W.",
+      "unstructured": "St Lawrence , W. , and Bradley , C . 1975. The deformation of snow in terms of structural mechanism . In Snow Mech. Symp., 155 . St Lawrence, W., and Bradley, C. 1975. The deformation of snow in terms of structural mechanism. In Snow Mech. Symp., 155."
+    },
+    {
+      "key": "e_1_2_1_43_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1002/nme.2360"
+    },
+    {
+      "key": "e_1_2_1_44_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.5555/2421731.2421736"
+    },
+    {
+      "key": "e_1_2_1_45_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016/0010-4655(94)00170-7"
+    },
+    {
+      "key": "e_1_2_1_46_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1111/1467-8659.00299"
+    },
+    {
+      "key": "e_1_2_1_47_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/378456.378522"
+    },
+    {
+      "key": "e_1_2_1_48_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1175/1520-0469(1980)037<2712:AMFTSA>2.0.CO;2"
+    },
+    {
+      "key": "e_1_2_1_49_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1360612.1360646"
+    },
+    {
+      "key": "e_1_2_1_50_1",
+      "volume-title": "Proceedings of the 2010 ACM SIGGRAPH/Eurographics Symposium on Computer Animation, Eurographics Association, 217--225",
+      "author": "Yu J.",
+      "unstructured": "Yu , J. , and Turk , G . 2010. Reconstructing surfaces of particle-based fluids using anisotropic kernels . In Proceedings of the 2010 ACM SIGGRAPH/Eurographics Symposium on Computer Animation, Eurographics Association, 217--225 . Yu, J., and Turk, G. 2010. Reconstructing surfaces of particle-based fluids using anisotropic kernels. In Proceedings of the 2010 ACM SIGGRAPH/Eurographics Symposium on Computer Animation, Eurographics Association, 217--225."
+    },
+    {
+      "key": "e_1_2_1_51_1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1145/1073204.1073298"
+    },
+    {
+      "key": "e_1_2_1_52_1",
+      "unstructured": "Zhu B. and Yang X. 2010. Animating sand as a surface flow. Eurographics 2010 Short Papers. Zhu B. and Yang X. 2010. Animating sand as a surface flow. Eurographics 2010 Short Papers ."
+    }
+  ],
+  "container-title": [
+    "ACM Transactions on Graphics"
+  ],
+  "original-title": [],
+  "language": "en",
+  "link": [
+    {
+      "URL": "https://dl.acm.org/doi/10.1145/2461912.2461948",
+      "content-type": "unspecified",
+      "content-version": "vor",
+      "intended-application": "text-mining"
+    },
+    {
+      "URL": "https://dl.acm.org/doi/pdf/10.1145/2461912.2461948",
+      "content-type": "unspecified",
+      "content-version": "vor",
+      "intended-application": "similarity-checking"
+    }
+  ],
+  "deposited": {
+    "date-parts": [
+      [
+        2025,
+        6,
+        18
+      ]
+    ],
+    "date-time": "2025-06-18T04:35:48Z",
+    "timestamp": 1750221348000
+  },
+  "score": 1,
+  "resource": {
+    "primary": {
+      "URL": "https://dl.acm.org/doi/10.1145/2461912.2461948"
+    }
+  },
+  "subtitle": [],
+  "short-title": [],
+  "issued": {
+    "date-parts": [
+      [
+        2013,
+        7,
+        21
+      ]
+    ]
+  },
+  "references-count": 51,
+  "journal-issue": {
+    "issue": "4",
+    "published-print": {
+      "date-parts": [
+        [
+          2013,
+          7,
+          21
+        ]
+      ]
+    }
+  },
+  "alternative-id": [
+    "10.1145/2461912.2461948"
+  ],
+  "URL": "https://doi.org/10.1145/2461912.2461948",
+  "relation": {},
+  "ISSN": [
+    "0730-0301",
+    "1557-7368"
+  ],
+  "issn-type": [
+    {
+      "value": "0730-0301",
+      "type": "print"
+    },
+    {
+      "value": "1557-7368",
+      "type": "electronic"
+    }
+  ],
+  "subject": [],
+  "published": {
+    "date-parts": [
+      [
+        2013,
+        7,
+        21
+      ]
+    ]
+  },
+  "assertion": [
+    {
+      "value": "2013-07-21",
+      "order": 2,
+      "name": "published",
+      "label": "Published",
+      "group": {
+        "name": "publication_history",
+        "label": "Publication History"
+      }
+    }
+  ]
+}

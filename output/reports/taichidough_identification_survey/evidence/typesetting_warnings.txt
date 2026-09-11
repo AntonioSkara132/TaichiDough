@@ -1,0 +1,9 @@
+Package fontspec Warning: Language 'English' not available for font
+Underfull \hbox (badness 2689) in paragraph at lines 715--724
+Underfull \hbox (badness 10000) in paragraph at lines 1340--1346
+Underfull \hbox (badness 1142) in paragraph at lines 1767--1772
+Underfull \hbox (badness 3219) in paragraph at lines 1852--1859
+Underfull \hbox (badness 3118) in paragraph at lines 2409--2409
+Underfull \hbox (badness 10000) in paragraph at lines 2409--2409
+Underfull \hbox (badness 2310) in paragraph at lines 2409--2409
+Underfull \hbox (badness 1546) in paragraph at lines 2474--2474

@@ -1,0 +1,47 @@
+% Report typography, paired with the markdown-latex-report Lua filter.
+% Explicit penalties support the installed LaTeX 2021 kernel.
+\usepackage{booktabs,longtable,tabularx,array,colortbl}
+\usepackage{xcolor,microtype,fancyhdr,etoolbox,needspace,hyperref,graphicx}
+\usepackage{upquote,fvextra}
+\usepackage[font=small,labelfont=bf,labelsep=period]{caption}
+\definecolor{accent}{HTML}{216B86}
+\definecolor{rowalt}{HTML}{F1F6F9}
+\definecolor{ruleline}{HTML}{526D7D}
+\definecolor{codeborder}{HTML}{CDDCE4}
+\arrayrulecolor{ruleline!35}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.16}
+\setlength{\arrayrulewidth}{0.3pt}
+\setlength{\LTpre}{8pt}
+\setlength{\LTpost}{8pt}
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+\brokenpenalty=10000
+\setlength{\emergencystretch}{2em}
+\hypersetup{colorlinks=true,linkcolor=accent,urlcolor=accent,citecolor=accent}
+\makeatletter
+\renewcommand\section{\needspace{7\baselineskip}\@startsection{section}{1}{\z@}%
+  {-3.2ex plus -1ex minus -.2ex}{1.5ex plus .2ex}%
+  {\normalfont\sffamily\Large\bfseries\color{accent}}}
+\renewcommand\subsection{\needspace{5\baselineskip}\@startsection{subsection}{2}{\z@}%
+  {-2.5ex plus -.5ex minus -.2ex}{1.0ex plus .2ex}%
+  {\normalfont\sffamily\large\bfseries\color{accent}}}
+\renewcommand\subsubsection{\needspace{4\baselineskip}\@startsection{subsubsection}{3}{\z@}%
+  {-2ex plus -.5ex minus -.2ex}{.7ex plus .2ex}%
+  {\normalfont\sffamily\normalsize\bfseries}}
+\makeatother
+\fvset{frame=single,rulecolor=\color{codeborder},framesep=4pt,fontsize=\small,
+       breaklines=true,breakanywhere=true,breakindent=1.5em}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{ruleline}Dough parameter identification}
+\fancyhead[R]{\small\sffamily\color{ruleline}\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\setlength{\headheight}{14pt}
+\setlength{\headsep}{18pt}
+\DeclareGraphicsExtensions{.pdf,.png,.jpg}
+\providecommand{\subtwoline}[2]{#1\par\nobreak #2}
+\AtBeginEnvironment{CSLReferences}{\small}
+\let\reporttableofcontents\tableofcontents
+\renewcommand{\tableofcontents}{\reporttableofcontents\clearpage}
