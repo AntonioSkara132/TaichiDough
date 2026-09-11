@@ -1,0 +1,48 @@
+{
+  "schema": "taichidough/episode18-collision-ablation/v1",
+  "description": "Locked E=2000 Pa Episode 18 no-tool versus solid-SDF readiness comparison. The SDF contact skin is deliberately supplied at invocation time.",
+  "baseline_command": {
+    "path": "../output/episode18_e2000_full_replay_command.json",
+    "sha256": "2eb8ee7205875fe624a2c54c9d81e2dd16a54620fb0c1f8e3f2ac7f876ef60fd"
+  },
+  "fixed_expectations": {
+    "youngs_modulus_pa": 2000.0,
+    "particles": 24000,
+    "grid": 48,
+    "dt_s": 0.0002,
+    "replay_start_frame": 0,
+    "replay_end_frame": 387,
+    "replay_stride": 4,
+    "tool_sdf_resolution": 64,
+    "tool_mesh_scale": 0.001,
+    "object_mass_kg": 0.25,
+    "density_kg_m3": 283.071209393435
+  },
+  "inputs": {
+    "initial_particles": {
+      "path": "../data/single_episode_calibration/episode18_kugla/reconstruction/episode18_kugla/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "0ba51a94f53b15be3f22c15efd62a3b97e1230201aa949b34d127f989cf46148"
+    },
+    "reconstruction_metadata": {
+      "path": "../data/single_episode_calibration/episode18_kugla/reconstruction/episode18_kugla/frame_0000/reconstruction_metadata.json",
+      "sha256": "950ad5cf8feacdecf8200fcebacbf0089cc2183f5185bb8d2d4c49f4901769c9"
+    },
+    "tool_geometry": {
+      "path": "tool_geometry_episode18_sdf.json",
+      "sha256": "627c0d3508f5385d76c2978359b5a85c53959e95737a41cc494effcd6c833024"
+    },
+    "solid_collision_manifest": {
+      "path": "../meshes/tool_collision_meshes_v1.json",
+      "sha256": "20500cabe629f6cd05ff5cc4df93f9a9f9f09d577a8bab723cbcadde36529388"
+    },
+    "collision_meshes": [
+      {"name": "UR5e_spathla", "path": "../meshes/ur_spathla_collision_solid.stl", "sha256": "f5e509d84816d1496f6250c2afae88838a58996a25480b282a4daa896eee61cb"},
+      {"name": "gen3_spathla", "path": "../meshes/gen3_spathla_collision_solid.stl", "sha256": "c4d7a910e928d265f387003f33638a3ac123f7c8472af5d691882a099fb4867a"}
+    ]
+  },
+  "conditions": ["no_tool", "sdf"],
+  "limitations": [
+    "The SDF contact skin is an explicit operator-selected model assumption, not a fitted physical measurement.",
+    "The paired result compares replay conditions; it does not validate contact forces or identify a Young's modulus."
+  ]
+}

@@ -1,0 +1,6014 @@
+{
+  "schema": "taichidough/replay-sdf-contact-debug/v1",
+  "units": "scene metres and collision-branch executions",
+  "tool_collision": "sdf",
+  "tool_names": [
+    "UR5e_spathla",
+    "gen3_spathla"
+  ],
+  "sequence_fingerprint": "b5b2225335813b6c61f1777194c92cfa5de93b082dcf1a4974cd9cf992b825cb",
+  "tool_contact_padding_scene_m": 0.005208333333333333,
+  "tool_sdf_resolution": 64,
+  "predicate": {
+    "valid_sdf_sample": "point is inside the finite local SDF volume",
+    "inside_mesh": "valid && signed_distance_m < 0",
+    "contact_candidate": "valid && signed_distance_m < tool_contact_padding_scene_m",
+    "grid_applied_response": "selected candidate executes the grid velocity response",
+    "particle_applied_response": "candidate executes post-G2P particle projection; counts can include both tools for one particle"
+  },
+  "sdf_local_bounds": [
+    {
+      "minimum_scene_m": [
+        -0.04673696681857109,
+        -0.0353032723069191,
+        -0.10533609986305237
+      ],
+      "maximum_scene_m": [
+        0.12559069693088531,
+        0.1057753786444664,
+        0.023968473076820374
+      ],
+      "voxel_spacing_scene_m": [
+        0.002735359827056527,
+        0.002239343710243702,
+        0.0020524535793811083
+      ]
+    },
+    {
+      "minimum_scene_m": [
+        -0.09673450142145157,
+        -0.03250953555107117,
+        -0.1442379653453827
+      ],
+      "maximum_scene_m": [
+        0.021015971899032593,
+        0.12139886617660522,
+        0.03050146996974945
+      ],
+      "voxel_spacing_scene_m": [
+        0.0018690550932660699,
+        0.002442990429699421,
+        0.0027736418414860964
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "frame": 0,
+      "simulation_step": 0,
+      "completed_substeps": 0,
+      "sim_time_s": 0.0,
+      "source_frame": 0,
+      "original_source_frame": 2,
+      "collection_window_start_substep": 0,
+      "collection_window_end_substep": 0,
+      "snapshot_without_substep_evaluations": true,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 1,
+      "simulation_step": 167,
+      "completed_substeps": 167,
+      "sim_time_s": 0.0334,
+      "source_frame": 1,
+      "original_source_frame": 3,
+      "collection_window_start_substep": 0,
+      "collection_window_end_substep": 167,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 2,
+      "simulation_step": 334,
+      "completed_substeps": 334,
+      "sim_time_s": 0.0668,
+      "source_frame": 2,
+      "original_source_frame": 4,
+      "collection_window_start_substep": 167,
+      "collection_window_end_substep": 334,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 3,
+      "simulation_step": 501,
+      "completed_substeps": 501,
+      "sim_time_s": 0.10020000000000001,
+      "source_frame": 3,
+      "original_source_frame": 5,
+      "collection_window_start_substep": 334,
+      "collection_window_end_substep": 501,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 4,
+      "simulation_step": 668,
+      "completed_substeps": 668,
+      "sim_time_s": 0.1336,
+      "source_frame": 4,
+      "original_source_frame": 6,
+      "collection_window_start_substep": 501,
+      "collection_window_end_substep": 668,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 5,
+      "simulation_step": 834,
+      "completed_substeps": 834,
+      "sim_time_s": 0.1668,
+      "source_frame": 5,
+      "original_source_frame": 7,
+      "collection_window_start_substep": 668,
+      "collection_window_end_substep": 834,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 6,
+      "simulation_step": 1001,
+      "completed_substeps": 1001,
+      "sim_time_s": 0.20020000000000002,
+      "source_frame": 6,
+      "original_source_frame": 8,
+      "collection_window_start_substep": 834,
+      "collection_window_end_substep": 1001,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 7,
+      "simulation_step": 1168,
+      "completed_substeps": 1168,
+      "sim_time_s": 0.2336,
+      "source_frame": 7,
+      "original_source_frame": 9,
+      "collection_window_start_substep": 1001,
+      "collection_window_end_substep": 1168,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 8,
+      "simulation_step": 1335,
+      "completed_substeps": 1335,
+      "sim_time_s": 0.267,
+      "source_frame": 8,
+      "original_source_frame": 10,
+      "collection_window_start_substep": 1168,
+      "collection_window_end_substep": 1335,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 9,
+      "simulation_step": 1501,
+      "completed_substeps": 1501,
+      "sim_time_s": 0.3002,
+      "source_frame": 9,
+      "original_source_frame": 11,
+      "collection_window_start_substep": 1335,
+      "collection_window_end_substep": 1501,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 10,
+      "simulation_step": 1668,
+      "completed_substeps": 1668,
+      "sim_time_s": 0.3336,
+      "source_frame": 10,
+      "original_source_frame": 12,
+      "collection_window_start_substep": 1501,
+      "collection_window_end_substep": 1668,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 11,
+      "simulation_step": 1835,
+      "completed_substeps": 1835,
+      "sim_time_s": 0.367,
+      "source_frame": 11,
+      "original_source_frame": 13,
+      "collection_window_start_substep": 1668,
+      "collection_window_end_substep": 1835,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 12,
+      "simulation_step": 2002,
+      "completed_substeps": 2002,
+      "sim_time_s": 0.40040000000000003,
+      "source_frame": 12,
+      "original_source_frame": 14,
+      "collection_window_start_substep": 1835,
+      "collection_window_end_substep": 2002,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 13,
+      "simulation_step": 2168,
+      "completed_substeps": 2168,
+      "sim_time_s": 0.43360000000000004,
+      "source_frame": 13,
+      "original_source_frame": 15,
+      "collection_window_start_substep": 2002,
+      "collection_window_end_substep": 2168,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 14,
+      "simulation_step": 2335,
+      "completed_substeps": 2335,
+      "sim_time_s": 0.467,
+      "source_frame": 14,
+      "original_source_frame": 16,
+      "collection_window_start_substep": 2168,
+      "collection_window_end_substep": 2335,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 15,
+      "simulation_step": 2502,
+      "completed_substeps": 2502,
+      "sim_time_s": 0.5004000000000001,
+      "source_frame": 15,
+      "original_source_frame": 17,
+      "collection_window_start_substep": 2335,
+      "collection_window_end_substep": 2502,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 16,
+      "simulation_step": 2669,
+      "completed_substeps": 2669,
+      "sim_time_s": 0.5338,
+      "source_frame": 16,
+      "original_source_frame": 18,
+      "collection_window_start_substep": 2502,
+      "collection_window_end_substep": 2669,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 17,
+      "simulation_step": 2835,
+      "completed_substeps": 2835,
+      "sim_time_s": 0.5670000000000001,
+      "source_frame": 17,
+      "original_source_frame": 19,
+      "collection_window_start_substep": 2669,
+      "collection_window_end_substep": 2835,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 18,
+      "simulation_step": 3002,
+      "completed_substeps": 3002,
+      "sim_time_s": 0.6004,
+      "source_frame": 18,
+      "original_source_frame": 20,
+      "collection_window_start_substep": 2835,
+      "collection_window_end_substep": 3002,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 19,
+      "simulation_step": 3169,
+      "completed_substeps": 3169,
+      "sim_time_s": 0.6338,
+      "source_frame": 19,
+      "original_source_frame": 21,
+      "collection_window_start_substep": 3002,
+      "collection_window_end_substep": 3169,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 20,
+      "simulation_step": 3336,
+      "completed_substeps": 3336,
+      "sim_time_s": 0.6672,
+      "source_frame": 20,
+      "original_source_frame": 22,
+      "collection_window_start_substep": 3169,
+      "collection_window_end_substep": 3336,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 21,
+      "simulation_step": 3502,
+      "completed_substeps": 3502,
+      "sim_time_s": 0.7004,
+      "source_frame": 21,
+      "original_source_frame": 23,
+      "collection_window_start_substep": 3336,
+      "collection_window_end_substep": 3502,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 169,
+            "applied_responses": 169,
+            "inward_normal_velocity_removed": 169
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 22,
+      "simulation_step": 3669,
+      "completed_substeps": 3669,
+      "sim_time_s": 0.7338,
+      "source_frame": 22,
+      "original_source_frame": 24,
+      "collection_window_start_substep": 3502,
+      "collection_window_end_substep": 3669,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 648,
+            "applied_responses": 648,
+            "inward_normal_velocity_removed": 343
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 23,
+      "simulation_step": 3836,
+      "completed_substeps": 3836,
+      "sim_time_s": 0.7672,
+      "source_frame": 23,
+      "original_source_frame": 25,
+      "collection_window_start_substep": 3669,
+      "collection_window_end_substep": 3836,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 149,
+            "applied_responses": 149,
+            "inward_normal_velocity_removed": 123
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1215,
+            "applied_responses": 1215,
+            "inward_normal_velocity_removed": 821
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 24,
+      "simulation_step": 4003,
+      "completed_substeps": 4003,
+      "sim_time_s": 0.8006000000000001,
+      "source_frame": 24,
+      "original_source_frame": 26,
+      "collection_window_start_substep": 3836,
+      "collection_window_end_substep": 4003,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 539,
+            "applied_responses": 539,
+            "inward_normal_velocity_removed": 237
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1382,
+            "applied_responses": 1382,
+            "inward_normal_velocity_removed": 790
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 25,
+      "simulation_step": 4169,
+      "completed_substeps": 4169,
+      "sim_time_s": 0.8338,
+      "source_frame": 25,
+      "original_source_frame": 27,
+      "collection_window_start_substep": 4003,
+      "collection_window_end_substep": 4169,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 1030,
+            "applied_responses": 1030,
+            "inward_normal_velocity_removed": 462
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1561,
+            "applied_responses": 1561,
+            "inward_normal_velocity_removed": 610
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 26,
+      "simulation_step": 4336,
+      "completed_substeps": 4336,
+      "sim_time_s": 0.8672000000000001,
+      "source_frame": 26,
+      "original_source_frame": 28,
+      "collection_window_start_substep": 4169,
+      "collection_window_end_substep": 4336,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 2254,
+            "applied_responses": 2254,
+            "inward_normal_velocity_removed": 1419
+          },
+          "particles": {
+            "contact_candidates": 241,
+            "applied_responses": 241,
+            "inward_normal_velocity_removed": 241
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1707,
+            "applied_responses": 1707,
+            "inward_normal_velocity_removed": 744
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 27,
+      "simulation_step": 4503,
+      "completed_substeps": 4503,
+      "sim_time_s": 0.9006000000000001,
+      "source_frame": 27,
+      "original_source_frame": 29,
+      "collection_window_start_substep": 4336,
+      "collection_window_end_substep": 4503,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 2577,
+            "applied_responses": 2577,
+            "inward_normal_velocity_removed": 1114
+          },
+          "particles": {
+            "contact_candidates": 8409,
+            "applied_responses": 8409,
+            "inward_normal_velocity_removed": 8409
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 2025,
+            "applied_responses": 2025,
+            "inward_normal_velocity_removed": 1093
+          },
+          "particles": {
+            "contact_candidates": 38,
+            "applied_responses": 38,
+            "inward_normal_velocity_removed": 38
+          }
+        }
+      ]
+    },
+    {
+      "frame": 28,
+      "simulation_step": 4670,
+      "completed_substeps": 4670,
+      "sim_time_s": 0.934,
+      "source_frame": 28,
+      "original_source_frame": 30,
+      "collection_window_start_substep": 4503,
+      "collection_window_end_substep": 4670,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 3713,
+            "applied_responses": 3713,
+            "inward_normal_velocity_removed": 1888
+          },
+          "particles": {
+            "contact_candidates": 27335,
+            "applied_responses": 27335,
+            "inward_normal_velocity_removed": 27326
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 2313,
+            "applied_responses": 2313,
+            "inward_normal_velocity_removed": 1181
+          },
+          "particles": {
+            "contact_candidates": 619,
+            "applied_responses": 619,
+            "inward_normal_velocity_removed": 619
+          }
+        }
+      ]
+    },
+    {
+      "frame": 29,
+      "simulation_step": 4836,
+      "completed_substeps": 4836,
+      "sim_time_s": 0.9672000000000001,
+      "source_frame": 29,
+      "original_source_frame": 31,
+      "collection_window_start_substep": 4670,
+      "collection_window_end_substep": 4836,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4135,
+            "applied_responses": 4135,
+            "inward_normal_velocity_removed": 1848
+          },
+          "particles": {
+            "contact_candidates": 17224,
+            "applied_responses": 17224,
+            "inward_normal_velocity_removed": 17221
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 2686,
+            "applied_responses": 2686,
+            "inward_normal_velocity_removed": 978
+          },
+          "particles": {
+            "contact_candidates": 2126,
+            "applied_responses": 2126,
+            "inward_normal_velocity_removed": 2126
+          }
+        }
+      ]
+    },
+    {
+      "frame": 30,
+      "simulation_step": 5003,
+      "completed_substeps": 5003,
+      "sim_time_s": 1.0006000000000002,
+      "source_frame": 30,
+      "original_source_frame": 32,
+      "collection_window_start_substep": 4836,
+      "collection_window_end_substep": 5003,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4172,
+            "applied_responses": 4172,
+            "inward_normal_velocity_removed": 1600
+          },
+          "particles": {
+            "contact_candidates": 55862,
+            "applied_responses": 55862,
+            "inward_normal_velocity_removed": 55855
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 2862,
+            "applied_responses": 2862,
+            "inward_normal_velocity_removed": 1497
+          },
+          "particles": {
+            "contact_candidates": 1817,
+            "applied_responses": 1817,
+            "inward_normal_velocity_removed": 1798
+          }
+        }
+      ]
+    },
+    {
+      "frame": 31,
+      "simulation_step": 5170,
+      "completed_substeps": 5170,
+      "sim_time_s": 1.034,
+      "source_frame": 31,
+      "original_source_frame": 33,
+      "collection_window_start_substep": 5003,
+      "collection_window_end_substep": 5170,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4434,
+            "applied_responses": 4434,
+            "inward_normal_velocity_removed": 2030
+          },
+          "particles": {
+            "contact_candidates": 53126,
+            "applied_responses": 53126,
+            "inward_normal_velocity_removed": 53070
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 2915,
+            "applied_responses": 2915,
+            "inward_normal_velocity_removed": 1246
+          },
+          "particles": {
+            "contact_candidates": 1480,
+            "applied_responses": 1480,
+            "inward_normal_velocity_removed": 1458
+          }
+        }
+      ]
+    },
+    {
+      "frame": 32,
+      "simulation_step": 5337,
+      "completed_substeps": 5337,
+      "sim_time_s": 1.0674000000000001,
+      "source_frame": 32,
+      "original_source_frame": 34,
+      "collection_window_start_substep": 5170,
+      "collection_window_end_substep": 5337,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4378,
+            "applied_responses": 4378,
+            "inward_normal_velocity_removed": 2002
+          },
+          "particles": {
+            "contact_candidates": 42804,
+            "applied_responses": 42804,
+            "inward_normal_velocity_removed": 42772
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 2492,
+            "applied_responses": 2492,
+            "inward_normal_velocity_removed": 1199
+          },
+          "particles": {
+            "contact_candidates": 1087,
+            "applied_responses": 1087,
+            "inward_normal_velocity_removed": 1083
+          }
+        }
+      ]
+    },
+    {
+      "frame": 33,
+      "simulation_step": 5503,
+      "completed_substeps": 5503,
+      "sim_time_s": 1.1006,
+      "source_frame": 33,
+      "original_source_frame": 35,
+      "collection_window_start_substep": 5337,
+      "collection_window_end_substep": 5503,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4353,
+            "applied_responses": 4353,
+            "inward_normal_velocity_removed": 1464
+          },
+          "particles": {
+            "contact_candidates": 11418,
+            "applied_responses": 11418,
+            "inward_normal_velocity_removed": 11391
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 2834,
+            "applied_responses": 2834,
+            "inward_normal_velocity_removed": 1487
+          },
+          "particles": {
+            "contact_candidates": 638,
+            "applied_responses": 638,
+            "inward_normal_velocity_removed": 625
+          }
+        }
+      ]
+    },
+    {
+      "frame": 34,
+      "simulation_step": 5670,
+      "completed_substeps": 5670,
+      "sim_time_s": 1.1340000000000001,
+      "source_frame": 34,
+      "original_source_frame": 36,
+      "collection_window_start_substep": 5503,
+      "collection_window_end_substep": 5670,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4921,
+            "applied_responses": 4921,
+            "inward_normal_velocity_removed": 1412
+          },
+          "particles": {
+            "contact_candidates": 1292,
+            "applied_responses": 1292,
+            "inward_normal_velocity_removed": 1142
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 2143,
+            "applied_responses": 2143,
+            "inward_normal_velocity_removed": 684
+          },
+          "particles": {
+            "contact_candidates": 6,
+            "applied_responses": 6,
+            "inward_normal_velocity_removed": 1
+          }
+        }
+      ]
+    },
+    {
+      "frame": 35,
+      "simulation_step": 5837,
+      "completed_substeps": 5837,
+      "sim_time_s": 1.1674,
+      "source_frame": 35,
+      "original_source_frame": 37,
+      "collection_window_start_substep": 5670,
+      "collection_window_end_substep": 5837,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4547,
+            "applied_responses": 4547,
+            "inward_normal_velocity_removed": 1406
+          },
+          "particles": {
+            "contact_candidates": 163,
+            "applied_responses": 163,
+            "inward_normal_velocity_removed": 140
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1691,
+            "applied_responses": 1691,
+            "inward_normal_velocity_removed": 785
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 36,
+      "simulation_step": 6004,
+      "completed_substeps": 6004,
+      "sim_time_s": 1.2008,
+      "source_frame": 36,
+      "original_source_frame": 38,
+      "collection_window_start_substep": 5837,
+      "collection_window_end_substep": 6004,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4500,
+            "applied_responses": 4500,
+            "inward_normal_velocity_removed": 1456
+          },
+          "particles": {
+            "contact_candidates": 267,
+            "applied_responses": 267,
+            "inward_normal_velocity_removed": 240
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 923,
+            "applied_responses": 923,
+            "inward_normal_velocity_removed": 55
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 37,
+      "simulation_step": 6170,
+      "completed_substeps": 6170,
+      "sim_time_s": 1.234,
+      "source_frame": 37,
+      "original_source_frame": 39,
+      "collection_window_start_substep": 6004,
+      "collection_window_end_substep": 6170,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4631,
+            "applied_responses": 4631,
+            "inward_normal_velocity_removed": 1929
+          },
+          "particles": {
+            "contact_candidates": 479,
+            "applied_responses": 479,
+            "inward_normal_velocity_removed": 479
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 82,
+            "applied_responses": 82,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 38,
+      "simulation_step": 6337,
+      "completed_substeps": 6337,
+      "sim_time_s": 1.2674,
+      "source_frame": 38,
+      "original_source_frame": 40,
+      "collection_window_start_substep": 6170,
+      "collection_window_end_substep": 6337,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 2961,
+            "applied_responses": 2961,
+            "inward_normal_velocity_removed": 558
+          },
+          "particles": {
+            "contact_candidates": 652,
+            "applied_responses": 652,
+            "inward_normal_velocity_removed": 634
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 39,
+      "simulation_step": 6504,
+      "completed_substeps": 6504,
+      "sim_time_s": 1.3008,
+      "source_frame": 39,
+      "original_source_frame": 41,
+      "collection_window_start_substep": 6337,
+      "collection_window_end_substep": 6504,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 2718,
+            "applied_responses": 2718,
+            "inward_normal_velocity_removed": 76
+          },
+          "particles": {
+            "contact_candidates": 56,
+            "applied_responses": 56,
+            "inward_normal_velocity_removed": 45
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 11,
+            "applied_responses": 11,
+            "inward_normal_velocity_removed": 11
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 40,
+      "simulation_step": 6671,
+      "completed_substeps": 6671,
+      "sim_time_s": 1.3342,
+      "source_frame": 40,
+      "original_source_frame": 42,
+      "collection_window_start_substep": 6504,
+      "collection_window_end_substep": 6671,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 2812,
+            "applied_responses": 2812,
+            "inward_normal_velocity_removed": 188
+          },
+          "particles": {
+            "contact_candidates": 139,
+            "applied_responses": 139,
+            "inward_normal_velocity_removed": 139
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 464,
+            "applied_responses": 464,
+            "inward_normal_velocity_removed": 310
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 41,
+      "simulation_step": 6837,
+      "completed_substeps": 6837,
+      "sim_time_s": 1.3674000000000002,
+      "source_frame": 41,
+      "original_source_frame": 43,
+      "collection_window_start_substep": 6671,
+      "collection_window_end_substep": 6837,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 3985,
+            "applied_responses": 3985,
+            "inward_normal_velocity_removed": 1333
+          },
+          "particles": {
+            "contact_candidates": 1432,
+            "applied_responses": 1432,
+            "inward_normal_velocity_removed": 1432
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 453,
+            "applied_responses": 453,
+            "inward_normal_velocity_removed": 276
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 42,
+      "simulation_step": 7004,
+      "completed_substeps": 7004,
+      "sim_time_s": 1.4008,
+      "source_frame": 42,
+      "original_source_frame": 44,
+      "collection_window_start_substep": 6837,
+      "collection_window_end_substep": 7004,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5255,
+            "applied_responses": 5255,
+            "inward_normal_velocity_removed": 2510
+          },
+          "particles": {
+            "contact_candidates": 1025,
+            "applied_responses": 1025,
+            "inward_normal_velocity_removed": 1006
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 334,
+            "applied_responses": 334,
+            "inward_normal_velocity_removed": 248
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 43,
+      "simulation_step": 7171,
+      "completed_substeps": 7171,
+      "sim_time_s": 1.4342000000000001,
+      "source_frame": 43,
+      "original_source_frame": 45,
+      "collection_window_start_substep": 7004,
+      "collection_window_end_substep": 7171,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 3832,
+            "applied_responses": 3832,
+            "inward_normal_velocity_removed": 1070
+          },
+          "particles": {
+            "contact_candidates": 1839,
+            "applied_responses": 1839,
+            "inward_normal_velocity_removed": 1838
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 649,
+            "applied_responses": 649,
+            "inward_normal_velocity_removed": 429
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 44,
+      "simulation_step": 7338,
+      "completed_substeps": 7338,
+      "sim_time_s": 1.4676,
+      "source_frame": 44,
+      "original_source_frame": 46,
+      "collection_window_start_substep": 7171,
+      "collection_window_end_substep": 7338,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 3220,
+            "applied_responses": 3220,
+            "inward_normal_velocity_removed": 921
+          },
+          "particles": {
+            "contact_candidates": 1716,
+            "applied_responses": 1716,
+            "inward_normal_velocity_removed": 1716
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 494,
+            "applied_responses": 494,
+            "inward_normal_velocity_removed": 155
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 45,
+      "simulation_step": 7504,
+      "completed_substeps": 7504,
+      "sim_time_s": 1.5008000000000001,
+      "source_frame": 45,
+      "original_source_frame": 47,
+      "collection_window_start_substep": 7338,
+      "collection_window_end_substep": 7504,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4165,
+            "applied_responses": 4165,
+            "inward_normal_velocity_removed": 1443
+          },
+          "particles": {
+            "contact_candidates": 3135,
+            "applied_responses": 3135,
+            "inward_normal_velocity_removed": 3132
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 225,
+            "applied_responses": 225,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 46,
+      "simulation_step": 7671,
+      "completed_substeps": 7671,
+      "sim_time_s": 1.5342,
+      "source_frame": 46,
+      "original_source_frame": 48,
+      "collection_window_start_substep": 7504,
+      "collection_window_end_substep": 7671,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4454,
+            "applied_responses": 4454,
+            "inward_normal_velocity_removed": 1844
+          },
+          "particles": {
+            "contact_candidates": 2067,
+            "applied_responses": 2067,
+            "inward_normal_velocity_removed": 2021
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 47,
+      "simulation_step": 7838,
+      "completed_substeps": 7838,
+      "sim_time_s": 1.5676,
+      "source_frame": 47,
+      "original_source_frame": 49,
+      "collection_window_start_substep": 7671,
+      "collection_window_end_substep": 7838,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4109,
+            "applied_responses": 4109,
+            "inward_normal_velocity_removed": 1551
+          },
+          "particles": {
+            "contact_candidates": 3300,
+            "applied_responses": 3300,
+            "inward_normal_velocity_removed": 3264
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 48,
+      "simulation_step": 8005,
+      "completed_substeps": 8005,
+      "sim_time_s": 1.601,
+      "source_frame": 48,
+      "original_source_frame": 50,
+      "collection_window_start_substep": 7838,
+      "collection_window_end_substep": 8005,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4327,
+            "applied_responses": 4327,
+            "inward_normal_velocity_removed": 1796
+          },
+          "particles": {
+            "contact_candidates": 10327,
+            "applied_responses": 10327,
+            "inward_normal_velocity_removed": 10295
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 70,
+            "applied_responses": 70,
+            "inward_normal_velocity_removed": 70
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 49,
+      "simulation_step": 8171,
+      "completed_substeps": 8171,
+      "sim_time_s": 1.6342,
+      "source_frame": 49,
+      "original_source_frame": 51,
+      "collection_window_start_substep": 8005,
+      "collection_window_end_substep": 8171,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4660,
+            "applied_responses": 4660,
+            "inward_normal_velocity_removed": 1861
+          },
+          "particles": {
+            "contact_candidates": 49252,
+            "applied_responses": 49252,
+            "inward_normal_velocity_removed": 49248
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 325,
+            "applied_responses": 325,
+            "inward_normal_velocity_removed": 325
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 50,
+      "simulation_step": 8338,
+      "completed_substeps": 8338,
+      "sim_time_s": 1.6676,
+      "source_frame": 50,
+      "original_source_frame": 52,
+      "collection_window_start_substep": 8171,
+      "collection_window_end_substep": 8338,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4302,
+            "applied_responses": 4302,
+            "inward_normal_velocity_removed": 1887
+          },
+          "particles": {
+            "contact_candidates": 2110,
+            "applied_responses": 2110,
+            "inward_normal_velocity_removed": 1252
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 501,
+            "applied_responses": 501,
+            "inward_normal_velocity_removed": 481
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 51,
+      "simulation_step": 8505,
+      "completed_substeps": 8505,
+      "sim_time_s": 1.701,
+      "source_frame": 51,
+      "original_source_frame": 53,
+      "collection_window_start_substep": 8338,
+      "collection_window_end_substep": 8505,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4342,
+            "applied_responses": 4342,
+            "inward_normal_velocity_removed": 1793
+          },
+          "particles": {
+            "contact_candidates": 5182,
+            "applied_responses": 5182,
+            "inward_normal_velocity_removed": 5182
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 501,
+            "applied_responses": 501,
+            "inward_normal_velocity_removed": 334
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 52,
+      "simulation_step": 8672,
+      "completed_substeps": 8672,
+      "sim_time_s": 1.7344000000000002,
+      "source_frame": 52,
+      "original_source_frame": 54,
+      "collection_window_start_substep": 8505,
+      "collection_window_end_substep": 8672,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4451,
+            "applied_responses": 4451,
+            "inward_normal_velocity_removed": 1606
+          },
+          "particles": {
+            "contact_candidates": 67171,
+            "applied_responses": 67171,
+            "inward_normal_velocity_removed": 67171
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 555,
+            "applied_responses": 555,
+            "inward_normal_velocity_removed": 257
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 53,
+      "simulation_step": 8838,
+      "completed_substeps": 8838,
+      "sim_time_s": 1.7676,
+      "source_frame": 53,
+      "original_source_frame": 55,
+      "collection_window_start_substep": 8672,
+      "collection_window_end_substep": 8838,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4845,
+            "applied_responses": 4845,
+            "inward_normal_velocity_removed": 1865
+          },
+          "particles": {
+            "contact_candidates": 75559,
+            "applied_responses": 75559,
+            "inward_normal_velocity_removed": 75556
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1116,
+            "applied_responses": 1116,
+            "inward_normal_velocity_removed": 733
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 54,
+      "simulation_step": 9005,
+      "completed_substeps": 9005,
+      "sim_time_s": 1.8010000000000002,
+      "source_frame": 54,
+      "original_source_frame": 56,
+      "collection_window_start_substep": 8838,
+      "collection_window_end_substep": 9005,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5090,
+            "applied_responses": 5090,
+            "inward_normal_velocity_removed": 2025
+          },
+          "particles": {
+            "contact_candidates": 67253,
+            "applied_responses": 67253,
+            "inward_normal_velocity_removed": 67246
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1136,
+            "applied_responses": 1136,
+            "inward_normal_velocity_removed": 666
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 55,
+      "simulation_step": 9172,
+      "completed_substeps": 9172,
+      "sim_time_s": 1.8344,
+      "source_frame": 55,
+      "original_source_frame": 57,
+      "collection_window_start_substep": 9005,
+      "collection_window_end_substep": 9172,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4673,
+            "applied_responses": 4673,
+            "inward_normal_velocity_removed": 1635
+          },
+          "particles": {
+            "contact_candidates": 45124,
+            "applied_responses": 45124,
+            "inward_normal_velocity_removed": 44938
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1204,
+            "applied_responses": 1204,
+            "inward_normal_velocity_removed": 634
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 56,
+      "simulation_step": 9339,
+      "completed_substeps": 9339,
+      "sim_time_s": 1.8678000000000001,
+      "source_frame": 56,
+      "original_source_frame": 58,
+      "collection_window_start_substep": 9172,
+      "collection_window_end_substep": 9339,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4825,
+            "applied_responses": 4825,
+            "inward_normal_velocity_removed": 1829
+          },
+          "particles": {
+            "contact_candidates": 48047,
+            "applied_responses": 48047,
+            "inward_normal_velocity_removed": 48031
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1897,
+            "applied_responses": 1897,
+            "inward_normal_velocity_removed": 1095
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 57,
+      "simulation_step": 9505,
+      "completed_substeps": 9505,
+      "sim_time_s": 1.901,
+      "source_frame": 57,
+      "original_source_frame": 59,
+      "collection_window_start_substep": 9339,
+      "collection_window_end_substep": 9505,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5039,
+            "applied_responses": 5039,
+            "inward_normal_velocity_removed": 2013
+          },
+          "particles": {
+            "contact_candidates": 29548,
+            "applied_responses": 29548,
+            "inward_normal_velocity_removed": 29530
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1861,
+            "applied_responses": 1861,
+            "inward_normal_velocity_removed": 1241
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 58,
+      "simulation_step": 9672,
+      "completed_substeps": 9672,
+      "sim_time_s": 1.9344000000000001,
+      "source_frame": 58,
+      "original_source_frame": 60,
+      "collection_window_start_substep": 9505,
+      "collection_window_end_substep": 9672,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5368,
+            "applied_responses": 5368,
+            "inward_normal_velocity_removed": 1411
+          },
+          "particles": {
+            "contact_candidates": 14861,
+            "applied_responses": 14861,
+            "inward_normal_velocity_removed": 14810
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1718,
+            "applied_responses": 1718,
+            "inward_normal_velocity_removed": 822
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 59,
+      "simulation_step": 9839,
+      "completed_substeps": 9839,
+      "sim_time_s": 1.9678,
+      "source_frame": 59,
+      "original_source_frame": 61,
+      "collection_window_start_substep": 9672,
+      "collection_window_end_substep": 9839,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4993,
+            "applied_responses": 4993,
+            "inward_normal_velocity_removed": 1357
+          },
+          "particles": {
+            "contact_candidates": 15179,
+            "applied_responses": 15179,
+            "inward_normal_velocity_removed": 15088
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 2682,
+            "applied_responses": 2682,
+            "inward_normal_velocity_removed": 1258
+          },
+          "particles": {
+            "contact_candidates": 940,
+            "applied_responses": 940,
+            "inward_normal_velocity_removed": 940
+          }
+        }
+      ]
+    },
+    {
+      "frame": 60,
+      "simulation_step": 10006,
+      "completed_substeps": 10006,
+      "sim_time_s": 2.0012000000000003,
+      "source_frame": 60,
+      "original_source_frame": 62,
+      "collection_window_start_substep": 9839,
+      "collection_window_end_substep": 10006,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4764,
+            "applied_responses": 4764,
+            "inward_normal_velocity_removed": 922
+          },
+          "particles": {
+            "contact_candidates": 49,
+            "applied_responses": 49,
+            "inward_normal_velocity_removed": 9
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 2252,
+            "applied_responses": 2252,
+            "inward_normal_velocity_removed": 1020
+          },
+          "particles": {
+            "contact_candidates": 329,
+            "applied_responses": 329,
+            "inward_normal_velocity_removed": 325
+          }
+        }
+      ]
+    },
+    {
+      "frame": 61,
+      "simulation_step": 10173,
+      "completed_substeps": 10173,
+      "sim_time_s": 2.0346,
+      "source_frame": 61,
+      "original_source_frame": 63,
+      "collection_window_start_substep": 10006,
+      "collection_window_end_substep": 10173,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4694,
+            "applied_responses": 4694,
+            "inward_normal_velocity_removed": 1647
+          },
+          "particles": {
+            "contact_candidates": 95,
+            "applied_responses": 95,
+            "inward_normal_velocity_removed": 95
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1262,
+            "applied_responses": 1262,
+            "inward_normal_velocity_removed": 576
+          },
+          "particles": {
+            "contact_candidates": 2,
+            "applied_responses": 2,
+            "inward_normal_velocity_removed": 2
+          }
+        }
+      ]
+    },
+    {
+      "frame": 62,
+      "simulation_step": 10339,
+      "completed_substeps": 10339,
+      "sim_time_s": 2.0678,
+      "source_frame": 62,
+      "original_source_frame": 64,
+      "collection_window_start_substep": 10173,
+      "collection_window_end_substep": 10339,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5103,
+            "applied_responses": 5103,
+            "inward_normal_velocity_removed": 1987
+          },
+          "particles": {
+            "contact_candidates": 1177,
+            "applied_responses": 1177,
+            "inward_normal_velocity_removed": 1177
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 110,
+            "applied_responses": 110,
+            "inward_normal_velocity_removed": 15
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 63,
+      "simulation_step": 10506,
+      "completed_substeps": 10506,
+      "sim_time_s": 2.1012,
+      "source_frame": 63,
+      "original_source_frame": 65,
+      "collection_window_start_substep": 10339,
+      "collection_window_end_substep": 10506,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4791,
+            "applied_responses": 4791,
+            "inward_normal_velocity_removed": 1692
+          },
+          "particles": {
+            "contact_candidates": 5342,
+            "applied_responses": 5342,
+            "inward_normal_velocity_removed": 5342
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 64,
+      "simulation_step": 10673,
+      "completed_substeps": 10673,
+      "sim_time_s": 2.1346000000000003,
+      "source_frame": 64,
+      "original_source_frame": 66,
+      "collection_window_start_substep": 10506,
+      "collection_window_end_substep": 10673,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5008,
+            "applied_responses": 5008,
+            "inward_normal_velocity_removed": 1794
+          },
+          "particles": {
+            "contact_candidates": 2533,
+            "applied_responses": 2533,
+            "inward_normal_velocity_removed": 2520
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 65,
+      "simulation_step": 10840,
+      "completed_substeps": 10840,
+      "sim_time_s": 2.168,
+      "source_frame": 65,
+      "original_source_frame": 67,
+      "collection_window_start_substep": 10673,
+      "collection_window_end_substep": 10840,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4847,
+            "applied_responses": 4847,
+            "inward_normal_velocity_removed": 1787
+          },
+          "particles": {
+            "contact_candidates": 3875,
+            "applied_responses": 3875,
+            "inward_normal_velocity_removed": 3871
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 66,
+      "simulation_step": 11006,
+      "completed_substeps": 11006,
+      "sim_time_s": 2.2012,
+      "source_frame": 66,
+      "original_source_frame": 68,
+      "collection_window_start_substep": 10840,
+      "collection_window_end_substep": 11006,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4504,
+            "applied_responses": 4504,
+            "inward_normal_velocity_removed": 1612
+          },
+          "particles": {
+            "contact_candidates": 2414,
+            "applied_responses": 2414,
+            "inward_normal_velocity_removed": 2413
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 67,
+      "simulation_step": 11173,
+      "completed_substeps": 11173,
+      "sim_time_s": 2.2346,
+      "source_frame": 67,
+      "original_source_frame": 69,
+      "collection_window_start_substep": 11006,
+      "collection_window_end_substep": 11173,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4925,
+            "applied_responses": 4925,
+            "inward_normal_velocity_removed": 1963
+          },
+          "particles": {
+            "contact_candidates": 40994,
+            "applied_responses": 40994,
+            "inward_normal_velocity_removed": 40977
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 68,
+      "simulation_step": 11340,
+      "completed_substeps": 11340,
+      "sim_time_s": 2.2680000000000002,
+      "source_frame": 68,
+      "original_source_frame": 70,
+      "collection_window_start_substep": 11173,
+      "collection_window_end_substep": 11340,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5187,
+            "applied_responses": 5187,
+            "inward_normal_velocity_removed": 2067
+          },
+          "particles": {
+            "contact_candidates": 75189,
+            "applied_responses": 75189,
+            "inward_normal_velocity_removed": 74932
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 69,
+      "simulation_step": 11507,
+      "completed_substeps": 11507,
+      "sim_time_s": 2.3014,
+      "source_frame": 69,
+      "original_source_frame": 71,
+      "collection_window_start_substep": 11340,
+      "collection_window_end_substep": 11507,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5019,
+            "applied_responses": 5019,
+            "inward_normal_velocity_removed": 1916
+          },
+          "particles": {
+            "contact_candidates": 65199,
+            "applied_responses": 65199,
+            "inward_normal_velocity_removed": 65189
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 70,
+      "simulation_step": 11673,
+      "completed_substeps": 11673,
+      "sim_time_s": 2.3346,
+      "source_frame": 70,
+      "original_source_frame": 72,
+      "collection_window_start_substep": 11507,
+      "collection_window_end_substep": 11673,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4965,
+            "applied_responses": 4965,
+            "inward_normal_velocity_removed": 1906
+          },
+          "particles": {
+            "contact_candidates": 121588,
+            "applied_responses": 121588,
+            "inward_normal_velocity_removed": 121583
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 71,
+      "simulation_step": 11840,
+      "completed_substeps": 11840,
+      "sim_time_s": 2.3680000000000003,
+      "source_frame": 71,
+      "original_source_frame": 73,
+      "collection_window_start_substep": 11673,
+      "collection_window_end_substep": 11840,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5103,
+            "applied_responses": 5103,
+            "inward_normal_velocity_removed": 2037
+          },
+          "particles": {
+            "contact_candidates": 85563,
+            "applied_responses": 85563,
+            "inward_normal_velocity_removed": 85015
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 26,
+            "applied_responses": 26,
+            "inward_normal_velocity_removed": 26
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 72,
+      "simulation_step": 12007,
+      "completed_substeps": 12007,
+      "sim_time_s": 2.4014,
+      "source_frame": 72,
+      "original_source_frame": 74,
+      "collection_window_start_substep": 11840,
+      "collection_window_end_substep": 12007,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5027,
+            "applied_responses": 5027,
+            "inward_normal_velocity_removed": 1693
+          },
+          "particles": {
+            "contact_candidates": 52548,
+            "applied_responses": 52548,
+            "inward_normal_velocity_removed": 52417
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 167,
+            "applied_responses": 167,
+            "inward_normal_velocity_removed": 167
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 73,
+      "simulation_step": 12174,
+      "completed_substeps": 12174,
+      "sim_time_s": 2.4348,
+      "source_frame": 73,
+      "original_source_frame": 75,
+      "collection_window_start_substep": 12007,
+      "collection_window_end_substep": 12174,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5062,
+            "applied_responses": 5062,
+            "inward_normal_velocity_removed": 1679
+          },
+          "particles": {
+            "contact_candidates": 71143,
+            "applied_responses": 71143,
+            "inward_normal_velocity_removed": 71133
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 143,
+            "applied_responses": 143,
+            "inward_normal_velocity_removed": 94
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 74,
+      "simulation_step": 12340,
+      "completed_substeps": 12340,
+      "sim_time_s": 2.468,
+      "source_frame": 74,
+      "original_source_frame": 76,
+      "collection_window_start_substep": 12174,
+      "collection_window_end_substep": 12340,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5352,
+            "applied_responses": 5352,
+            "inward_normal_velocity_removed": 1558
+          },
+          "particles": {
+            "contact_candidates": 92186,
+            "applied_responses": 92186,
+            "inward_normal_velocity_removed": 92173
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 805,
+            "applied_responses": 805,
+            "inward_normal_velocity_removed": 692
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 75,
+      "simulation_step": 12507,
+      "completed_substeps": 12507,
+      "sim_time_s": 2.5014000000000003,
+      "source_frame": 75,
+      "original_source_frame": 77,
+      "collection_window_start_substep": 12340,
+      "collection_window_end_substep": 12507,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5987,
+            "applied_responses": 5987,
+            "inward_normal_velocity_removed": 1495
+          },
+          "particles": {
+            "contact_candidates": 25026,
+            "applied_responses": 25026,
+            "inward_normal_velocity_removed": 24977
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1159,
+            "applied_responses": 1159,
+            "inward_normal_velocity_removed": 917
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 76,
+      "simulation_step": 12674,
+      "completed_substeps": 12674,
+      "sim_time_s": 2.5348,
+      "source_frame": 76,
+      "original_source_frame": 78,
+      "collection_window_start_substep": 12507,
+      "collection_window_end_substep": 12674,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5880,
+            "applied_responses": 5880,
+            "inward_normal_velocity_removed": 1816
+          },
+          "particles": {
+            "contact_candidates": 24961,
+            "applied_responses": 24961,
+            "inward_normal_velocity_removed": 24905
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1304,
+            "applied_responses": 1304,
+            "inward_normal_velocity_removed": 854
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 77,
+      "simulation_step": 12841,
+      "completed_substeps": 12841,
+      "sim_time_s": 2.5682,
+      "source_frame": 77,
+      "original_source_frame": 79,
+      "collection_window_start_substep": 12674,
+      "collection_window_end_substep": 12841,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6009,
+            "applied_responses": 6009,
+            "inward_normal_velocity_removed": 1613
+          },
+          "particles": {
+            "contact_candidates": 1365,
+            "applied_responses": 1365,
+            "inward_normal_velocity_removed": 1362
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1306,
+            "applied_responses": 1306,
+            "inward_normal_velocity_removed": 463
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 78,
+      "simulation_step": 13007,
+      "completed_substeps": 13007,
+      "sim_time_s": 2.6014,
+      "source_frame": 78,
+      "original_source_frame": 80,
+      "collection_window_start_substep": 12841,
+      "collection_window_end_substep": 13007,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5531,
+            "applied_responses": 5531,
+            "inward_normal_velocity_removed": 1962
+          },
+          "particles": {
+            "contact_candidates": 46,
+            "applied_responses": 46,
+            "inward_normal_velocity_removed": 43
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 163,
+            "applied_responses": 163,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 79,
+      "simulation_step": 13174,
+      "completed_substeps": 13174,
+      "sim_time_s": 2.6348000000000003,
+      "source_frame": 79,
+      "original_source_frame": 81,
+      "collection_window_start_substep": 13007,
+      "collection_window_end_substep": 13174,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5236,
+            "applied_responses": 5236,
+            "inward_normal_velocity_removed": 2050
+          },
+          "particles": {
+            "contact_candidates": 92,
+            "applied_responses": 92,
+            "inward_normal_velocity_removed": 83
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 80,
+      "simulation_step": 13341,
+      "completed_substeps": 13341,
+      "sim_time_s": 2.6682,
+      "source_frame": 80,
+      "original_source_frame": 82,
+      "collection_window_start_substep": 13174,
+      "collection_window_end_substep": 13341,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 4957,
+            "applied_responses": 4957,
+            "inward_normal_velocity_removed": 1761
+          },
+          "particles": {
+            "contact_candidates": 4894,
+            "applied_responses": 4894,
+            "inward_normal_velocity_removed": 4891
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 81,
+      "simulation_step": 13508,
+      "completed_substeps": 13508,
+      "sim_time_s": 2.7016,
+      "source_frame": 81,
+      "original_source_frame": 83,
+      "collection_window_start_substep": 13341,
+      "collection_window_end_substep": 13508,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5048,
+            "applied_responses": 5048,
+            "inward_normal_velocity_removed": 2005
+          },
+          "particles": {
+            "contact_candidates": 10787,
+            "applied_responses": 10787,
+            "inward_normal_velocity_removed": 10787
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 82,
+      "simulation_step": 13674,
+      "completed_substeps": 13674,
+      "sim_time_s": 2.7348000000000003,
+      "source_frame": 82,
+      "original_source_frame": 84,
+      "collection_window_start_substep": 13508,
+      "collection_window_end_substep": 13674,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5358,
+            "applied_responses": 5358,
+            "inward_normal_velocity_removed": 2009
+          },
+          "particles": {
+            "contact_candidates": 3619,
+            "applied_responses": 3619,
+            "inward_normal_velocity_removed": 3618
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 83,
+      "simulation_step": 13841,
+      "completed_substeps": 13841,
+      "sim_time_s": 2.7682,
+      "source_frame": 83,
+      "original_source_frame": 85,
+      "collection_window_start_substep": 13674,
+      "collection_window_end_substep": 13841,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5665,
+            "applied_responses": 5665,
+            "inward_normal_velocity_removed": 2326
+          },
+          "particles": {
+            "contact_candidates": 3198,
+            "applied_responses": 3198,
+            "inward_normal_velocity_removed": 3195
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 84,
+      "simulation_step": 14008,
+      "completed_substeps": 14008,
+      "sim_time_s": 2.8016,
+      "source_frame": 84,
+      "original_source_frame": 86,
+      "collection_window_start_substep": 13841,
+      "collection_window_end_substep": 14008,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6868,
+            "applied_responses": 6868,
+            "inward_normal_velocity_removed": 2412
+          },
+          "particles": {
+            "contact_candidates": 21326,
+            "applied_responses": 21326,
+            "inward_normal_velocity_removed": 21242
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 85,
+      "simulation_step": 14175,
+      "completed_substeps": 14175,
+      "sim_time_s": 2.835,
+      "source_frame": 85,
+      "original_source_frame": 87,
+      "collection_window_start_substep": 14008,
+      "collection_window_end_substep": 14175,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6283,
+            "applied_responses": 6283,
+            "inward_normal_velocity_removed": 2298
+          },
+          "particles": {
+            "contact_candidates": 15651,
+            "applied_responses": 15651,
+            "inward_normal_velocity_removed": 15642
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 86,
+      "simulation_step": 14341,
+      "completed_substeps": 14341,
+      "sim_time_s": 2.8682000000000003,
+      "source_frame": 86,
+      "original_source_frame": 88,
+      "collection_window_start_substep": 14175,
+      "collection_window_end_substep": 14341,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5901,
+            "applied_responses": 5901,
+            "inward_normal_velocity_removed": 2525
+          },
+          "particles": {
+            "contact_candidates": 96130,
+            "applied_responses": 96130,
+            "inward_normal_velocity_removed": 96118
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 87,
+      "simulation_step": 14508,
+      "completed_substeps": 14508,
+      "sim_time_s": 2.9016,
+      "source_frame": 87,
+      "original_source_frame": 89,
+      "collection_window_start_substep": 14341,
+      "collection_window_end_substep": 14508,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5649,
+            "applied_responses": 5649,
+            "inward_normal_velocity_removed": 2052
+          },
+          "particles": {
+            "contact_candidates": 85715,
+            "applied_responses": 85715,
+            "inward_normal_velocity_removed": 85709
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 88,
+      "simulation_step": 14675,
+      "completed_substeps": 14675,
+      "sim_time_s": 2.935,
+      "source_frame": 88,
+      "original_source_frame": 90,
+      "collection_window_start_substep": 14508,
+      "collection_window_end_substep": 14675,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6413,
+            "applied_responses": 6413,
+            "inward_normal_velocity_removed": 2016
+          },
+          "particles": {
+            "contact_candidates": 87184,
+            "applied_responses": 87184,
+            "inward_normal_velocity_removed": 87176
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 89,
+      "simulation_step": 14842,
+      "completed_substeps": 14842,
+      "sim_time_s": 2.9684,
+      "source_frame": 89,
+      "original_source_frame": 91,
+      "collection_window_start_substep": 14675,
+      "collection_window_end_substep": 14842,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6697,
+            "applied_responses": 6697,
+            "inward_normal_velocity_removed": 2518
+          },
+          "particles": {
+            "contact_candidates": 34947,
+            "applied_responses": 34947,
+            "inward_normal_velocity_removed": 34806
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 90,
+      "simulation_step": 15008,
+      "completed_substeps": 15008,
+      "sim_time_s": 3.0016000000000003,
+      "source_frame": 90,
+      "original_source_frame": 92,
+      "collection_window_start_substep": 14842,
+      "collection_window_end_substep": 15008,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5806,
+            "applied_responses": 5806,
+            "inward_normal_velocity_removed": 1556
+          },
+          "particles": {
+            "contact_candidates": 59069,
+            "applied_responses": 59069,
+            "inward_normal_velocity_removed": 59056
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 36,
+            "applied_responses": 36,
+            "inward_normal_velocity_removed": 36
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 91,
+      "simulation_step": 15175,
+      "completed_substeps": 15175,
+      "sim_time_s": 3.035,
+      "source_frame": 91,
+      "original_source_frame": 93,
+      "collection_window_start_substep": 15008,
+      "collection_window_end_substep": 15175,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6478,
+            "applied_responses": 6478,
+            "inward_normal_velocity_removed": 2338
+          },
+          "particles": {
+            "contact_candidates": 45706,
+            "applied_responses": 45706,
+            "inward_normal_velocity_removed": 44975
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 233,
+            "applied_responses": 233,
+            "inward_normal_velocity_removed": 233
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 92,
+      "simulation_step": 15342,
+      "completed_substeps": 15342,
+      "sim_time_s": 3.0684,
+      "source_frame": 92,
+      "original_source_frame": 94,
+      "collection_window_start_substep": 15175,
+      "collection_window_end_substep": 15342,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 7671,
+            "applied_responses": 7671,
+            "inward_normal_velocity_removed": 3422
+          },
+          "particles": {
+            "contact_candidates": 38669,
+            "applied_responses": 38669,
+            "inward_normal_velocity_removed": 38518
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 407,
+            "applied_responses": 407,
+            "inward_normal_velocity_removed": 220
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 93,
+      "simulation_step": 15509,
+      "completed_substeps": 15509,
+      "sim_time_s": 3.1018000000000003,
+      "source_frame": 93,
+      "original_source_frame": 95,
+      "collection_window_start_substep": 15342,
+      "collection_window_end_substep": 15509,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 7648,
+            "applied_responses": 7648,
+            "inward_normal_velocity_removed": 2115
+          },
+          "particles": {
+            "contact_candidates": 12744,
+            "applied_responses": 12744,
+            "inward_normal_velocity_removed": 12673
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 473,
+            "applied_responses": 473,
+            "inward_normal_velocity_removed": 95
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 94,
+      "simulation_step": 15675,
+      "completed_substeps": 15675,
+      "sim_time_s": 3.1350000000000002,
+      "source_frame": 94,
+      "original_source_frame": 96,
+      "collection_window_start_substep": 15509,
+      "collection_window_end_substep": 15675,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6617,
+            "applied_responses": 6617,
+            "inward_normal_velocity_removed": 2318
+          },
+          "particles": {
+            "contact_candidates": 1342,
+            "applied_responses": 1342,
+            "inward_normal_velocity_removed": 1320
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 497,
+            "applied_responses": 497,
+            "inward_normal_velocity_removed": 31
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 95,
+      "simulation_step": 15842,
+      "completed_substeps": 15842,
+      "sim_time_s": 3.1684,
+      "source_frame": 95,
+      "original_source_frame": 97,
+      "collection_window_start_substep": 15675,
+      "collection_window_end_substep": 15842,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6079,
+            "applied_responses": 6079,
+            "inward_normal_velocity_removed": 2190
+          },
+          "particles": {
+            "contact_candidates": 3685,
+            "applied_responses": 3685,
+            "inward_normal_velocity_removed": 3532
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 23,
+            "applied_responses": 23,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 96,
+      "simulation_step": 16009,
+      "completed_substeps": 16009,
+      "sim_time_s": 3.2018,
+      "source_frame": 96,
+      "original_source_frame": 98,
+      "collection_window_start_substep": 15842,
+      "collection_window_end_substep": 16009,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5300,
+            "applied_responses": 5300,
+            "inward_normal_velocity_removed": 1759
+          },
+          "particles": {
+            "contact_candidates": 2899,
+            "applied_responses": 2899,
+            "inward_normal_velocity_removed": 2813
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 97,
+      "simulation_step": 16176,
+      "completed_substeps": 16176,
+      "sim_time_s": 3.2352000000000003,
+      "source_frame": 97,
+      "original_source_frame": 99,
+      "collection_window_start_substep": 16009,
+      "collection_window_end_substep": 16176,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5869,
+            "applied_responses": 5869,
+            "inward_normal_velocity_removed": 2232
+          },
+          "particles": {
+            "contact_candidates": 6058,
+            "applied_responses": 6058,
+            "inward_normal_velocity_removed": 6058
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 98,
+      "simulation_step": 16342,
+      "completed_substeps": 16342,
+      "sim_time_s": 3.2684,
+      "source_frame": 98,
+      "original_source_frame": 100,
+      "collection_window_start_substep": 16176,
+      "collection_window_end_substep": 16342,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5412,
+            "applied_responses": 5412,
+            "inward_normal_velocity_removed": 2060
+          },
+          "particles": {
+            "contact_candidates": 5463,
+            "applied_responses": 5463,
+            "inward_normal_velocity_removed": 5462
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 99,
+      "simulation_step": 16509,
+      "completed_substeps": 16509,
+      "sim_time_s": 3.3018,
+      "source_frame": 99,
+      "original_source_frame": 101,
+      "collection_window_start_substep": 16342,
+      "collection_window_end_substep": 16509,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5363,
+            "applied_responses": 5363,
+            "inward_normal_velocity_removed": 1932
+          },
+          "particles": {
+            "contact_candidates": 3705,
+            "applied_responses": 3705,
+            "inward_normal_velocity_removed": 3704
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 100,
+      "simulation_step": 16676,
+      "completed_substeps": 16676,
+      "sim_time_s": 3.3352,
+      "source_frame": 100,
+      "original_source_frame": 102,
+      "collection_window_start_substep": 16509,
+      "collection_window_end_substep": 16676,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5118,
+            "applied_responses": 5118,
+            "inward_normal_velocity_removed": 1892
+          },
+          "particles": {
+            "contact_candidates": 1921,
+            "applied_responses": 1921,
+            "inward_normal_velocity_removed": 1915
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 101,
+      "simulation_step": 16843,
+      "completed_substeps": 16843,
+      "sim_time_s": 3.3686000000000003,
+      "source_frame": 101,
+      "original_source_frame": 103,
+      "collection_window_start_substep": 16676,
+      "collection_window_end_substep": 16843,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5613,
+            "applied_responses": 5613,
+            "inward_normal_velocity_removed": 2500
+          },
+          "particles": {
+            "contact_candidates": 2478,
+            "applied_responses": 2478,
+            "inward_normal_velocity_removed": 2471
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 102,
+      "simulation_step": 17010,
+      "completed_substeps": 17010,
+      "sim_time_s": 3.402,
+      "source_frame": 102,
+      "original_source_frame": 104,
+      "collection_window_start_substep": 16843,
+      "collection_window_end_substep": 17010,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5672,
+            "applied_responses": 5672,
+            "inward_normal_velocity_removed": 1611
+          },
+          "particles": {
+            "contact_candidates": 24720,
+            "applied_responses": 24720,
+            "inward_normal_velocity_removed": 24720
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 103,
+      "simulation_step": 17176,
+      "completed_substeps": 17176,
+      "sim_time_s": 3.4352,
+      "source_frame": 103,
+      "original_source_frame": 105,
+      "collection_window_start_substep": 17010,
+      "collection_window_end_substep": 17176,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5335,
+            "applied_responses": 5335,
+            "inward_normal_velocity_removed": 1878
+          },
+          "particles": {
+            "contact_candidates": 28343,
+            "applied_responses": 28343,
+            "inward_normal_velocity_removed": 28328
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 104,
+      "simulation_step": 17343,
+      "completed_substeps": 17343,
+      "sim_time_s": 3.4686000000000003,
+      "source_frame": 104,
+      "original_source_frame": 106,
+      "collection_window_start_substep": 17176,
+      "collection_window_end_substep": 17343,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5896,
+            "applied_responses": 5896,
+            "inward_normal_velocity_removed": 2913
+          },
+          "particles": {
+            "contact_candidates": 40878,
+            "applied_responses": 40878,
+            "inward_normal_velocity_removed": 40463
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 105,
+      "simulation_step": 17510,
+      "completed_substeps": 17510,
+      "sim_time_s": 3.5020000000000002,
+      "source_frame": 105,
+      "original_source_frame": 107,
+      "collection_window_start_substep": 17343,
+      "collection_window_end_substep": 17510,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6160,
+            "applied_responses": 6160,
+            "inward_normal_velocity_removed": 1880
+          },
+          "particles": {
+            "contact_candidates": 35255,
+            "applied_responses": 35255,
+            "inward_normal_velocity_removed": 35238
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 106,
+      "simulation_step": 17677,
+      "completed_substeps": 17677,
+      "sim_time_s": 3.5354,
+      "source_frame": 106,
+      "original_source_frame": 108,
+      "collection_window_start_substep": 17510,
+      "collection_window_end_substep": 17677,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5903,
+            "applied_responses": 5903,
+            "inward_normal_velocity_removed": 1808
+          },
+          "particles": {
+            "contact_candidates": 19309,
+            "applied_responses": 19309,
+            "inward_normal_velocity_removed": 19258
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 107,
+      "simulation_step": 17843,
+      "completed_substeps": 17843,
+      "sim_time_s": 3.5686,
+      "source_frame": 107,
+      "original_source_frame": 109,
+      "collection_window_start_substep": 17677,
+      "collection_window_end_substep": 17843,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5437,
+            "applied_responses": 5437,
+            "inward_normal_velocity_removed": 1810
+          },
+          "particles": {
+            "contact_candidates": 12831,
+            "applied_responses": 12831,
+            "inward_normal_velocity_removed": 12777
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 4,
+            "applied_responses": 4,
+            "inward_normal_velocity_removed": 4
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 108,
+      "simulation_step": 18010,
+      "completed_substeps": 18010,
+      "sim_time_s": 3.6020000000000003,
+      "source_frame": 108,
+      "original_source_frame": 110,
+      "collection_window_start_substep": 17843,
+      "collection_window_end_substep": 18010,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5639,
+            "applied_responses": 5639,
+            "inward_normal_velocity_removed": 1514
+          },
+          "particles": {
+            "contact_candidates": 28079,
+            "applied_responses": 28079,
+            "inward_normal_velocity_removed": 28016
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 421,
+            "applied_responses": 421,
+            "inward_normal_velocity_removed": 363
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 109,
+      "simulation_step": 18177,
+      "completed_substeps": 18177,
+      "sim_time_s": 3.6354,
+      "source_frame": 109,
+      "original_source_frame": 111,
+      "collection_window_start_substep": 18010,
+      "collection_window_end_substep": 18177,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6088,
+            "applied_responses": 6088,
+            "inward_normal_velocity_removed": 1882
+          },
+          "particles": {
+            "contact_candidates": 16965,
+            "applied_responses": 16965,
+            "inward_normal_velocity_removed": 16793
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 683,
+            "applied_responses": 683,
+            "inward_normal_velocity_removed": 472
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 110,
+      "simulation_step": 18344,
+      "completed_substeps": 18344,
+      "sim_time_s": 3.6688,
+      "source_frame": 110,
+      "original_source_frame": 112,
+      "collection_window_start_substep": 18177,
+      "collection_window_end_substep": 18344,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6617,
+            "applied_responses": 6617,
+            "inward_normal_velocity_removed": 2478
+          },
+          "particles": {
+            "contact_candidates": 20497,
+            "applied_responses": 20497,
+            "inward_normal_velocity_removed": 19989
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 948,
+            "applied_responses": 948,
+            "inward_normal_velocity_removed": 290
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 111,
+      "simulation_step": 18510,
+      "completed_substeps": 18510,
+      "sim_time_s": 3.702,
+      "source_frame": 111,
+      "original_source_frame": 113,
+      "collection_window_start_substep": 18344,
+      "collection_window_end_substep": 18510,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6592,
+            "applied_responses": 6592,
+            "inward_normal_velocity_removed": 2465
+          },
+          "particles": {
+            "contact_candidates": 1812,
+            "applied_responses": 1812,
+            "inward_normal_velocity_removed": 1791
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 614,
+            "applied_responses": 614,
+            "inward_normal_velocity_removed": 39
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 112,
+      "simulation_step": 18677,
+      "completed_substeps": 18677,
+      "sim_time_s": 3.7354000000000003,
+      "source_frame": 112,
+      "original_source_frame": 114,
+      "collection_window_start_substep": 18510,
+      "collection_window_end_substep": 18677,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5633,
+            "applied_responses": 5633,
+            "inward_normal_velocity_removed": 1973
+          },
+          "particles": {
+            "contact_candidates": 3245,
+            "applied_responses": 3245,
+            "inward_normal_velocity_removed": 3145
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 113,
+      "simulation_step": 18844,
+      "completed_substeps": 18844,
+      "sim_time_s": 3.7688,
+      "source_frame": 113,
+      "original_source_frame": 115,
+      "collection_window_start_substep": 18677,
+      "collection_window_end_substep": 18844,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5243,
+            "applied_responses": 5243,
+            "inward_normal_velocity_removed": 1813
+          },
+          "particles": {
+            "contact_candidates": 6049,
+            "applied_responses": 6049,
+            "inward_normal_velocity_removed": 6032
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 114,
+      "simulation_step": 19011,
+      "completed_substeps": 19011,
+      "sim_time_s": 3.8022,
+      "source_frame": 114,
+      "original_source_frame": 116,
+      "collection_window_start_substep": 18844,
+      "collection_window_end_substep": 19011,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5555,
+            "applied_responses": 5555,
+            "inward_normal_velocity_removed": 2133
+          },
+          "particles": {
+            "contact_candidates": 2846,
+            "applied_responses": 2846,
+            "inward_normal_velocity_removed": 2831
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 115,
+      "simulation_step": 19177,
+      "completed_substeps": 19177,
+      "sim_time_s": 3.8354000000000004,
+      "source_frame": 115,
+      "original_source_frame": 117,
+      "collection_window_start_substep": 19011,
+      "collection_window_end_substep": 19177,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5956,
+            "applied_responses": 5956,
+            "inward_normal_velocity_removed": 2097
+          },
+          "particles": {
+            "contact_candidates": 5465,
+            "applied_responses": 5465,
+            "inward_normal_velocity_removed": 5461
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 116,
+      "simulation_step": 19344,
+      "completed_substeps": 19344,
+      "sim_time_s": 3.8688000000000002,
+      "source_frame": 116,
+      "original_source_frame": 118,
+      "collection_window_start_substep": 19177,
+      "collection_window_end_substep": 19344,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5514,
+            "applied_responses": 5514,
+            "inward_normal_velocity_removed": 1673
+          },
+          "particles": {
+            "contact_candidates": 2523,
+            "applied_responses": 2523,
+            "inward_normal_velocity_removed": 2521
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 117,
+      "simulation_step": 19511,
+      "completed_substeps": 19511,
+      "sim_time_s": 3.9022,
+      "source_frame": 117,
+      "original_source_frame": 119,
+      "collection_window_start_substep": 19344,
+      "collection_window_end_substep": 19511,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5360,
+            "applied_responses": 5360,
+            "inward_normal_velocity_removed": 1900
+          },
+          "particles": {
+            "contact_candidates": 1939,
+            "applied_responses": 1939,
+            "inward_normal_velocity_removed": 1937
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 118,
+      "simulation_step": 19678,
+      "completed_substeps": 19678,
+      "sim_time_s": 3.9356,
+      "source_frame": 118,
+      "original_source_frame": 120,
+      "collection_window_start_substep": 19511,
+      "collection_window_end_substep": 19678,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5481,
+            "applied_responses": 5481,
+            "inward_normal_velocity_removed": 1596
+          },
+          "particles": {
+            "contact_candidates": 1988,
+            "applied_responses": 1988,
+            "inward_normal_velocity_removed": 1979
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 119,
+      "simulation_step": 19844,
+      "completed_substeps": 19844,
+      "sim_time_s": 3.9688000000000003,
+      "source_frame": 119,
+      "original_source_frame": 121,
+      "collection_window_start_substep": 19678,
+      "collection_window_end_substep": 19844,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5525,
+            "applied_responses": 5525,
+            "inward_normal_velocity_removed": 1554
+          },
+          "particles": {
+            "contact_candidates": 4399,
+            "applied_responses": 4399,
+            "inward_normal_velocity_removed": 4396
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 120,
+      "simulation_step": 20011,
+      "completed_substeps": 20011,
+      "sim_time_s": 4.0022,
+      "source_frame": 120,
+      "original_source_frame": 122,
+      "collection_window_start_substep": 19844,
+      "collection_window_end_substep": 20011,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5678,
+            "applied_responses": 5678,
+            "inward_normal_velocity_removed": 1882
+          },
+          "particles": {
+            "contact_candidates": 52141,
+            "applied_responses": 52141,
+            "inward_normal_velocity_removed": 52136
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 121,
+      "simulation_step": 20178,
+      "completed_substeps": 20178,
+      "sim_time_s": 4.0356000000000005,
+      "source_frame": 121,
+      "original_source_frame": 123,
+      "collection_window_start_substep": 20011,
+      "collection_window_end_substep": 20178,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5315,
+            "applied_responses": 5315,
+            "inward_normal_velocity_removed": 1557
+          },
+          "particles": {
+            "contact_candidates": 15783,
+            "applied_responses": 15783,
+            "inward_normal_velocity_removed": 15293
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 122,
+      "simulation_step": 20345,
+      "completed_substeps": 20345,
+      "sim_time_s": 4.069,
+      "source_frame": 122,
+      "original_source_frame": 124,
+      "collection_window_start_substep": 20178,
+      "collection_window_end_substep": 20345,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5644,
+            "applied_responses": 5644,
+            "inward_normal_velocity_removed": 2260
+          },
+          "particles": {
+            "contact_candidates": 33834,
+            "applied_responses": 33834,
+            "inward_normal_velocity_removed": 33825
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 123,
+      "simulation_step": 20511,
+      "completed_substeps": 20511,
+      "sim_time_s": 4.1022,
+      "source_frame": 123,
+      "original_source_frame": 125,
+      "collection_window_start_substep": 20345,
+      "collection_window_end_substep": 20511,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5921,
+            "applied_responses": 5921,
+            "inward_normal_velocity_removed": 2098
+          },
+          "particles": {
+            "contact_candidates": 23988,
+            "applied_responses": 23988,
+            "inward_normal_velocity_removed": 23987
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 124,
+      "simulation_step": 20678,
+      "completed_substeps": 20678,
+      "sim_time_s": 4.1356,
+      "source_frame": 124,
+      "original_source_frame": 126,
+      "collection_window_start_substep": 20511,
+      "collection_window_end_substep": 20678,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5872,
+            "applied_responses": 5872,
+            "inward_normal_velocity_removed": 1863
+          },
+          "particles": {
+            "contact_candidates": 24413,
+            "applied_responses": 24413,
+            "inward_normal_velocity_removed": 24347
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 127,
+            "applied_responses": 127,
+            "inward_normal_velocity_removed": 127
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 125,
+      "simulation_step": 20845,
+      "completed_substeps": 20845,
+      "sim_time_s": 4.1690000000000005,
+      "source_frame": 125,
+      "original_source_frame": 127,
+      "collection_window_start_substep": 20678,
+      "collection_window_end_substep": 20845,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6291,
+            "applied_responses": 6291,
+            "inward_normal_velocity_removed": 1950
+          },
+          "particles": {
+            "contact_candidates": 27793,
+            "applied_responses": 27793,
+            "inward_normal_velocity_removed": 27785
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 544,
+            "applied_responses": 544,
+            "inward_normal_velocity_removed": 335
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 126,
+      "simulation_step": 21012,
+      "completed_substeps": 21012,
+      "sim_time_s": 4.2024,
+      "source_frame": 126,
+      "original_source_frame": 128,
+      "collection_window_start_substep": 20845,
+      "collection_window_end_substep": 21012,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6244,
+            "applied_responses": 6244,
+            "inward_normal_velocity_removed": 1827
+          },
+          "particles": {
+            "contact_candidates": 45030,
+            "applied_responses": 45030,
+            "inward_normal_velocity_removed": 45017
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1472,
+            "applied_responses": 1472,
+            "inward_normal_velocity_removed": 773
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 127,
+      "simulation_step": 21178,
+      "completed_substeps": 21178,
+      "sim_time_s": 4.2356,
+      "source_frame": 127,
+      "original_source_frame": 129,
+      "collection_window_start_substep": 21012,
+      "collection_window_end_substep": 21178,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6536,
+            "applied_responses": 6536,
+            "inward_normal_velocity_removed": 1928
+          },
+          "particles": {
+            "contact_candidates": 48501,
+            "applied_responses": 48501,
+            "inward_normal_velocity_removed": 48422
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 2109,
+            "applied_responses": 2109,
+            "inward_normal_velocity_removed": 1120
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 128,
+      "simulation_step": 21345,
+      "completed_substeps": 21345,
+      "sim_time_s": 4.269,
+      "source_frame": 128,
+      "original_source_frame": 130,
+      "collection_window_start_substep": 21178,
+      "collection_window_end_substep": 21345,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 7252,
+            "applied_responses": 7252,
+            "inward_normal_velocity_removed": 2834
+          },
+          "particles": {
+            "contact_candidates": 15163,
+            "applied_responses": 15163,
+            "inward_normal_velocity_removed": 14390
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1837,
+            "applied_responses": 1837,
+            "inward_normal_velocity_removed": 768
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 129,
+      "simulation_step": 21512,
+      "completed_substeps": 21512,
+      "sim_time_s": 4.3024000000000004,
+      "source_frame": 129,
+      "original_source_frame": 131,
+      "collection_window_start_substep": 21345,
+      "collection_window_end_substep": 21512,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 7108,
+            "applied_responses": 7108,
+            "inward_normal_velocity_removed": 2491
+          },
+          "particles": {
+            "contact_candidates": 2532,
+            "applied_responses": 2532,
+            "inward_normal_velocity_removed": 2110
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1382,
+            "applied_responses": 1382,
+            "inward_normal_velocity_removed": 545
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 130,
+      "simulation_step": 21679,
+      "completed_substeps": 21679,
+      "sim_time_s": 4.3358,
+      "source_frame": 130,
+      "original_source_frame": 132,
+      "collection_window_start_substep": 21512,
+      "collection_window_end_substep": 21679,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6326,
+            "applied_responses": 6326,
+            "inward_normal_velocity_removed": 1716
+          },
+          "particles": {
+            "contact_candidates": 1375,
+            "applied_responses": 1375,
+            "inward_normal_velocity_removed": 1364
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 585,
+            "applied_responses": 585,
+            "inward_normal_velocity_removed": 126
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 131,
+      "simulation_step": 21845,
+      "completed_substeps": 21845,
+      "sim_time_s": 4.369,
+      "source_frame": 131,
+      "original_source_frame": 133,
+      "collection_window_start_substep": 21679,
+      "collection_window_end_substep": 21845,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6097,
+            "applied_responses": 6097,
+            "inward_normal_velocity_removed": 2282
+          },
+          "particles": {
+            "contact_candidates": 476,
+            "applied_responses": 476,
+            "inward_normal_velocity_removed": 476
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 132,
+      "simulation_step": 22012,
+      "completed_substeps": 22012,
+      "sim_time_s": 4.4024,
+      "source_frame": 132,
+      "original_source_frame": 134,
+      "collection_window_start_substep": 21845,
+      "collection_window_end_substep": 22012,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5771,
+            "applied_responses": 5771,
+            "inward_normal_velocity_removed": 2199
+          },
+          "particles": {
+            "contact_candidates": 5411,
+            "applied_responses": 5411,
+            "inward_normal_velocity_removed": 5397
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 133,
+      "simulation_step": 22179,
+      "completed_substeps": 22179,
+      "sim_time_s": 4.4358,
+      "source_frame": 133,
+      "original_source_frame": 135,
+      "collection_window_start_substep": 22012,
+      "collection_window_end_substep": 22179,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5720,
+            "applied_responses": 5720,
+            "inward_normal_velocity_removed": 2175
+          },
+          "particles": {
+            "contact_candidates": 6657,
+            "applied_responses": 6657,
+            "inward_normal_velocity_removed": 6591
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 134,
+      "simulation_step": 22346,
+      "completed_substeps": 22346,
+      "sim_time_s": 4.4692,
+      "source_frame": 134,
+      "original_source_frame": 136,
+      "collection_window_start_substep": 22179,
+      "collection_window_end_substep": 22346,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5802,
+            "applied_responses": 5802,
+            "inward_normal_velocity_removed": 2592
+          },
+          "particles": {
+            "contact_candidates": 4805,
+            "applied_responses": 4805,
+            "inward_normal_velocity_removed": 4797
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 135,
+      "simulation_step": 22512,
+      "completed_substeps": 22512,
+      "sim_time_s": 4.502400000000001,
+      "source_frame": 135,
+      "original_source_frame": 137,
+      "collection_window_start_substep": 22346,
+      "collection_window_end_substep": 22512,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5480,
+            "applied_responses": 5480,
+            "inward_normal_velocity_removed": 2276
+          },
+          "particles": {
+            "contact_candidates": 1771,
+            "applied_responses": 1771,
+            "inward_normal_velocity_removed": 1766
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 136,
+      "simulation_step": 22679,
+      "completed_substeps": 22679,
+      "sim_time_s": 4.5358,
+      "source_frame": 136,
+      "original_source_frame": 138,
+      "collection_window_start_substep": 22512,
+      "collection_window_end_substep": 22679,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5616,
+            "applied_responses": 5616,
+            "inward_normal_velocity_removed": 1644
+          },
+          "particles": {
+            "contact_candidates": 712,
+            "applied_responses": 712,
+            "inward_normal_velocity_removed": 711
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 137,
+      "simulation_step": 22846,
+      "completed_substeps": 22846,
+      "sim_time_s": 4.5692,
+      "source_frame": 137,
+      "original_source_frame": 139,
+      "collection_window_start_substep": 22679,
+      "collection_window_end_substep": 22846,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5668,
+            "applied_responses": 5668,
+            "inward_normal_velocity_removed": 1643
+          },
+          "particles": {
+            "contact_candidates": 115,
+            "applied_responses": 115,
+            "inward_normal_velocity_removed": 114
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 138,
+      "simulation_step": 23013,
+      "completed_substeps": 23013,
+      "sim_time_s": 4.6026,
+      "source_frame": 138,
+      "original_source_frame": 140,
+      "collection_window_start_substep": 22846,
+      "collection_window_end_substep": 23013,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5724,
+            "applied_responses": 5724,
+            "inward_normal_velocity_removed": 2053
+          },
+          "particles": {
+            "contact_candidates": 4692,
+            "applied_responses": 4692,
+            "inward_normal_velocity_removed": 4692
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 139,
+      "simulation_step": 23179,
+      "completed_substeps": 23179,
+      "sim_time_s": 4.635800000000001,
+      "source_frame": 139,
+      "original_source_frame": 141,
+      "collection_window_start_substep": 23013,
+      "collection_window_end_substep": 23179,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5459,
+            "applied_responses": 5459,
+            "inward_normal_velocity_removed": 2016
+          },
+          "particles": {
+            "contact_candidates": 12022,
+            "applied_responses": 12022,
+            "inward_normal_velocity_removed": 12018
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 140,
+      "simulation_step": 23346,
+      "completed_substeps": 23346,
+      "sim_time_s": 4.6692,
+      "source_frame": 140,
+      "original_source_frame": 142,
+      "collection_window_start_substep": 23179,
+      "collection_window_end_substep": 23346,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5185,
+            "applied_responses": 5185,
+            "inward_normal_velocity_removed": 1645
+          },
+          "particles": {
+            "contact_candidates": 7424,
+            "applied_responses": 7424,
+            "inward_normal_velocity_removed": 7026
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 141,
+      "simulation_step": 23513,
+      "completed_substeps": 23513,
+      "sim_time_s": 4.7026,
+      "source_frame": 141,
+      "original_source_frame": 143,
+      "collection_window_start_substep": 23346,
+      "collection_window_end_substep": 23513,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5493,
+            "applied_responses": 5493,
+            "inward_normal_velocity_removed": 1863
+          },
+          "particles": {
+            "contact_candidates": 61789,
+            "applied_responses": 61789,
+            "inward_normal_velocity_removed": 61786
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 142,
+      "simulation_step": 23680,
+      "completed_substeps": 23680,
+      "sim_time_s": 4.736000000000001,
+      "source_frame": 142,
+      "original_source_frame": 144,
+      "collection_window_start_substep": 23513,
+      "collection_window_end_substep": 23680,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5516,
+            "applied_responses": 5516,
+            "inward_normal_velocity_removed": 1939
+          },
+          "particles": {
+            "contact_candidates": 51731,
+            "applied_responses": 51731,
+            "inward_normal_velocity_removed": 51664
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 79,
+            "applied_responses": 79,
+            "inward_normal_velocity_removed": 79
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 143,
+      "simulation_step": 23846,
+      "completed_substeps": 23846,
+      "sim_time_s": 4.7692000000000005,
+      "source_frame": 143,
+      "original_source_frame": 145,
+      "collection_window_start_substep": 23680,
+      "collection_window_end_substep": 23846,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6754,
+            "applied_responses": 6754,
+            "inward_normal_velocity_removed": 1806
+          },
+          "particles": {
+            "contact_candidates": 16915,
+            "applied_responses": 16915,
+            "inward_normal_velocity_removed": 16910
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 166,
+            "applied_responses": 166,
+            "inward_normal_velocity_removed": 166
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 144,
+      "simulation_step": 24013,
+      "completed_substeps": 24013,
+      "sim_time_s": 4.8026,
+      "source_frame": 144,
+      "original_source_frame": 146,
+      "collection_window_start_substep": 23846,
+      "collection_window_end_substep": 24013,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 7416,
+            "applied_responses": 7416,
+            "inward_normal_velocity_removed": 3295
+          },
+          "particles": {
+            "contact_candidates": 61481,
+            "applied_responses": 61481,
+            "inward_normal_velocity_removed": 61417
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 699,
+            "applied_responses": 699,
+            "inward_normal_velocity_removed": 465
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 145,
+      "simulation_step": 24180,
+      "completed_substeps": 24180,
+      "sim_time_s": 4.836,
+      "source_frame": 145,
+      "original_source_frame": 147,
+      "collection_window_start_substep": 24013,
+      "collection_window_end_substep": 24180,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 7094,
+            "applied_responses": 7094,
+            "inward_normal_velocity_removed": 2488
+          },
+          "particles": {
+            "contact_candidates": 39299,
+            "applied_responses": 39299,
+            "inward_normal_velocity_removed": 38686
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 1791,
+            "applied_responses": 1791,
+            "inward_normal_velocity_removed": 855
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 146,
+      "simulation_step": 24347,
+      "completed_substeps": 24347,
+      "sim_time_s": 4.869400000000001,
+      "source_frame": 146,
+      "original_source_frame": 148,
+      "collection_window_start_substep": 24180,
+      "collection_window_end_substep": 24347,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6814,
+            "applied_responses": 6814,
+            "inward_normal_velocity_removed": 2165
+          },
+          "particles": {
+            "contact_candidates": 21608,
+            "applied_responses": 21608,
+            "inward_normal_velocity_removed": 21463
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 2426,
+            "applied_responses": 2426,
+            "inward_normal_velocity_removed": 965
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 147,
+      "simulation_step": 24513,
+      "completed_substeps": 24513,
+      "sim_time_s": 4.9026000000000005,
+      "source_frame": 147,
+      "original_source_frame": 149,
+      "collection_window_start_substep": 24347,
+      "collection_window_end_substep": 24513,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6673,
+            "applied_responses": 6673,
+            "inward_normal_velocity_removed": 1843
+          },
+          "particles": {
+            "contact_candidates": 11452,
+            "applied_responses": 11452,
+            "inward_normal_velocity_removed": 11414
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 2262,
+            "applied_responses": 2262,
+            "inward_normal_velocity_removed": 924
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 148,
+      "simulation_step": 24680,
+      "completed_substeps": 24680,
+      "sim_time_s": 4.936,
+      "source_frame": 148,
+      "original_source_frame": 150,
+      "collection_window_start_substep": 24513,
+      "collection_window_end_substep": 24680,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6106,
+            "applied_responses": 6106,
+            "inward_normal_velocity_removed": 1208
+          },
+          "particles": {
+            "contact_candidates": 962,
+            "applied_responses": 962,
+            "inward_normal_velocity_removed": 357
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 663,
+            "applied_responses": 663,
+            "inward_normal_velocity_removed": 170
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 149,
+      "simulation_step": 24847,
+      "completed_substeps": 24847,
+      "sim_time_s": 4.9694,
+      "source_frame": 149,
+      "original_source_frame": 151,
+      "collection_window_start_substep": 24680,
+      "collection_window_end_substep": 24847,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 6203,
+            "applied_responses": 6203,
+            "inward_normal_velocity_removed": 2151
+          },
+          "particles": {
+            "contact_candidates": 4321,
+            "applied_responses": 4321,
+            "inward_normal_velocity_removed": 4310
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 150,
+      "simulation_step": 25014,
+      "completed_substeps": 25014,
+      "sim_time_s": 5.002800000000001,
+      "source_frame": 150,
+      "original_source_frame": 152,
+      "collection_window_start_substep": 24847,
+      "collection_window_end_substep": 25014,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5956,
+            "applied_responses": 5956,
+            "inward_normal_velocity_removed": 2372
+          },
+          "particles": {
+            "contact_candidates": 5517,
+            "applied_responses": 5517,
+            "inward_normal_velocity_removed": 5487
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 151,
+      "simulation_step": 25181,
+      "completed_substeps": 25181,
+      "sim_time_s": 5.0362,
+      "source_frame": 151,
+      "original_source_frame": 153,
+      "collection_window_start_substep": 25014,
+      "collection_window_end_substep": 25181,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5700,
+            "applied_responses": 5700,
+            "inward_normal_velocity_removed": 2213
+          },
+          "particles": {
+            "contact_candidates": 6695,
+            "applied_responses": 6695,
+            "inward_normal_velocity_removed": 6684
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 152,
+      "simulation_step": 25347,
+      "completed_substeps": 25347,
+      "sim_time_s": 5.0694,
+      "source_frame": 152,
+      "original_source_frame": 154,
+      "collection_window_start_substep": 25181,
+      "collection_window_end_substep": 25347,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5709,
+            "applied_responses": 5709,
+            "inward_normal_velocity_removed": 2170
+          },
+          "particles": {
+            "contact_candidates": 4297,
+            "applied_responses": 4297,
+            "inward_normal_velocity_removed": 4296
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 153,
+      "simulation_step": 25514,
+      "completed_substeps": 25514,
+      "sim_time_s": 5.1028,
+      "source_frame": 153,
+      "original_source_frame": 155,
+      "collection_window_start_substep": 25347,
+      "collection_window_end_substep": 25514,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5652,
+            "applied_responses": 5652,
+            "inward_normal_velocity_removed": 2257
+          },
+          "particles": {
+            "contact_candidates": 3290,
+            "applied_responses": 3290,
+            "inward_normal_velocity_removed": 3281
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 154,
+      "simulation_step": 25681,
+      "completed_substeps": 25681,
+      "sim_time_s": 5.1362000000000005,
+      "source_frame": 154,
+      "original_source_frame": 156,
+      "collection_window_start_substep": 25514,
+      "collection_window_end_substep": 25681,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5615,
+            "applied_responses": 5615,
+            "inward_normal_velocity_removed": 1859
+          },
+          "particles": {
+            "contact_candidates": 1921,
+            "applied_responses": 1921,
+            "inward_normal_velocity_removed": 1902
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 155,
+      "simulation_step": 25848,
+      "completed_substeps": 25848,
+      "sim_time_s": 5.1696,
+      "source_frame": 155,
+      "original_source_frame": 157,
+      "collection_window_start_substep": 25681,
+      "collection_window_end_substep": 25848,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5580,
+            "applied_responses": 5580,
+            "inward_normal_velocity_removed": 1566
+          },
+          "particles": {
+            "contact_candidates": 2296,
+            "applied_responses": 2296,
+            "inward_normal_velocity_removed": 2280
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 156,
+      "simulation_step": 26014,
+      "completed_substeps": 26014,
+      "sim_time_s": 5.2028,
+      "source_frame": 156,
+      "original_source_frame": 158,
+      "collection_window_start_substep": 25848,
+      "collection_window_end_substep": 26014,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5702,
+            "applied_responses": 5702,
+            "inward_normal_velocity_removed": 2391
+          },
+          "particles": {
+            "contact_candidates": 6048,
+            "applied_responses": 6048,
+            "inward_normal_velocity_removed": 6048
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 157,
+      "simulation_step": 26181,
+      "completed_substeps": 26181,
+      "sim_time_s": 5.2362,
+      "source_frame": 157,
+      "original_source_frame": 159,
+      "collection_window_start_substep": 26014,
+      "collection_window_end_substep": 26181,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5689,
+            "applied_responses": 5689,
+            "inward_normal_velocity_removed": 2203
+          },
+          "particles": {
+            "contact_candidates": 9135,
+            "applied_responses": 9135,
+            "inward_normal_velocity_removed": 9022
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 158,
+      "simulation_step": 26348,
+      "completed_substeps": 26348,
+      "sim_time_s": 5.2696000000000005,
+      "source_frame": 158,
+      "original_source_frame": 160,
+      "collection_window_start_substep": 26181,
+      "collection_window_end_substep": 26348,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5386,
+            "applied_responses": 5386,
+            "inward_normal_velocity_removed": 1298
+          },
+          "particles": {
+            "contact_candidates": 15022,
+            "applied_responses": 15022,
+            "inward_normal_velocity_removed": 14986
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 159,
+      "simulation_step": 26515,
+      "completed_substeps": 26515,
+      "sim_time_s": 5.303,
+      "source_frame": 159,
+      "original_source_frame": 161,
+      "collection_window_start_substep": 26348,
+      "collection_window_end_substep": 26515,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5129,
+            "applied_responses": 5129,
+            "inward_normal_velocity_removed": 1389
+          },
+          "particles": {
+            "contact_candidates": 23137,
+            "applied_responses": 23137,
+            "inward_normal_velocity_removed": 23106
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    },
+    {
+      "frame": 160,
+      "simulation_step": 26681,
+      "completed_substeps": 26681,
+      "sim_time_s": 5.3362,
+      "source_frame": 160,
+      "original_source_frame": 162,
+      "collection_window_start_substep": 26515,
+      "collection_window_end_substep": 26681,
+      "snapshot_without_substep_evaluations": false,
+      "tools": [
+        {
+          "grid_nodes": {
+            "contact_candidates": 5620,
+            "applied_responses": 5620,
+            "inward_normal_velocity_removed": 2087
+          },
+          "particles": {
+            "contact_candidates": 43366,
+            "applied_responses": 43366,
+            "inward_normal_velocity_removed": 43366
+          }
+        },
+        {
+          "grid_nodes": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          },
+          "particles": {
+            "contact_candidates": 0,
+            "applied_responses": 0,
+            "inward_normal_velocity_removed": 0
+          }
+        }
+      ]
+    }
+  ]
+}

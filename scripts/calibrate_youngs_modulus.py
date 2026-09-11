@@ -479,6 +479,29 @@ def validate_manifest(manifest: Any, manifest_path: Path) -> dict[str, Any]:
     if declared_tool_fingerprint != resolved_inputs["geometry"]["sha256"]:
         raise ValueError("Recorded tool geometry fingerprint must match inputs.geometry.sha256")
     _validate_physical_and_numerical_parameters(simulator_arguments, evaluator_arguments)
+    collision_mode = simulator_arguments.get("--tool-collision", "box")
+    if collision_mode not in {"box", "none", "sdf"}:
+        raise ValueError("--tool-collision must be box, none, or sdf")
+    if collision_mode == "sdf":
+        for name in ("ur_collision_mesh", "kinova_collision_mesh", "collision_manifest"):
+            spec = _required(inputs, name, "manifest.inputs")
+            if not isinstance(spec, dict):
+                raise ValueError(f"manifest.inputs.{name} must be a JSON object")
+            path = _resolve(str(_required(spec, "path", f"manifest.inputs.{name}")), manifest_path)
+            expected = _validate_sha256(_required(spec, "sha256", f"manifest.inputs.{name}"), f"inputs.{name}.sha256")
+            if not path.is_file():
+                raise ValueError(f"Input file does not exist: {path}")
+            actual = file_sha256(path)
+            if actual != expected:
+                raise ValueError(f"Fingerprint mismatch for inputs.{name}: expected {expected}, found {actual}")
+            resolved_inputs[name] = {"path": str(path), "sha256": actual}
+        skin_label = _required(recorded_setup, "tool_skin_label", "fixed_parameters.recorded_setup")
+        if not isinstance(skin_label, str) or not skin_label.strip() or skin_label.strip().lower() in {"auto", "automatic", "sweep-best"}:
+            raise ValueError("SDF calibration requires a nonempty explicit tool_skin_label")
+        if "--tool-sdf-resolution" not in simulator_arguments or "--tool-mesh-scale" not in simulator_arguments:
+            raise ValueError("SDF calibration must fix --tool-sdf-resolution and --tool-mesh-scale")
+        _integer(simulator_arguments["--tool-sdf-resolution"], "SDF resolution", positive=True)
+        _number(simulator_arguments["--tool-mesh-scale"], "SDF mesh scale", positive=True)
 
     windows = _required(manifest, "windows", "manifest")
     if not isinstance(windows, list) or not windows:
@@ -929,6 +952,18 @@ def _verify_simulation_metadata(
     recorded_mass = float(manifest["fixed_parameters"]["recorded_setup"]["dough_mass_kg"])
     if not _metadata_value_matches(metadata.get("total_mass_kg"), recorded_mass):
         raise ValueError("Simulation total mass does not match the recorded dough mass")
+    if manifest["fixed_parameters"]["simulator_arguments"].get("--tool-collision") == "sdf":
+        solid = replay.get("solid_collision_assets")
+        if not isinstance(solid, dict):
+            raise ValueError("SDF replay metadata is missing solid collision assets")
+        expected_hashes = [
+            manifest["inputs"]["ur_collision_mesh"]["sha256"],
+            manifest["inputs"]["kinova_collision_mesh"]["sha256"],
+        ]
+        if solid.get("sha256") != expected_hashes:
+            raise ValueError("SDF replay collision-solid hashes do not match the manifest")
+        if solid.get("manifest_sha256") != manifest["inputs"]["collision_manifest"]["sha256"]:
+            raise ValueError("SDF replay collision manifest hash does not match the manifest")
 
 
 def _cache_payload(manifest: Mapping[str, Any], fingerprints: Mapping[str, Any], window: Mapping[str, Any], candidate_pa: float) -> dict[str, Any]:

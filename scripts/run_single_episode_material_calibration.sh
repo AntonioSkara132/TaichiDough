@@ -113,6 +113,7 @@ VISCOSITY=${VISCOSITY:-0.0}
 GRAVITY=${GRAVITY:--9.81}
 FLOOR_FRICTION=${FLOOR_FRICTION:-0.4}
 FLOOR_ABSORPTION=${FLOOR_ABSORPTION:-0.0}
+TOOL_CONTACT_PADDING_WAS_SET=${TOOL_CONTACT_PADDING+x}
 TOOL_CONTACT_PADDING=${TOOL_CONTACT_PADDING:-0.0}
 TOOL_CONTACT_FRICTION=${TOOL_CONTACT_FRICTION:-0.2}
 TOOL_CONTACT_ABSORPTION=${TOOL_CONTACT_ABSORPTION:-0.0}
@@ -148,19 +149,27 @@ MAX_BOUNDARY_EXPANSIONS=${MAX_BOUNDARY_EXPANSIONS:-2}
 BOOTSTRAP_SAMPLES=${BOOTSTRAP_SAMPLES:-2000}
 SUBPROCESS_TIMEOUT_S=${SUBPROCESS_TIMEOUT_S:-3600}
 
-# box uses marker_from_collider. sdf uses marker_from_mesh and requires both
-# explicit STL paths so their content hashes become part of the cache input.
+# Visual STLs are render inputs. SDF collision uses the separately validated solids.
 TOOL_COLLISION=${TOOL_COLLISION:-sdf}
 TOOL_SDF_RESOLUTION=${TOOL_SDF_RESOLUTION:-64}
 UR_TOOL_MESH=${UR_TOOL_MESH:-"$REPO_ROOT/meshes/ur_spathla.stl"}
 KINOVA_TOOL_MESH=${KINOVA_TOOL_MESH:-"$REPO_ROOT/meshes/gen3_spathla.stl"}
+UR_TOOL_COLLISION_MESH=${UR_TOOL_COLLISION_MESH:-"$REPO_ROOT/meshes/ur_spathla_collision_solid.stl"}
+KINOVA_TOOL_COLLISION_MESH=${KINOVA_TOOL_COLLISION_MESH:-"$REPO_ROOT/meshes/gen3_spathla_collision_solid.stl"}
+TOOL_COLLISION_MANIFEST=${TOOL_COLLISION_MANIFEST:-"$REPO_ROOT/meshes/tool_collision_meshes_v1.json"}
+TOOL_SKIN_LABEL=${TOOL_SKIN_LABEL:-}
 TOOL_MESH_SCALE=${TOOL_MESH_SCALE:-0.001}
 if [[ $TOOL_COLLISION != box && $TOOL_COLLISION != sdf && $TOOL_COLLISION != none ]]; then
     printf 'TOOL_COLLISION must be box, sdf, or none; got %q\n' "$TOOL_COLLISION" >&2
     exit 2
 fi
 if [[ $TOOL_COLLISION == sdf ]]; then
-    for name in UR_TOOL_MESH KINOVA_TOOL_MESH; do
+    if [[ -z $TOOL_CONTACT_PADDING_WAS_SET ]]; then
+        printf 'TOOL_CONTACT_PADDING must be explicitly set for TOOL_COLLISION=sdf\n' >&2
+        exit 2
+    fi
+    require_value TOOL_SKIN_LABEL
+    for name in UR_TOOL_MESH KINOVA_TOOL_MESH UR_TOOL_COLLISION_MESH KINOVA_TOOL_COLLISION_MESH TOOL_COLLISION_MANIFEST; do
         require_value "$name"
         printf -v "$name" '%s' "$(realpath -e "${!name}")"
     done
@@ -180,7 +189,7 @@ export TOOL_STICKINESS FLOOR_STICKINESS FLOOR_PLASTIC_DAMPING_BAND VELOCITY_DAMP
 export PLASTIC_VELOCITY_DAMPING PLASTIC_AFFINE_DAMPING JP_HARDENING JP_MIN JP_MAX TRAIN_START_FRAME TRAIN_END_FRAME
 export VALIDATION_START_FRAME VALIDATION_END_FRAME INITIAL_MIN_PA INITIAL_MAX_PA HARD_MIN_PA HARD_MAX_PA COARSE_COUNT
 export REFINEMENT_ROUNDS REFINEMENT_SUBDIVISIONS MAX_BOUNDARY_EXPANSIONS BOOTSTRAP_SAMPLES SUBPROCESS_TIMEOUT_S
-export TOOL_COLLISION TOOL_SDF_RESOLUTION UR_TOOL_MESH KINOVA_TOOL_MESH TOOL_MESH_SCALE REPO_ROOT OUTPUT_ROOT
+export TOOL_COLLISION TOOL_SDF_RESOLUTION UR_TOOL_MESH KINOVA_TOOL_MESH UR_TOOL_COLLISION_MESH KINOVA_TOOL_COLLISION_MESH TOOL_COLLISION_MANIFEST TOOL_SKIN_LABEL TOOL_MESH_SCALE REPO_ROOT OUTPUT_ROOT
 export RECONSTRUCTION MANIFEST RESULT
 
 # Validate required physical inputs and make the reconstruction once. Existing
@@ -375,29 +384,43 @@ recorded_setup = {
 if os.environ["TOOL_COLLISION"] == "sdf":
     ur_mesh = Path(os.environ["UR_TOOL_MESH"])
     kinova_mesh = Path(os.environ["KINOVA_TOOL_MESH"])
+    ur_collision_mesh = Path(os.environ["UR_TOOL_COLLISION_MESH"])
+    kinova_collision_mesh = Path(os.environ["KINOVA_TOOL_COLLISION_MESH"])
+    collision_manifest = Path(os.environ["TOOL_COLLISION_MANIFEST"])
     simulator_arguments.update({
         "--tool-sdf-resolution": value("TOOL_SDF_RESOLUTION", int),
         "--ur-tool-mesh": str(ur_mesh),
         "--kinova-tool-mesh": str(kinova_mesh),
+        "--ur-tool-collision-mesh": str(ur_collision_mesh),
+        "--kinova-tool-collision-mesh": str(kinova_collision_mesh),
         "--tool-mesh-scale": value("TOOL_MESH_SCALE"),
     })
     recorded_setup.update({
-        "ur_tool_mesh_sha256": sha256(ur_mesh),
-        "kinova_tool_mesh_sha256": sha256(kinova_mesh),
+        "tool_skin_label": os.environ["TOOL_SKIN_LABEL"],
+        "ur_visual_mesh_sha256": sha256(ur_mesh),
+        "kinova_visual_mesh_sha256": sha256(kinova_mesh),
+    })
+
+inputs = {
+    "geometry": {"path": str(geometry), "sha256": sha256(geometry)},
+    "reconstruction_metadata": {"path": str(metadata), "sha256": sha256(metadata)},
+    "initial_particles": {"path": str(particles), "sha256": sha256(particles)},
+    "sequence": {"episode_dir": str(episode), "fingerprint": sequence_fingerprint(episode)},
+    "calibration": {"path": str(calibration), "sha256": sha256(calibration)},
+    "simulator": {"path": str(simulator), "sha256": sha256(simulator)},
+    "evaluator": {"path": str(evaluator), "sha256": sha256(evaluator)},
+}
+if os.environ["TOOL_COLLISION"] == "sdf":
+    inputs.update({
+        "ur_collision_mesh": {"path": str(ur_collision_mesh), "sha256": sha256(ur_collision_mesh)},
+        "kinova_collision_mesh": {"path": str(kinova_collision_mesh), "sha256": sha256(kinova_collision_mesh)},
+        "collision_manifest": {"path": str(collision_manifest), "sha256": sha256(collision_manifest)},
     })
 
 manifest = {
     "schema": "taichidough/material-calibration-manifest/v1",
     "name": f"single-episode-{episode.name}",
-    "inputs": {
-        "geometry": {"path": str(geometry), "sha256": sha256(geometry)},
-        "reconstruction_metadata": {"path": str(metadata), "sha256": sha256(metadata)},
-        "initial_particles": {"path": str(particles), "sha256": sha256(particles)},
-        "sequence": {"episode_dir": str(episode), "fingerprint": sequence_fingerprint(episode)},
-        "calibration": {"path": str(calibration), "sha256": sha256(calibration)},
-        "simulator": {"path": str(simulator), "sha256": sha256(simulator)},
-        "evaluator": {"path": str(evaluator), "sha256": sha256(evaluator)},
-    },
+    "inputs": inputs,
     "fixed_parameters": {
         "recorded_setup": recorded_setup,
         "simulator_arguments": simulator_arguments,
