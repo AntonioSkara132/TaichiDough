@@ -1,0 +1,4 @@
+id,tool_contact_friction,status,weighted_total,failure_reason
+friction_0p1,0.1,complete,0.35919082309635725,
+friction_0p2,0.2,complete,0.3610672626621028,
+friction_0p3,0.3,complete,0.36146263155940067,

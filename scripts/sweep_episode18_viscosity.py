@@ -20,6 +20,7 @@ from sweep_episode18_tool_friction import (
     evaluator_argv,
     load_command,
     rebase_workspace_paths,
+    remove_flag,
     replace_option,
     run,
     validate_baseline,
@@ -50,6 +51,7 @@ def build_case_argv(baseline: Sequence[str], viscosity_pa_s: float, tool_contact
     argv = replace_option(argv, "--viscosity", format(viscosity_pa_s, ".12g"))
     argv = replace_option(argv, "--replay-stride", "1")
     argv = replace_option(argv, "--replay-end-frame", str(REPLAY_END_FRAME))
+    argv = remove_flag(argv, "--cpu")
     return replace_option(argv, "--output-dir", str(simulation_dir))
 
 

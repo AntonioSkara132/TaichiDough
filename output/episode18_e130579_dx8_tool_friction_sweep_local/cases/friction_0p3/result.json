@@ -1,0 +1,2156 @@
+{
+  "evaluator": {
+    "duration_s": 16.817820538999513,
+    "failure_reason": null,
+    "returncode": 0
+  },
+  "id": "friction_0p3",
+  "loss": {
+    "components": {
+      "depth_change": 0.6484675836117119,
+      "mask_iou": 0.5592671633630591,
+      "observed_to_simulation_distance": 0.14837569331658162,
+      "real_coverage": 0.08974008594624992
+    },
+    "counts": {
+      "invalid": 0,
+      "total": 60,
+      "valid": 60
+    },
+    "failure_reason": null,
+    "frames": [
+      {
+        "components": {
+          "depth_change": 0.17743801809284318,
+          "mask_iou": 0.4648426812585499,
+          "observed_to_simulation_distance": 0.021530516304339553,
+          "real_coverage": 0.00947695869203502
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 1,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13692,
+          "depth_change_pixels": 9334,
+          "nearest_distance_samples": 13823,
+          "observed_pixels": 13823,
+          "observed_points": 13823,
+          "simulation_pixels": 25454,
+          "union_current_pixels": 25585,
+          "visible_simulation_points": 25454
+        },
+        "time_s": 0.033350832760334015,
+        "valid": true,
+        "weighted_total": 0.16832204358694192,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.207696273771577,
+          "mask_iou": 0.46259273721202654,
+          "observed_to_simulation_distance": 0.009205656293770098,
+          "real_coverage": 0.008643664913923543
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 2,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13763,
+          "depth_change_pixels": 9478,
+          "nearest_distance_samples": 13883,
+          "observed_pixels": 13883,
+          "observed_points": 13883,
+          "simulation_pixels": 25490,
+          "union_current_pixels": 25610,
+          "visible_simulation_points": 25490
+        },
+        "time_s": 0.06670166552066803,
+        "valid": true,
+        "weighted_total": 0.1720345830478243,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.24348161492997306,
+          "mask_iou": 0.45444258009131,
+          "observed_to_simulation_distance": 0.010804377560285029,
+          "real_coverage": 0.008439716312056755
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 3,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13981,
+          "depth_change_pixels": 9679,
+          "nearest_distance_samples": 14100,
+          "observed_pixels": 14100,
+          "observed_points": 14100,
+          "simulation_pixels": 25508,
+          "union_current_pixels": 25627,
+          "visible_simulation_points": 25508
+        },
+        "time_s": 0.10005225241184235,
+        "valid": true,
+        "weighted_total": 0.17929207222340623,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.2616493419849422,
+          "mask_iou": 0.463801433915212,
+          "observed_to_simulation_distance": 0.02343837929065352,
+          "real_coverage": 0.008644910309055565
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 4,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13761,
+          "depth_change_pixels": 9422,
+          "nearest_distance_samples": 13881,
+          "observed_pixels": 13881,
+          "observed_points": 13881,
+          "simulation_pixels": 25544,
+          "union_current_pixels": 25664,
+          "visible_simulation_points": 25544
+        },
+        "time_s": 0.13340307772159576,
+        "valid": true,
+        "weighted_total": 0.18938351637496584,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.251547121302649,
+          "mask_iou": 0.4638516671860393,
+          "observed_to_simulation_distance": 0.010605470566758875,
+          "real_coverage": 0.008071490343038334
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 5,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13764,
+          "depth_change_pixels": 9508,
+          "nearest_distance_samples": 13876,
+          "observed_pixels": 13876,
+          "observed_points": 13876,
+          "simulation_pixels": 25560,
+          "union_current_pixels": 25672,
+          "visible_simulation_points": 25560
+        },
+        "time_s": 0.16675366461277008,
+        "valid": true,
+        "weighted_total": 0.18351893734962138,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.2520540053712438,
+          "mask_iou": 0.45995637270177625,
+          "observed_to_simulation_distance": 0.012834584441723484,
+          "real_coverage": 0.006663323063695659
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 6,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13864,
+          "depth_change_pixels": 9561,
+          "nearest_distance_samples": 13957,
+          "observed_pixels": 13957,
+          "observed_points": 13957,
+          "simulation_pixels": 25579,
+          "union_current_pixels": 25672,
+          "visible_simulation_points": 25579
+        },
+        "time_s": 0.2001042515039444,
+        "valid": true,
+        "weighted_total": 0.1828770713946098,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.27229218805850736,
+          "mask_iou": 0.4667677828335861,
+          "observed_to_simulation_distance": 0.03520465081001568,
+          "real_coverage": 0.007887120115774193
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 7,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13711,
+          "depth_change_pixels": 9361,
+          "nearest_distance_samples": 13820,
+          "observed_pixels": 13820,
+          "observed_points": 13820,
+          "simulation_pixels": 25604,
+          "union_current_pixels": 25713,
+          "visible_simulation_points": 25604
+        },
+        "time_s": 0.2334548383951187,
+        "valid": true,
+        "weighted_total": 0.19553793545447085,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.2477759901891079,
+          "mask_iou": 0.46414551673209214,
+          "observed_to_simulation_distance": 0.013990311633952443,
+          "real_coverage": 0.008414844649021869
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 8,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13787,
+          "depth_change_pixels": 9417,
+          "nearest_distance_samples": 13904,
+          "observed_pixels": 13904,
+          "observed_points": 13904,
+          "simulation_pixels": 25612,
+          "union_current_pixels": 25729,
+          "visible_simulation_points": 25612
+        },
+        "time_s": 0.26680518686771393,
+        "valid": true,
+        "weighted_total": 0.1835816658010436,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.24863697118136432,
+          "mask_iou": 0.46263552636692185,
+          "observed_to_simulation_distance": 0.008639394911680254,
+          "real_coverage": 0.00796326852715401
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 9,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13828,
+          "depth_change_pixels": 9485,
+          "nearest_distance_samples": 13939,
+          "observed_pixels": 13939,
+          "observed_points": 13939,
+          "simulation_pixels": 25622,
+          "union_current_pixels": 25733,
+          "visible_simulation_points": 25622
+        },
+        "time_s": 0.30015577375888824,
+        "valid": true,
+        "weighted_total": 0.1819687902467801,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.26966107188063065,
+          "mask_iou": 0.4705859511513222,
+          "observed_to_simulation_distance": 0.03731202689100206,
+          "real_coverage": 0.008652657601977753
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 10,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13634,
+          "depth_change_pixels": 9335,
+          "nearest_distance_samples": 13753,
+          "observed_pixels": 13753,
+          "observed_points": 13753,
+          "simulation_pixels": 25634,
+          "union_current_pixels": 25753,
+          "visible_simulation_points": 25634
+        },
+        "time_s": 0.33350609242916107,
+        "valid": true,
+        "weighted_total": 0.1965529268812332,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.2504102951979311,
+          "mask_iou": 0.4660895221087775,
+          "observed_to_simulation_distance": 0.022866051667872124,
+          "real_coverage": 0.008077893977641581
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 11,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13753,
+          "depth_change_pixels": 9389,
+          "nearest_distance_samples": 13865,
+          "observed_pixels": 13865,
+          "observed_points": 13865,
+          "simulation_pixels": 25647,
+          "union_current_pixels": 25759,
+          "visible_simulation_points": 25647
+        },
+        "time_s": 0.3668564409017563,
+        "valid": true,
+        "weighted_total": 0.1868609407380556,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.23805824374761153,
+          "mask_iou": 0.46168760663874675,
+          "observed_to_simulation_distance": 0.011355037593343551,
+          "real_coverage": 0.009136331192005742
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 12,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13882,
+          "depth_change_pixels": 9511,
+          "nearest_distance_samples": 14010,
+          "observed_pixels": 14010,
+          "observed_points": 14010,
+          "simulation_pixels": 25660,
+          "union_current_pixels": 25788,
+          "visible_simulation_points": 25660
+        },
+        "time_s": 0.4002065509557724,
+        "valid": true,
+        "weighted_total": 0.1800593047929269,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.2746377898201503,
+          "mask_iou": 0.46430648726201096,
+          "observed_to_simulation_distance": 0.04546990609328121,
+          "real_coverage": 0.00804193293602351
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 13,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13815,
+          "depth_change_pixels": 9481,
+          "nearest_distance_samples": 13927,
+          "observed_pixels": 13927,
+          "observed_points": 13927,
+          "simulation_pixels": 25677,
+          "union_current_pixels": 25789,
+          "visible_simulation_points": 25677
+        },
+        "time_s": 0.4335568994283676,
+        "valid": true,
+        "weighted_total": 0.19811402902786648,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.26951460769991037,
+          "mask_iou": 0.46634093376764385,
+          "observed_to_simulation_distance": 0.03484402293326546,
+          "real_coverage": 0.0074287774972953136
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 14,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13762,
+          "depth_change_pixels": 9431,
+          "nearest_distance_samples": 13865,
+          "observed_pixels": 13865,
+          "observed_points": 13865,
+          "simulation_pixels": 25685,
+          "union_current_pixels": 25788,
+          "visible_simulation_points": 25685
+        },
+        "time_s": 0.46690867841243744,
+        "valid": true,
+        "weighted_total": 0.19453208547452877,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.26258151230305615,
+          "mask_iou": 0.4677931943260213,
+          "observed_to_simulation_distance": 0.02256005190359909,
+          "real_coverage": 0.00794682849299233
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 15,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13732,
+          "depth_change_pixels": 9280,
+          "nearest_distance_samples": 13842,
+          "observed_pixels": 13842,
+          "observed_points": 13842,
+          "simulation_pixels": 25692,
+          "union_current_pixels": 25802,
+          "visible_simulation_points": 25692
+        },
+        "time_s": 0.5002599805593491,
+        "valid": true,
+        "weighted_total": 0.19022039675641722,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.2895177262709637,
+          "mask_iou": 0.4650073546489123,
+          "observed_to_simulation_distance": 0.04734931114633521,
+          "real_coverage": 0.008180839612486501
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 16,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13821,
+          "depth_change_pixels": 9311,
+          "nearest_distance_samples": 13935,
+          "observed_pixels": 13935,
+          "observed_points": 13935,
+          "simulation_pixels": 25720,
+          "union_current_pixels": 25834,
+          "visible_simulation_points": 25720
+        },
+        "time_s": 0.5336115807294846,
+        "valid": true,
+        "weighted_total": 0.20251380791967444,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.28884225407263486,
+          "mask_iou": 0.46832701678397404,
+          "observed_to_simulation_distance": 0.04535195580109508,
+          "real_coverage": 0.00929595733948263
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 17,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13748,
+          "depth_change_pixels": 9275,
+          "nearest_distance_samples": 13877,
+          "observed_pixels": 13877,
+          "observed_points": 13877,
+          "simulation_pixels": 25729,
+          "union_current_pixels": 25858,
+          "visible_simulation_points": 25729
+        },
+        "time_s": 0.5669631212949753,
+        "valid": true,
+        "weighted_total": 0.20295429599929665,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.29166800134492793,
+          "mask_iou": 0.4676328502415459,
+          "observed_to_simulation_distance": 0.034514926895390576,
+          "real_coverage": 0.009989938191749315
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 18,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13775,
+          "depth_change_pixels": 9405,
+          "nearest_distance_samples": 13914,
+          "observed_pixels": 13914,
+          "observed_points": 13914,
+          "simulation_pixels": 25736,
+          "union_current_pixels": 25875,
+          "visible_simulation_points": 25736
+        },
+        "time_s": 0.6003144830465317,
+        "valid": true,
+        "weighted_total": 0.20095142916840344,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.332306306771928,
+          "mask_iou": 0.4666048595820296,
+          "observed_to_simulation_distance": 0.07208881650118328,
+          "real_coverage": 0.009682277845513898
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 19,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13808,
+          "depth_change_pixels": 9309,
+          "nearest_distance_samples": 13943,
+          "observed_pixels": 13943,
+          "observed_points": 13943,
+          "simulation_pixels": 25752,
+          "union_current_pixels": 25887,
+          "visible_simulation_points": 25752
+        },
+        "time_s": 0.6336657851934433,
+        "valid": true,
+        "weighted_total": 0.2201705651751637,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.2992504993599319,
+          "mask_iou": 0.4729828898072689,
+          "observed_to_simulation_distance": 0.03344892294894881,
+          "real_coverage": 0.008933759442184774
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 20,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13645,
+          "depth_change_pixels": 9351,
+          "nearest_distance_samples": 13768,
+          "observed_pixels": 13768,
+          "observed_points": 13768,
+          "simulation_pixels": 25768,
+          "union_current_pixels": 25891,
+          "visible_simulation_points": 25768
+        },
+        "time_s": 0.6670170873403549,
+        "valid": true,
+        "weighted_total": 0.20365401788958362,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.3126546101247262,
+          "mask_iou": 0.4709313555066249,
+          "observed_to_simulation_distance": 0.03760200408985165,
+          "real_coverage": 0.008254887762490948
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 21,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13696,
+          "depth_change_pixels": 9304,
+          "nearest_distance_samples": 13810,
+          "observed_pixels": 13810,
+          "observed_points": 13810,
+          "simulation_pixels": 25773,
+          "union_current_pixels": 25887,
+          "visible_simulation_points": 25773
+        },
+        "time_s": 0.7003681510686874,
+        "valid": true,
+        "weighted_total": 0.20736071437092343,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.3876110162065496,
+          "mask_iou": 0.46929401320106534,
+          "observed_to_simulation_distance": 0.1020156911884419,
+          "real_coverage": 0.007579038544824557
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 22,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13749,
+          "depth_change_pixels": 9203,
+          "nearest_distance_samples": 13854,
+          "observed_pixels": 13854,
+          "observed_points": 13854,
+          "simulation_pixels": 25802,
+          "union_current_pixels": 25907,
+          "visible_simulation_points": 25802
+        },
+        "time_s": 0.7337195128202438,
+        "valid": true,
+        "weighted_total": 0.24162493978522034,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.29037582635948905,
+          "mask_iou": 0.47498352904701,
+          "observed_to_simulation_distance": 0.052784795326771196,
+          "real_coverage": 0.008054477557296602
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 23,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13547,
+          "depth_change_pixels": 9128,
+          "nearest_distance_samples": 13657,
+          "observed_pixels": 13657,
+          "observed_points": 13657,
+          "simulation_pixels": 25693,
+          "union_current_pixels": 25803,
+          "visible_simulation_points": 25693
+        },
+        "time_s": 0.7670705765485764,
+        "valid": true,
+        "weighted_total": 0.2065496570726417,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.35041756251798356,
+          "mask_iou": 0.47701974169026107,
+          "observed_to_simulation_distance": 0.047423296019180806,
+          "real_coverage": 0.008456504154717215
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 24,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13484,
+          "depth_change_pixels": 9158,
+          "nearest_distance_samples": 13599,
+          "observed_pixels": 13599,
+          "observed_points": 13599,
+          "simulation_pixels": 25668,
+          "union_current_pixels": 25783,
+          "visible_simulation_points": 25668
+        },
+        "time_s": 0.8004216402769089,
+        "valid": true,
+        "weighted_total": 0.22082927609553565,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.42830961184605937,
+          "mask_iou": 0.4742391936421787,
+          "observed_to_simulation_distance": 0.08618827218455649,
+          "real_coverage": 0.006810692054192602
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 25,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13562,
+          "depth_change_pixels": 9115,
+          "nearest_distance_samples": 13655,
+          "observed_pixels": 13655,
+          "observed_points": 13655,
+          "simulation_pixels": 25702,
+          "union_current_pixels": 25795,
+          "visible_simulation_points": 25702
+        },
+        "time_s": 0.8337724655866623,
+        "valid": true,
+        "weighted_total": 0.24888694243174678,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.44401967676278725,
+          "mask_iou": 0.48401472582832783,
+          "observed_to_simulation_distance": 0.11049263252636607,
+          "real_coverage": 0.007824143070044753
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 26,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 13315,
+          "depth_change_pixels": 8802,
+          "nearest_distance_samples": 13420,
+          "observed_pixels": 13420,
+          "observed_points": 13420,
+          "simulation_pixels": 25700,
+          "union_current_pixels": 25805,
+          "visible_simulation_points": 25700
+        },
+        "time_s": 0.8671235293149948,
+        "valid": true,
+        "weighted_total": 0.26158779454688147,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.6272082347742741,
+          "mask_iou": 0.487292817679558,
+          "observed_to_simulation_distance": 0.15787279218330366,
+          "real_coverage": 0.008698306119334642
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 27,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 12992,
+          "depth_change_pixels": 8488,
+          "nearest_distance_samples": 13106,
+          "observed_pixels": 13106,
+          "observed_points": 13106,
+          "simulation_pixels": 25226,
+          "union_current_pixels": 25340,
+          "visible_simulation_points": 25226
+        },
+        "time_s": 0.9004743546247482,
+        "valid": true,
+        "weighted_total": 0.3202680376891176,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.7715596221457679,
+          "mask_iou": 0.5029810731863471,
+          "observed_to_simulation_distance": 0.2657684346861328,
+          "real_coverage": 0.019420541564695637
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 28,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 12421,
+          "depth_change_pixels": 7856,
+          "nearest_distance_samples": 12667,
+          "observed_pixels": 12667,
+          "observed_points": 12667,
+          "simulation_pixels": 24745,
+          "union_current_pixels": 24991,
+          "visible_simulation_points": 24745
+        },
+        "time_s": 0.9338252395391464,
+        "valid": true,
+        "weighted_total": 0.38993241789573585,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.7353523718812186,
+          "mask_iou": 0.5021842975544033,
+          "observed_to_simulation_distance": 0.21165351967655588,
+          "real_coverage": 0.02370085675394351
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 29,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 12193,
+          "depth_change_pixels": 7542,
+          "nearest_distance_samples": 12489,
+          "observed_pixels": 12489,
+          "observed_points": 12489,
+          "simulation_pixels": 24197,
+          "union_current_pixels": 24493,
+          "visible_simulation_points": 24197
+        },
+        "time_s": 0.9671758264303207,
+        "valid": true,
+        "weighted_total": 0.3682227614665303,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.89011003972757,
+          "mask_iou": 0.5218900596259086,
+          "observed_to_simulation_distance": 0.44783263203028784,
+          "real_coverage": 0.05930092406588994
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 30,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 11707,
+          "depth_change_pixels": 6746,
+          "nearest_distance_samples": 12445,
+          "observed_pixels": 12445,
+          "observed_points": 12445,
+          "simulation_pixels": 23748,
+          "union_current_pixels": 24486,
+          "visible_simulation_points": 23748
+        },
+        "time_s": 1.0005266517400742,
+        "valid": true,
+        "weighted_total": 0.47978341386241413,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.8887394311900786,
+          "mask_iou": 0.577921310700642,
+          "observed_to_simulation_distance": 0.46058516468674165,
+          "real_coverage": 0.14387282313468608
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 31,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 10717,
+          "depth_change_pixels": 6124,
+          "nearest_distance_samples": 12518,
+          "observed_pixels": 12518,
+          "observed_points": 12518,
+          "simulation_pixels": 23590,
+          "union_current_pixels": 25391,
+          "visible_simulation_points": 23590
+        },
+        "time_s": 1.0338772386312485,
+        "valid": true,
+        "weighted_total": 0.5177796824280371,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.9420474504552281,
+          "mask_iou": 0.6232471765330099,
+          "observed_to_simulation_distance": 0.5813815492894246,
+          "real_coverage": 0.20370073694328739
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 32,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 9941,
+          "depth_change_pixels": 5659,
+          "nearest_distance_samples": 12484,
+          "observed_pixels": 12484,
+          "observed_points": 12484,
+          "simulation_pixels": 23843,
+          "union_current_pixels": 26386,
+          "visible_simulation_points": 23843
+        },
+        "time_s": 1.0672278255224228,
+        "valid": true,
+        "weighted_total": 0.5875942283052374,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.8918303527219034,
+          "mask_iou": 0.655696475406891,
+          "observed_to_simulation_distance": 0.5490343546148042,
+          "real_coverage": 0.24833320260412584
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 33,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 9583,
+          "depth_change_pixels": 5392,
+          "nearest_distance_samples": 12749,
+          "observed_pixels": 12749,
+          "observed_points": 12749,
+          "simulation_pixels": 24667,
+          "union_current_pixels": 27833,
+          "visible_simulation_points": 24667
+        },
+        "time_s": 1.100578412413597,
+        "valid": true,
+        "weighted_total": 0.5862235963369311,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.8160151554270564,
+          "mask_iou": 0.6582256910125763,
+          "observed_to_simulation_distance": 0.3960802704848618,
+          "real_coverage": 0.2281997998922497
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 34,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 10028,
+          "depth_change_pixels": 5626,
+          "nearest_distance_samples": 12993,
+          "observed_pixels": 12993,
+          "observed_points": 12993,
+          "simulation_pixels": 26376,
+          "union_current_pixels": 29341,
+          "visible_simulation_points": 26376
+        },
+        "time_s": 1.1339287608861923,
+        "valid": true,
+        "weighted_total": 0.524630229204186,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.7406163128002642,
+          "mask_iou": 0.6398225726959093,
+          "observed_to_simulation_distance": 0.10993038940888028,
+          "real_coverage": 0.1556000616237868
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 35,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 10962,
+          "depth_change_pixels": 6213,
+          "nearest_distance_samples": 12982,
+          "observed_pixels": 12982,
+          "observed_points": 12982,
+          "simulation_pixels": 28415,
+          "union_current_pixels": 30435,
+          "visible_simulation_points": 28415
+        },
+        "time_s": 1.1672793477773666,
+        "valid": true,
+        "weighted_total": 0.4114923341322102,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.7246489574665723,
+          "mask_iou": 0.6135326828943426,
+          "observed_to_simulation_distance": 0.07155755352203433,
+          "real_coverage": 0.11330124532049812
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 36,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 11606,
+          "depth_change_pixels": 6258,
+          "nearest_distance_samples": 13089,
+          "observed_pixels": 13089,
+          "observed_points": 13089,
+          "simulation_pixels": 28548,
+          "union_current_pixels": 30031,
+          "visible_simulation_points": 28548
+        },
+        "time_s": 1.2006296962499619,
+        "valid": true,
+        "weighted_total": 0.38076010980086183,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.7637725616992626,
+          "mask_iou": 0.590220016098739,
+          "observed_to_simulation_distance": 0.07226913921358594,
+          "real_coverage": 0.06123703419131776
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 37,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 12218,
+          "depth_change_pixels": 6368,
+          "nearest_distance_samples": 13015,
+          "observed_pixels": 13015,
+          "observed_points": 13015,
+          "simulation_pixels": 29019,
+          "union_current_pixels": 29816,
+          "visible_simulation_points": 29019
+        },
+        "time_s": 1.2339796870946884,
+        "valid": true,
+        "weighted_total": 0.3718746878007263,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.7283160221926981,
+          "mask_iou": 0.6029720398077314,
+          "observed_to_simulation_distance": 0.07870930266625596,
+          "real_coverage": 0.08295543393275995
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 38,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 11729,
+          "depth_change_pixels": 5814,
+          "nearest_distance_samples": 12790,
+          "observed_pixels": 12790,
+          "observed_points": 12790,
+          "simulation_pixels": 28481,
+          "union_current_pixels": 29542,
+          "visible_simulation_points": 28481
+        },
+        "time_s": 1.2673300355672836,
+        "valid": true,
+        "weighted_total": 0.3732381996498614,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.7569864501776624,
+          "mask_iou": 0.5793417271109895,
+          "observed_to_simulation_distance": 0.07199146315303646,
+          "real_coverage": 0.06537438236412008
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 39,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 12295,
+          "depth_change_pixels": 6120,
+          "nearest_distance_samples": 13155,
+          "observed_pixels": 13155,
+          "observed_points": 13155,
+          "simulation_pixels": 28368,
+          "union_current_pixels": 29228,
+          "visible_simulation_points": 28368
+        },
+        "time_s": 1.3006801456212997,
+        "valid": true,
+        "weighted_total": 0.3684235057014521,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.7464959262514494,
+          "mask_iou": 0.5847728509249184,
+          "observed_to_simulation_distance": 0.07067515684966937,
+          "real_coverage": 0.06658003363400089
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 40,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 12211,
+          "depth_change_pixels": 5925,
+          "nearest_distance_samples": 13082,
+          "observed_pixels": 13082,
+          "observed_points": 13082,
+          "simulation_pixels": 28537,
+          "union_current_pixels": 29408,
+          "visible_simulation_points": 28537
+        },
+        "time_s": 1.3340302556753159,
+        "valid": true,
+        "weighted_total": 0.36713099191500953,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.7994037781950158,
+          "mask_iou": 0.5853116476411759,
+          "observed_to_simulation_distance": 0.04527353307509953,
+          "real_coverage": 0.048740923837478745
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 41,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 12315,
+          "depth_change_pixels": 5983,
+          "nearest_distance_samples": 12946,
+          "observed_pixels": 12946,
+          "observed_points": 12946,
+          "simulation_pixels": 29066,
+          "union_current_pixels": 29697,
+          "visible_simulation_points": 29066
+        },
+        "time_s": 1.367380365729332,
+        "valid": true,
+        "weighted_total": 0.3696824706871925,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.9785949423514744,
+          "mask_iou": 0.5929180241550663,
+          "observed_to_simulation_distance": 0.07461312872305147,
+          "real_coverage": 0.058886183810103465
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 42,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 12370,
+          "depth_change_pixels": 5937,
+          "nearest_distance_samples": 13144,
+          "observed_pixels": 13144,
+          "observed_points": 13144,
+          "simulation_pixels": 29613,
+          "union_current_pixels": 30387,
+          "visible_simulation_points": 29613
+        },
+        "time_s": 1.400730475783348,
+        "valid": true,
+        "weighted_total": 0.42625306975992394,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 1.5107301399558595,
+          "mask_iou": 0.659625829812915,
+          "observed_to_simulation_distance": 0.09134175099218761,
+          "real_coverage": 0.1346375143843498
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 43,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 11280,
+          "depth_change_pixels": 5526,
+          "nearest_distance_samples": 13035,
+          "observed_pixels": 13035,
+          "observed_points": 13035,
+          "simulation_pixels": 31385,
+          "union_current_pixels": 33140,
+          "visible_simulation_points": 31385
+        },
+        "time_s": 1.4340805858373642,
+        "valid": true,
+        "weighted_total": 0.5990838087863279,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 2.0272446145728815,
+          "mask_iou": 0.7182670454545454,
+          "observed_to_simulation_distance": 0.22052780761317708,
+          "real_coverage": 0.23064391000775797
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 44,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 9917,
+          "depth_change_pixels": 4468,
+          "nearest_distance_samples": 12890,
+          "observed_pixels": 12890,
+          "observed_points": 12890,
+          "simulation_pixels": 32227,
+          "union_current_pixels": 35200,
+          "visible_simulation_points": 32227
+        },
+        "time_s": 1.467432126402855,
+        "valid": true,
+        "weighted_total": 0.7991708444120904,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 1.8518627156757457,
+          "mask_iou": 0.7555796738464964,
+          "observed_to_simulation_distance": 0.4230212684712263,
+          "real_coverage": 0.32146168108776263
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 45,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 8783,
+          "depth_change_pixels": 3715,
+          "nearest_distance_samples": 12944,
+          "observed_pixels": 12944,
+          "observed_points": 12944,
+          "simulation_pixels": 31773,
+          "union_current_pixels": 35934,
+          "visible_simulation_points": 31773
+        },
+        "time_s": 1.5007839053869247,
+        "valid": true,
+        "weighted_total": 0.8379813347703078,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 1.4941368434891908,
+          "mask_iou": 0.7624381275632867,
+          "observed_to_simulation_distance": 0.6024331905181702,
+          "real_coverage": 0.3609039719981738
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 46,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 8399,
+          "depth_change_pixels": 3526,
+          "nearest_distance_samples": 13142,
+          "observed_pixels": 13142,
+          "observed_points": 13142,
+          "simulation_pixels": 30612,
+          "union_current_pixels": 35355,
+          "visible_simulation_points": 30612
+        },
+        "time_s": 1.5341354459524155,
+        "valid": true,
+        "weighted_total": 0.8049780333922054,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.8812518288100578,
+          "mask_iou": 0.7411887832055899,
+          "observed_to_simulation_distance": 0.672249151187345,
+          "real_coverage": 0.35821693000534305
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 47,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 8408,
+          "depth_change_pixels": 3482,
+          "nearest_distance_samples": 13101,
+          "observed_pixels": 13101,
+          "observed_points": 13101,
+          "simulation_pixels": 27794,
+          "union_current_pixels": 32487,
+          "visible_simulation_points": 27794
+        },
+        "time_s": 1.5674871057271957,
+        "valid": true,
+        "weighted_total": 0.6632266733020838,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.8340047235206439,
+          "mask_iou": 0.702660150227966,
+          "observed_to_simulation_distance": 0.49138431108922453,
+          "real_coverage": 0.30370996236270065
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 48,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 9065,
+          "depth_change_pixels": 3950,
+          "nearest_distance_samples": 13019,
+          "observed_pixels": 13019,
+          "observed_points": 13019,
+          "simulation_pixels": 26533,
+          "union_current_pixels": 30487,
+          "visible_simulation_points": 26533
+        },
+        "time_s": 1.6008386462926865,
+        "valid": true,
+        "weighted_total": 0.5829397868001338,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.75703763077124,
+          "mask_iou": 0.6500907314349526,
+          "observed_to_simulation_distance": 0.2507018319858771,
+          "real_coverage": 0.23058624923265802
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 49,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 10027,
+          "depth_change_pixels": 4687,
+          "nearest_distance_samples": 13032,
+          "observed_pixels": 13032,
+          "observed_points": 13032,
+          "simulation_pixels": 25651,
+          "union_current_pixels": 28656,
+          "visible_simulation_points": 25651
+        },
+        "time_s": 1.6341901868581772,
+        "valid": true,
+        "weighted_total": 0.4721041108561819,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.7659803571268982,
+          "mask_iou": 0.6490803814713897,
+          "observed_to_simulation_distance": 0.15866878992611505,
+          "real_coverage": 0.19945609945609943
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 50,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 10303,
+          "depth_change_pixels": 4871,
+          "nearest_distance_samples": 12870,
+          "observed_pixels": 12870,
+          "observed_points": 12870,
+          "simulation_pixels": 26793,
+          "union_current_pixels": 29360,
+          "visible_simulation_points": 26793
+        },
+        "time_s": 1.6675414890050888,
+        "valid": true,
+        "weighted_total": 0.44329640699512557,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.7471773984408554,
+          "mask_iou": 0.6423174656954092,
+          "observed_to_simulation_distance": 0.14652523293996708,
+          "real_coverage": 0.18035714285714288
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 51,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 10557,
+          "depth_change_pixels": 5014,
+          "nearest_distance_samples": 12880,
+          "observed_pixels": 12880,
+          "observed_points": 12880,
+          "simulation_pixels": 27192,
+          "union_current_pixels": 29515,
+          "visible_simulation_points": 27192
+        },
+        "time_s": 1.7008927911520004,
+        "valid": true,
+        "weighted_total": 0.42909430998334364,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.7321275793560436,
+          "mask_iou": 0.620701754385965,
+          "observed_to_simulation_distance": 0.0948865041054955,
+          "real_coverage": 0.1396052212671124
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 52,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 10810,
+          "depth_change_pixels": 5155,
+          "nearest_distance_samples": 12564,
+          "observed_pixels": 12564,
+          "observed_points": 12564,
+          "simulation_pixels": 26746,
+          "union_current_pixels": 28500,
+          "visible_simulation_points": 26746
+        },
+        "time_s": 1.734244093298912,
+        "valid": true,
+        "weighted_total": 0.39683026477865413,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.6828015903056787,
+          "mask_iou": 0.5978648970317741,
+          "observed_to_simulation_distance": 0.06787201566215227,
+          "real_coverage": 0.10398585663773707
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 53,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 11150,
+          "depth_change_pixels": 5339,
+          "nearest_distance_samples": 12444,
+          "observed_pixels": 12444,
+          "observed_points": 12444,
+          "simulation_pixels": 26433,
+          "union_current_pixels": 27727,
+          "visible_simulation_points": 26433
+        },
+        "time_s": 1.7675951570272446,
+        "valid": true,
+        "weighted_total": 0.3631310899093355,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.6502215433086987,
+          "mask_iou": 0.5961259431224608,
+          "observed_to_simulation_distance": 0.06049893595723808,
+          "real_coverage": 0.0941339191278171
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 54,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 11134,
+          "depth_change_pixels": 5192,
+          "nearest_distance_samples": 12291,
+          "observed_pixels": 12291,
+          "observed_points": 12291,
+          "simulation_pixels": 26411,
+          "union_current_pixels": 27568,
+          "visible_simulation_points": 26411
+        },
+        "time_s": 1.8009465783834457,
+        "valid": true,
+        "weighted_total": 0.35024508537905363,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.6903098521962617,
+          "mask_iou": 0.6179447466051939,
+          "observed_to_simulation_distance": 0.0840073372436372,
+          "real_coverage": 0.11000167813391504
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 55,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 10607,
+          "depth_change_pixels": 4827,
+          "nearest_distance_samples": 11918,
+          "observed_pixels": 11918,
+          "observed_points": 11918,
+          "simulation_pixels": 26452,
+          "union_current_pixels": 27763,
+          "visible_simulation_points": 26452
+        },
+        "time_s": 1.8342976421117783,
+        "valid": true,
+        "weighted_total": 0.375565903544752,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.6533258612327041,
+          "mask_iou": 0.6431339877567284,
+          "observed_to_simulation_distance": 0.08475070937888751,
+          "real_coverage": 0.14263336524236359
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 56,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 9852,
+          "depth_change_pixels": 4516,
+          "nearest_distance_samples": 11491,
+          "observed_pixels": 11491,
+          "observed_points": 11491,
+          "simulation_pixels": 25968,
+          "union_current_pixels": 27607,
+          "visible_simulation_points": 25968
+        },
+        "time_s": 1.8676487058401108,
+        "valid": true,
+        "weighted_total": 0.38096098090267094,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.6648463441205565,
+          "mask_iou": 0.660938342620888,
+          "observed_to_simulation_distance": 0.12044704140893848,
+          "real_coverage": 0.16687279151943468
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 57,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 9431,
+          "depth_change_pixels": 4571,
+          "nearest_distance_samples": 11320,
+          "observed_pixels": 11320,
+          "observed_points": 11320,
+          "simulation_pixels": 25926,
+          "union_current_pixels": 27815,
+          "visible_simulation_points": 25926
+        },
+        "time_s": 1.9009997695684433,
+        "valid": true,
+        "weighted_total": 0.40327612991745443,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 0.6793548552336984,
+          "mask_iou": 0.6868742285008915,
+          "observed_to_simulation_distance": 0.2301631214749324,
+          "real_coverage": 0.21228327438971795
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 58,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 9132,
+          "depth_change_pixels": 4715,
+          "nearest_distance_samples": 11593,
+          "observed_pixels": 11593,
+          "observed_points": 11593,
+          "simulation_pixels": 26703,
+          "union_current_pixels": 29164,
+          "visible_simulation_points": 26703
+        },
+        "time_s": 1.9343504756689072,
+        "valid": true,
+        "weighted_total": 0.4521688698998101,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 1.1471241173078266,
+          "mask_iou": 0.6865662192960242,
+          "observed_to_simulation_distance": 0.2578034167549174,
+          "real_coverage": 0.16908617940756898
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 59,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 9902,
+          "depth_change_pixels": 5403,
+          "nearest_distance_samples": 11917,
+          "observed_pixels": 11917,
+          "observed_points": 11917,
+          "simulation_pixels": 29577,
+          "union_current_pixels": 31592,
+          "visible_simulation_points": 29577
+        },
+        "time_s": 1.9677014201879501,
+        "valid": true,
+        "weighted_total": 0.5651449831915842,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      },
+      {
+        "components": {
+          "depth_change": 1.8944112746508974,
+          "mask_iou": 0.6954235071916315,
+          "observed_to_simulation_distance": 0.1901097344980188,
+          "real_coverage": 0.1213746856663872
+        },
+        "failure_reason": null,
+        "normalization": {
+          "depth_scale_m": 0.01,
+          "distance_scale_m": 0.01,
+          "huber_delta": 1.0
+        },
+        "source_frame": 60,
+        "status": "paired",
+        "support": {
+          "common_current_pixels": 10482,
+          "depth_change_pixels": 5780,
+          "nearest_distance_samples": 11930,
+          "observed_pixels": 11930,
+          "observed_points": 11930,
+          "simulation_pixels": 32967,
+          "union_current_pixels": 34415,
+          "visible_simulation_points": 32967
+        },
+        "time_s": 2.001052364706993,
+        "valid": true,
+        "weighted_total": 0.7253298005017338,
+        "weights": {
+          "depth_change": 1.0,
+          "mask_iou": 1.0,
+          "observed_to_simulation_distance": 1.0,
+          "real_coverage": 1.0
+        }
+      }
+    ],
+    "frozen_baseline": {
+      "components": {
+        "depth_change": 0.34161608738023574,
+        "mask_iou": 0.5650571907585499,
+        "observed_to_simulation_distance": 0.3440345459958543,
+        "real_coverage": 0.12205430054160954
+      },
+      "counts": {
+        "invalid": 0,
+        "total": 60,
+        "valid": 60
+      },
+      "failure_reason": null,
+      "invalid_indices": [],
+      "valid": true,
+      "weighted_total": 0.3431905311690624
+    },
+    "invalid_indices": [],
+    "scored_source_frame_range": [
+      1,
+      60
+    ],
+    "source_evaluation": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/output/episode18_e130579_dx8_tool_friction_sweep_local/cases/friction_0p3/evaluation/dynamic_topview_metrics.json",
+    "valid": true,
+    "weighted_total": 0.36146263155940067
+  },
+  "simulator": {
+    "duration_s": 160.0849656660139,
+    "failure_reason": null,
+    "returncode": 0
+  },
+  "status": "complete",
+  "tool_contact_friction": 0.3
+}

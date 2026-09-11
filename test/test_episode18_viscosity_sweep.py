@@ -19,7 +19,7 @@ from sweep_episode18_viscosity import (
 class Episode18ViscositySweepTests(unittest.TestCase):
     def baseline(self):
         return [
-            "python3", "sim.py", "--youngs-modulus", "2000", "--grid", "48",
+            "python3", "sim.py", "--cpu", "--youngs-modulus", "2000", "--grid", "48",
             "--tool-collision", "sdf", "--tool-sdf-resolution", "64",
             "--replay-start-frame", "0", "--replay-end-frame", "387", "--replay-stride", "4",
             "--tool-contact-padding", "0", "--tool-contact-friction", "0.2", "--viscosity", "0",
@@ -37,6 +37,7 @@ class Episode18ViscositySweepTests(unittest.TestCase):
         self.assertEqual(argv[argv.index("--replay-stride") + 1], "1")
         self.assertEqual(argv[argv.index("--replay-end-frame") + 1], str(REPLAY_END_FRAME))
         self.assertEqual(argv[argv.index("--output-dir") + 1], "/simulation")
+        self.assertNotIn("--cpu", argv)
         self.assertEqual(argv[argv.index("--unrelated") + 1], "keep-me")
 
     def test_rejects_unapproved_viscosity_and_negative_friction(self):

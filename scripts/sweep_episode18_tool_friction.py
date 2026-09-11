@@ -121,6 +121,13 @@ def validate_baseline(argv: Sequence[str]) -> None:
         required_option(argv, option)
 
 
+def remove_flag(argv: Sequence[str], flag: str) -> list[str]:
+    count = sum(value == flag for value in argv)
+    if count > 1:
+        raise ValueError(f"Expected at most one {flag}, found {count}")
+    return [value for value in argv if value != flag]
+
+
 def friction_cases() -> list[dict[str, Any]]:
     return [
         {"id": f"friction_{value:.1f}".replace(".", "p"), "tool_contact_friction": value}
@@ -136,6 +143,7 @@ def build_case_argv(baseline: Sequence[str], friction: float, simulation_dir: Pa
     argv = replace_option(argv, "--tool-contact-friction", format(friction, ".1f"))
     argv = replace_option(argv, "--replay-stride", "1")
     argv = replace_option(argv, "--replay-end-frame", str(REPLAY_END_FRAME))
+    argv = remove_flag(argv, "--cpu")
     return replace_option(argv, "--output-dir", str(simulation_dir))
 
 
