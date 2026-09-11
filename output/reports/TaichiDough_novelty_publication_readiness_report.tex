@@ -1,0 +1,243 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=0.82in]{geometry}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!55!black,citecolor=blue!50!black,pdftitle={TaichiDough: Novelty and Publication Readiness},pdfauthor={Claude Code research assessment}}
+\setlength{\parskip}{0.55em}
+\setlength{\parindent}{0pt}
+\renewcommand{\arraystretch}{1.18}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcommand{\statuslow}{\textcolor{BrickRed}{\textbf{Low}}}
+\newcommand{\statusmedium}{\textcolor{orange!70!black}{\textbf{Moderate}}}
+\newcommand{\statushigh}{\textcolor{ForestGreen}{\textbf{High}}}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{TaichiDough assessment}
+\rhead{11 September 2026}
+\cfoot{\thepage}
+
+\begin{document}
+
+\begin{center}
+{\LARGE\bfseries TaichiDough: Novelty and Publication Readiness}\\[0.45em]
+{\large Literature review and repository-based assessment}\\[0.9em]
+\fbox{\parbox{0.91\linewidth}{\textbf{Short answer.} TaichiDough is a credible research-software and experimental-system project, but its current evidence does \emph{not} establish a new MPM algorithm, a new contact method, or a validated material-identification method. It is not ready for a research-journal submission as it stands. Its strongest possible contribution is an experimentally validated, reproducible real-robot digital-twin study: calibrated closed-mesh tool contact, visual reconstruction, forward MPM calibration, and prediction on withheld manipulation trials. That contribution needs a substantially stronger experiment set, clear baselines, and a correct, released execution path.}}
+\end{center}
+
+\section*{Scope and method}
+
+This report assesses the TaichiDough working tree and the current Episode 18 calibration artifacts examined on 11 September 2026. It is not peer review and it does not certify that a venue will accept a submission. The literature search covered publisher and proceedings pages, DOI landing pages, project pages, OpenReview, PMLR, and arXiv records for differentiable MPM, deformable-object system identification, robot manipulation of elasto-plastic materials, visual digital twins, rigid contact, and scientific-software publication. Paywalled papers are cited only for claims supported by their title, abstract, publisher page, or other checked primary record.
+
+``Novel'' can mean several different things. This report separates (i) a new numerical or learning method, (ii) a new experimental finding, (iii) a new system combination demonstrated in a meaningful setting, (iv) a dataset or benchmark, and (v) reusable software. Combining established components can support a publishable systems or empirical paper, but it is not by itself an algorithmic contribution.
+
+\section{What TaichiDough currently implements and demonstrates}
+
+The current simulator is a forward Taichi MLS-MPM/APIC-style viscoelastic / optionally plastic particle-grid simulator. It uses a recorded two-tool replay, supports rigid tool collision using signed-distance volumes derived from generated watertight STL solids, and exports depth and particle artifacts for later scoring. The code includes AprilTag/scene-calibration utilities, initial particle reconstruction utilities, top-view depth and point-cloud comparison, artifact fingerprints, cached parameter probes, and train/held-out windows. The collision solids pass software topology and interior/exterior checks, but the reviewed repository does not include an independent physical metrology record showing that they match the real end effectors.
+
+For the Episode 18 artifact reviewed here, the material-calibration report records a 0.25 kg dough object, 24,000 particles, grid 48, time step 0.0002 s, SDF resolution 64, two visual tool meshes, and a selected numerical contact padding of $1/384$ m ($dx/8$). It uses a training window of source frames 1--60 and a held-out window of frames 61--97. The report fingerprints the geometry, tool meshes, sequence, initial particles, simulator, evaluator, and fixed arguments. These are good reproducibility practices.
+
+There are important limits on what the existing artifact establishes:
+
+\begin{itemize}[leftmargin=1.45em]
+  \item The best discrete modulus candidate is $E=130{,}579.320726$ Pa, but the result is explicitly marked \texttt{needs\_review}. Its own interpretation calls $E$ an \emph{effective} value for the recorded geometry, reconstruction, replay, model, and fixed settings---not a universal dough constant.
+  \item The training loss has a flat-minimum diagnostic. Candidates from about 91.4 kPa through 186.5 kPa are within the configured tolerance; the chosen candidate is therefore not identifiable from this one loss/window at the stated resolution.
+  \item A 2,000 Pa contact-padding sweep did not provide an automatic physical padding choice. The current $dx/8$ value is an operator-selected numerical assumption, not a measured material or contact property.
+  \item The selected modulus has held-out aggregate loss 0.8281, while the $E=2000$ Pa default baseline has 0.7997 on that same later-frame holdout (lower is better). The selection therefore neither identifies a unique value nor shows an aggregate held-out improvement over that baseline.
+  \item The current friction-sweep output is invalid: all three cases failed before simulation because the saved command refers to an absolute path from a different checkout. It also contains the older values 0.1, 0.2, and 0.3 rather than the requested 0.15, 0.20, and 0.25, and it has no held-out 61--97 result. It must not appear in a paper as an experiment.
+\end{itemize}
+
+\subsection*{Existing numerical evidence}
+
+The strongest stored initialization metric is narrow but useful: a local metric-v2 Episode 18 static record reports visible-mask IoU 0.8306, centroid offsets of about 1 mm, and 95th-percentile visible-depth error 1.155 mm. Because the particle state was reconstructed from that same initial observation, it demonstrates visible initialization agreement rather than forward material prediction. A separate legacy bootstrap-calibrated initialization record gives IoU 0.8808 and 2.0 mm depth $p95$; it should not be presented as independently metric-calibrated evidence.
+
+The longer legacy proxy-tool replay is an important negative diagnostic. Across 65 post-initial paired observations, it reports mean mask IoU 0.4240, depth MAE 95.95 mm, depth $p95$ 119.40 mm, and depth-change MAE 83.83 mm; the artifact explicitly marks physical fidelity as unvalidated. A three-frame implementation smoke test has much better metrics, but that only checks short-path execution. Neither result establishes accurate dynamic prediction under measured solid-tool contact.
+
+\subsection*{Differentiability status}
+
+TaichiDough is intentionally a derivative-free forward-simulation calibration system, not a differentiable inverse simulator. This is a valid design: it selects parameters by repeated forward rollouts against calibrated observations, and should describe the result as coarse-to-fine black-box calibration. The modulus is accepted as a Python command-line value and used to compute Lam\'e constants before the main kernel; ordinary Taichi fields are created without gradient storage. The calibration controller launches independent subprocesses for each modulus candidate, saves simulation artifacts, reloads NumPy arrays, and scores them outside Taichi. It therefore has no end-to-end adjoint path, and should not make claims about gradient-based inverse simulation.
+
+Even after adding Taichi gradient fields and a tape, the current forward model would need careful reformulation for inverse optimization. It contains hard SDF contact activation, nearest-collider selection, contact projection, conditionals for inward velocity, friction/stickiness updates, floor and boundary clamps, SVD-based plasticity, singular-value clipping, and thresholded yielding. The current renderer and loss also use integer-pixel z-buffering, Boolean masks, visibility selection, and nearest-neighbor minima. These operations make the objective piecewise or discontinuously dependent on state and parameters.
+
+This is not a criticism of forward simulation. It means that TaichiDough should not claim differentiable parameter identification or automatic differentiation until it has a separate verified differentiable fitting path and gradient checks.
+
+\section{Relevant literature}
+
+Table~\ref{tab:prior} compares TaichiDough against the closest work. The comparison is conservative: a blank capability is not an assertion that a paper lacks it; it means this report did not verify that capability from the checked primary material.
+
+\begin{longtable}{p{0.19\linewidth}p{0.20\linewidth}p{0.27\linewidth}p{0.27\linewidth}}
+\caption{Closest prior work and implication for TaichiDough claims.}\label{tab:prior}\\
+\toprule
+\textbf{Work} & \textbf{Method and observations} & \textbf{What it already establishes} & \textbf{Implication for TaichiDough}\\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Work} & \textbf{Method and observations} & \textbf{What it already establishes} & \textbf{Implication for TaichiDough}\\
+\midrule
+\endhead
+Hu et al., ChainQueen [1] and Spielberg et al. [2] & Differentiable MLS-MPM for soft robots; the later work includes state-based system identification for homogeneous material parameters. & Differentiable MPM and MPM-based system identification are established. [2] uses trajectory-state losses and discusses limits including omitted viscoelastoplastic behavior and remaining sim-to-real needs. & Using Taichi, MPM, GPU acceleration, or parameter fitting alone is not novel. A claim must be about a new method, a new measured finding, or a stronger real-robot evaluation.\\
+\addlinespace
+Yang et al., DPSI [3] & Differentiable MLS-MPM; partial optical point clouds; real robot manipulation of elastoplastic materials. & Directly fits elastic, plastic, density, and friction-related parameters from real visual observations and predicts longer unseen manipulation. This is the closest direct precedent. & TaichiDough cannot claim the first MPM-based visual calibration of dough/plasticine-like material or the first real robot MPM system identification. It must differentiate itself experimentally or methodologically.\\
+\addlinespace
+Li et al., PAC-NeRF [4], Cai et al., GIC [5], Jiang et al., PhysTwin [6], Chen et al., EMPM [7] & Vision-based physical reconstruction/digital twins using differentiable continuum simulation, Gaussians, spring-mass models, or differentiable MPM. & Visual observation to physical simulation, online refinement, and rendered appearance/geometry losses are active research topics. & RGB-D/point-cloud reconstruction plus simulation comparison is not new. A TaichiDough paper must define its observation model, loss, and validation rather than describe this combination generically.\\
+\addlinespace
+Liu et al., SoftMAC [8] & Differentiable continuum MPM with forecast-based contact and articulated rigid-body / cloth coupling. & Contact-aware continuum simulation and tool/robot coupling are established. & A closed-mesh SDF is a useful engineering choice, but SDF contact itself is not a new contact formulation.\\
+\addlinespace
+Li et al., DiffCloth [9] & Differentiable projective dynamics with Signorini--Coulomb dry friction. & Contact and friction differentiability require an explicit mathematical treatment of contact onset and stick-slip. & Do not call TaichiDough's velocity update ``Coulomb friction'' unless it enforces or approximates a stated Coulomb cone and reports the method.\\
+\addlinespace
+Shi et al., RoboCraft [10] and RoboCook [11] & Real robot manipulation of Play-Doh / elasto-plastic objects from calibrated multi-view visual data, using learned graph models. & Real visual data collection, calibrated cameras, diverse tools, long-horizon shaping, and comparisons to MPM-style baselines exist. & TaichiDough needs multiple real actions, tools, and initial states, not one temporal split of one episode, to support a real-manipulation systems paper.\\
+\addlinespace
+Yao and Hauser [12], Si et al., DIFFTactile [13], Boonvisut and Cavusoglu [14] & Online stiffness estimation from tactile/visual signals; tactile differentiable physics; classical visual FEM identification. & Parameter identification should be assessed using held-out motions, physical measurements, and observation error, often with force or tactile information where vision alone is weak. & The current flat $E$ profile is a reason to add action diversity, independent measurements, and uncertainty analysis rather than report a single scalar as a material constant.\\
+\bottomrule
+\end{longtable}
+
+\section{Novelty assessment}
+
+\begin{tabularx}{\linewidth}{p{0.23\linewidth}p{0.13\linewidth}Y}
+\toprule
+\textbf{Dimension} & \textbf{Current assessment} & \textbf{Reason}\\
+\midrule
+New continuum mechanics or constitutive law & \statuslow & The current model is a standard particle-grid continuum simulation with conventional elastic/viscoelastic and optional plasticity controls. No new governing equation, discretization, convergence result, or material law has been identified.\\
+Closed-solid SDF tool contact & \statuslow & Signed-distance collision from STL geometry, normals from SDF gradients, grid/particle contact, and contact padding are known simulation techniques. Their use with registered real tools can still matter empirically, but the reviewed repository does not yet provide independent tool-metrology validation.\\
+Friction method & \statuslow & The current tool/floor friction values act as velocity multipliers; they do not define a normal-force-dependent Coulomb cone or stick--slip regimes. No fitted friction value has been validated, and the attempted friction report failed.\\
+Differentiable inverse identification & \statuslow & The current pipeline is subprocess-based and derivative-free. DPSI, PAC-NeRF, GIC, ChainQueen-related work, and EMPM already cover more direct differentiable or visual inverse-simulation territory.\\
+Real-robot visual digital twin & \statusmedium & The combination of recorded tool replay, calibrated solid geometry, reconstructed initial dough, depth/point-cloud scoring, and held-out windows could be useful. It is only a potential contribution until tested across an adequate, independent trial set.\\
+Reproducibility / provenance & \statusmedium & Manifests, hashes, argument fingerprints, cache keys, collision-solid fingerprints, diagnostics, and split-aware reports are valuable research practice. They become a research contribution only if they enable a useful released benchmark or a demonstrated reliability result.\\
+Empirical evidence & \statuslow & One Episode 18 calibration has an acknowledged flat minimum. The contact skin is operator selected. The current friction sweep is invalid. There is no verified multi-trial baseline comparison or aggregate uncertainty result.\\
+\bottomrule
+\end{tabularx}
+
+\subsection*{Potential publishable contributions, if supported by experiments}
+
+The following are defensible directions. Each needs a stated hypothesis, a method, comparisons, and quantitative evidence.
+
+\begin{enumerate}[leftmargin=1.45em]
+  \item \textbf{A calibrated solid-SDF contact study for recorded dual-tool dough manipulation.} Hypothesis: closed-solid SDF contact with a specified numerical skin predicts held-out 3-D dough geometry and contact outcomes better than a box proxy, no tool collision, and a hand-tuned alternative. The contribution would be the measured result and the protocol, not the fact that an SDF was used.
+  \item \textbf{An identifiability and uncertainty study for forward MPM calibration from reconstructed dough observations.} The current flat modulus profile is potentially useful evidence. A paper could ask which motion classes, observations, and parameter groups make $E$, damping, plasticity, and friction identifiable, and report profile losses, confidence intervals, and cross-action prediction. This would be stronger than presenting one minimum as a material measurement.
+  \item \textbf{A public benchmark and reproducible evaluation package.} If the data, tool geometry, camera/robot calibration, commands, fixed collision solids, evaluation program, and expected results can be released, TaichiDough could become a useful benchmark for physical digital twins of deformable food-like material. This requires a clear license and a runnable package.
+  \item \textbf{A transparent derivative-free calibration protocol.} Coarse-to-fine forward sweeps are valid for this simulator and can support an empirical contribution if the paper records searched ranges, sampling and refinement rules, fixed parameters, loss components, compute budget, boundary-minimum handling, numerical-resolution sensitivity, and uncertainty across independent episodes. The sweep itself is not algorithmic novelty; its value would be a reliable real-data calibration and evaluation protocol.
+\end{enumerate}
+
+\section{Publication readiness}
+
+\subsection{Why the current evidence is insufficient for a research journal}
+
+A research article needs a claim that survives comparison with prior work. The current system has several positive engineering elements, but the present evidence has the following gaps:
+
+\begin{enumerate}[leftmargin=1.45em]
+  \item \textbf{No clearly new method.} The main components are already represented in MPM, visual system-identification, contact, and real deformable-manipulation literature.
+  \item \textbf{Insufficient independent evaluation.} Frames within one recorded episode are correlated. Holding out the late frames is good practice, but it is not equivalent to testing unseen actions, velocities, tool trajectories, initial shapes, material batches, or sessions.
+  \item \textbf{No reported baseline study.} A no-tool versus SDF protocol exists, but no completed paired result was found. A paper needs quantitatively reported comparisons across trials. Relevant baselines include no collision, box proxy, SDF with a fixed default skin, uncalibrated parameters, hand-tuned parameters, and an appropriate learned or prior simulator where feasible.
+  \item \textbf{Parameter non-identifiability.} The available calibration rejects the chosen $E$ because the near-optimal set spans a large modulus range. A whole-window bootstrap over one training window cannot establish material-parameter uncertainty across trials.
+  \item \textbf{Contact and friction are not fully specified.} A manuscript must give equations or exact pseudocode for normal response, tangential response, tool velocity coupling, padding, restitution/absorption, and the timing of grid/particle updates. It must also state whether the law is a Coulomb model, a velocity blend, or another approximation.
+  \item \textbf{Execution is not yet portable.} The failed sweep reveals hard-coded absolute paths in an experiment command. Reproducibility requires a fresh checkout or a documented container/environment to run all results without path repair.
+\end{enumerate}
+
+\subsection{Minimum experimental package for a serious submission}
+
+\begin{tabularx}{\linewidth}{p{0.27\linewidth}Y}
+\toprule
+\textbf{Requirement} & \textbf{What to demonstrate}\\
+\midrule
+Independent real trials & Multiple recordings spanning at least several action classes, tool motions, speeds, initial shapes, and recording sessions. Split by complete trial, not by randomly mixed frames. Reserve action types or complete trajectories for final testing.\\
+Geometry and timing validation & Quantify camera-to-robot and tool-to-mesh registration error, replay timing error, initial reconstruction error, and mesh/SDF resolution error. A shape-matching result cannot isolate material parameters if these errors are unknown.\\
+Metrics & Report symmetric 3-D geometry error (with a clearly stated correspondence or distance), depth error, mask overlap, contact/penetration proxy, and runtime. Use metrics in physical units when possible. Do not rely on a single weighted aggregate without its components.\\
+Baselines and ablations & Compare SDF/no contact/box proxy; padding choices; calibrated versus default material values; fitted versus fixed friction; and loss components. Keep all selection choices inside training data.\\
+Statistical analysis & Treat a recording or trial as the independent unit. Report central tendency and uncertainty across trials, paired comparisons where appropriate, and predeclared selection criteria. Profile losses and multi-start results should accompany any reported physical parameter.\\
+Failure analysis & Include failures from occlusion, lost observations, registration error, stick-slip, contact onset, extreme deformation, changing material batch, and unobserved tool contact. Explain what fails and why.\\
+Reproducibility & Release exact commands, data splits, calibration records, source and binary mesh checksums, deterministic seeds, environment specification, output schemas, and a one-command reproduction path. Test from a clean clone and a second machine/account.\\
+\bottomrule
+\end{tabularx}
+
+\subsection{A practical paper structure after validation}
+
+A credible paper could be framed as \emph{``Reproducible visual calibration and held-out prediction of real dual-tool dough manipulation with solid-SDF MPM contact.''} The paper should lead with a testable empirical question, not with the toolchain. A suitable structure is:
+
+\begin{enumerate}[leftmargin=1.45em]
+  \item Define the model, coordinate frames, tool geometry, SDF construction, normal and tangential contact response, material parameters, and observation loss.
+  \item State the calibration protocol before reporting results: training trials, held-out trials, search ranges, numerical assumptions, and selection rule.
+  \item Compare against the stated baselines across all independent held-out trials.
+  \item Report whether solid-SDF contact provides a statistically and practically meaningful prediction improvement, and where it does not.
+  \item Report parameter profiles and uncertainty. If parameters are not identifiable, say so and report effective prediction parameters rather than physical constants.
+  \item Release the benchmark and provide a reproduction script that has passed a clean-run test.
+\end{enumerate}
+
+\section{Venue assessment}
+
+\begin{tabularx}{\linewidth}{p{0.27\linewidth}p{0.19\linewidth}Y}
+\toprule
+\textbf{Venue type} & \textbf{Current fit} & \textbf{Condition for a credible submission}\\
+\midrule
+Top robotics research journals or conferences (IJRR, RA-L/ICRA, RSS) & \statuslow & Needs a clearly distinct technical contribution or unusually strong real-robot evidence, direct comparison with the closest MPM/visual system-identification work, and a broad experimental evaluation. The current evidence is well below this threshold.\\
+Applied robotics / manufacturing / simulation journal & \statuslow & Could become plausible for a focused applied study after multi-trial validation, metrology, ablations, uncertainty analysis, and a clear target application such as robotic food handling or shaping. The journal choice should match the validated application, not just the simulator.\\
+Computer graphics / computational mechanics venue & \statuslow & Would require a numerical-method, contact-method, constitutive-model, differentiable-rendering, or accuracy/stability contribution. The present work does not claim one.\\
+Research software paper (JOSS, SoftwareX-type venue) & \statusmedium & Possible after packaging as usable open software: public release, installation instructions, documentation, automated tests, example data or download script, license, contribution path, and evidence that the package solves a research need. JOSS also asks authors to explain research value and compare existing alternatives [15]. It is not a substitute for a research-result paper.\\
+Workshop / thesis chapter & \statusmedium & A strong near-term route for feedback if framed honestly as an in-progress reproducible pipeline and accompanied by preliminary ablations. It should not claim a validated physical material estimate until the identifiability issue is resolved.\\
+\bottomrule
+\end{tabularx}
+
+\section{Claims that are safe now, and claims to avoid}
+
+\textbf{Safe, appropriately qualified claims now}
+\begin{itemize}[leftmargin=1.45em]
+  \item TaichiDough implements a forward MPM-based dough simulation pipeline with recorded tool replay, closed-mesh SDF collision options, reconstruction-derived initialization, and depth/point-cloud comparison.
+  \item It records manifests, hashes, collision settings, and split-aware calibration artifacts to make specific runs inspectable.
+  \item On the reviewed Episode 18 artifact, a discrete training-loss search produced an effective modulus candidate but also found that the minimum was flat; the result is therefore marked for review rather than accepted as a physical constant.
+  \item A held-out temporal window is part of the calibration protocol, although a stronger independent-trial study is still required.
+\end{itemize}
+
+\textbf{Claims to avoid unless new evidence is added}
+\begin{itemize}[leftmargin=1.45em]
+  \item ``A novel MPM method'' or ``a novel SDF contact model.''
+  \item ``First visual MPM material calibration for robot manipulation'' or ``first dough digital twin.'' DPSI, PAC-NeRF, GIC, EMPM, RoboCraft, and RoboCook make such priority claims untenable.
+  \item ``Differentiable system identification.'' The current fit is derivative-free and the simulator/loss is not end-to-end differentiable.
+  \item ``Measured Young's modulus of dough.'' The present scalar is an effective model parameter with a broad near-minimum region.
+  \item ``Universal plastic friction coefficient'' or ``Coulomb friction'' without an exact law, validation, and identifiability analysis.
+  \item ``Reproducible'' without a clean-clone rerun. Current hard-coded path failure is contrary evidence.
+\end{itemize}
+
+\section*{Conclusion}
+
+TaichiDough has a good technical base for a publishable project, especially its attempt to link scene calibration, tool replay, SDF collision, material calibration, train/held-out evaluation, and artifact provenance. At present, those elements constitute a promising engineering system rather than a demonstrated scientific contribution. The closest literature already covers differentiable MPM, visual physical parameter estimation, MPM robot contact, and real elasto-plastic manipulation.
+
+The most credible path is to make the empirical question precise: does the calibrated solid-SDF MPM model improve held-out prediction of real dough manipulation over simpler collision and calibration baselines? If the answer is supported across independent trials with uncertainty and a portable release, TaichiDough can make a useful systems, empirical, or software contribution. If the goal is a high-tier robotics or computational-methods paper, it also needs a distinct method or a much stronger empirical result than the present single-episode calibration.
+
+\newpage
+\section*{References and primary links}
+\small
+\begin{enumerate}[leftmargin=1.6em,label={[\arabic*]}]
+\item Y. Hu, T. Du, J. B. Tenenbaum, J. B. Y. Tai, D. Matusik, and W. Matusik. \emph{ChainQueen: A Real-Time Differentiable Physical Simulator for Soft Robotics}. ICRA, 2019, pp. 6265--6271. DOI: \url{https://doi.org/10.1109/ICRA.2019.8794333}. Preprint: \url{https://arxiv.org/abs/1810.01054}.
+\item A. Spielberg, T. Du, Y. Hu, D. Rus, W. Matusik, and collaborators. \emph{Advanced Soft Robot Modeling in ChainQueen}. Robotica 41(1), 74--104, 2023. DOI: \url{https://doi.org/10.1017/S0263574721000722}.
+\item X. Yang, Z. Ji, and Y.-K. Lai. \emph{Differentiable Physics-based System Identification for Robotic Manipulation of Elastoplastic Materials}. International Journal of Robotics Research 44(13), 2126--2155, 2025. DOI: \url{https://doi.org/10.1177/02783649251334661}. Preprint: \url{https://arxiv.org/abs/2411.00554}.
+\item X. Li and collaborators. \emph{PAC-NeRF: Physics Augmented Continuum Neural Radiance Fields for Geometry-Agnostic System Identification}. ICLR, 2023. Primary record: \url{https://openreview.net/forum?id=tVkrbkz42vc}.
+\item J. Cai and collaborators. \emph{GIC: Gaussian-Informed Continuum for Physical Property Identification and Simulation}. NeurIPS, 2024. DOI: \url{https://doi.org/10.52202/079017-2388}. Primary record: \url{https://proceedings.neurips.cc/paper_files/paper/2024/hash/89379d5fc6eb34ff98488202fb52b9d0-Abstract-Conference.html}.
+\item H. Jiang and collaborators. \emph{PhysTwin: Physics-Informed Reconstruction and Simulation of Deformable Objects from Videos}. ICCV, 2025, pp. 7219--7230. DOI: \url{https://doi.org/10.1109/ICCV51701.2025.00678}. Project: \url{https://jianghanxiao.github.io/phystwin-web/}.
+\item Y. Chen, Y. Hu, L. Sun, T. Kusnur, L. Herlant, and C. Jiang. \emph{EMPM: Embodied MPM for Modeling and Simulation of Deformable Objects}. IEEE Robotics and Automation Letters 11(4), 4179--4186, 2026. DOI: \url{https://doi.org/10.1109/LRA.2026.3664610}. Preprint: \url{https://arxiv.org/abs/2601.17251}.
+\item M. Liu, G. Yang, S. Luo, and L. Shao. \emph{SoftMAC: Differentiable Soft Body Simulation with Forecast-based Contact Model and Two-way Coupling with Articulated Rigid Bodies and Clothes}. IROS, 2024, pp. 12008--12015. DOI: \url{https://doi.org/10.1109/IROS58592.2024.10801308}. Project: \url{https://minliu01.github.io/SoftMAC/}.
+\item Y. Li, T. Du, K. Wu, J. Xu, and W. Matusik. \emph{DiffCloth: Differentiable Cloth Simulation with Dry Frictional Contact}. ACM Transactions on Graphics 42(1), Article 2, 2022. DOI: \url{https://doi.org/10.1145/3527660}. Preprint: \url{https://arxiv.org/abs/2106.05306}.
+\item H. Shi, H. Xu, Z. Huang, Y. Li, and J. Wu. \emph{RoboCraft: Learning to See, Simulate, and Shape Elasto-Plastic Objects in 3D with Graph Networks}. International Journal of Robotics Research 43(4), 533--549, 2024. DOI: \url{https://doi.org/10.1177/02783649231219020}. RSS version: \url{https://doi.org/10.15607/RSS.2022.XVIII.008}.
+\item H. Shi, H. Xu, S. Clarke, Y. Li, and J. Wu. \emph{RoboCook: Long-Horizon Elasto-Plastic Object Manipulation with Diverse Tools}. CoRL, PMLR 229, 642--660, 2023. \url{https://proceedings.mlr.press/v229/shi23a.html}.
+\item S. Yao and K. Hauser. \emph{Estimating Tactile Models of Heterogeneous Deformable Objects in Real Time}. ICRA, 2023, pp. 12583--12589. DOI: \url{https://doi.org/10.1109/ICRA48891.2023.10160731}.
+\item Z. Si and collaborators. \emph{DIFFTactile: A Physics-based Differentiable Tactile Simulator for Contact-rich Robotic Manipulation}. ICLR, 2024. Primary record: \url{https://openreview.net/forum?id=eJHnSg783t}.
+\item P. Boonvisut and M. C. Cavusoglu. \emph{Identification and Active Exploration of Deformable Object Boundary Constraints through Robotic Manipulation}. International Journal of Robotics Research 33(11), 1446--1461, 2014. DOI: \url{https://doi.org/10.1177/0278364914536939}.
+\item Journal of Open Source Software. \emph{Review Checklist}. Official reviewer guidance, accessed 11 September 2026. \url{https://joss.readthedocs.io/en/latest/review_checklist.html}.
+\item P. Sundaresan, R. Antonova, and J. Bohg. \emph{DiffCloud: Real-to-Sim from Point Clouds with Differentiable Simulation and Rendering of Deformable Objects}. IROS, 2022, pp. 10828--10835. DOI: \url{https://doi.org/10.1109/IROS47612.2022.9981101}. Project: \url{https://diffcloud.github.io/}.
+\item A. Fabbri and C. Cevoli. \emph{Estimation of Semolina Dough Rheological Parameters by Inversion of a Finite Elements Model}. Journal of Agricultural Engineering 46(3), 95--99, 2015. DOI: \url{https://doi.org/10.4081/jae.2015.469}.
+\item T. Huang and collaborators. \emph{PlasticineLab: A Soft-Body Manipulation Benchmark with Differentiable Physics}. ICLR, 2021. Primary record: \url{https://openreview.net/forum?id=xCcdBRQEDW}. Preprint: \url{https://arxiv.org/abs/2104.03311}.
+\item Y. Hu and collaborators. \emph{DiffTaichi: Differentiable Programming for Physical Simulation}. ICLR, 2020. Primary record: \url{https://openreview.net/forum?id=B1eB5xSFvr}.
+\item Y. Liu and collaborators. \emph{ILS-MPM: Implicit Level-Set Material Point Method for Contact and Friction}. Computer Methods in Applied Mechanics and Engineering, 2020. DOI: \url{https://doi.org/10.1016/j.cma.2020.113168}.
+\item Y. Yoon and H. Lim. \emph{Cloth Parameter Optimization for Real-to-Simulation Calibration}. Journal of Computational Design and Engineering, 2025. DOI: \url{https://doi.org/10.1093/jcde/qwaf065}.
+\end{enumerate}
+
+\vfill
+\footnotesize\raggedright\textit{Repository evidence reviewed:} the simulator, calibration controller, material-loss utilities, friction runner, tool-collision mesh manifest, scene/reconstruction utilities, and Episode 18 local calibration and evaluation artifacts present in the working tree on 11 September 2026. Exact file names and selected source locations are given in the report text.
+
+\end{document}
