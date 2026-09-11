@@ -13,6 +13,7 @@ from sweep_episode18_tool_friction import (
     REPLAY_END_FRAME,
     build_case_argv,
     friction_cases,
+    rebase_workspace_paths,
     validate_baseline,
 )
 
@@ -38,6 +39,17 @@ class Episode18ToolFrictionSweepTests(unittest.TestCase):
         self.assertEqual(argv[argv.index("--replay-end-frame") + 1], str(REPLAY_END_FRAME))
         self.assertEqual(argv[argv.index("--output-dir") + 1], "/simulation")
         self.assertEqual(argv[argv.index("--unrelated") + 1], "keep-me")
+
+    def test_rebases_saved_workspace_paths_to_current_checkout(self):
+        saved = [
+            "python3", "/home/antonio/diplomski_antonio/diplomski/TaichiDough/scripts/taichi_viscoelastic_mpm_scene.py",
+            "--ur-tool-mesh", "/home/antonio/diplomski_antonio/diplomski/TaichiDough/meshes/ur_spathla.stl",
+            "--replay-episode", "/home/antonio/diplomski_antonio/diplomski/data/episode18_kugla",
+        ]
+        rebased = rebase_workspace_paths(saved, Path("/mnt/Data/studenti/antonio_skara/TaichiDough"))
+        self.assertEqual(rebased[1], "/mnt/Data/studenti/antonio_skara/TaichiDough/scripts/taichi_viscoelastic_mpm_scene.py")
+        self.assertEqual(rebased[rebased.index("--ur-tool-mesh") + 1], "/mnt/Data/studenti/antonio_skara/TaichiDough/meshes/ur_spathla.stl")
+        self.assertEqual(rebased[rebased.index("--replay-episode") + 1], "/mnt/Data/studenti/antonio_skara/data/episode18_kugla")
 
     def test_rejects_non_sdf_or_unrequested_friction(self):
         baseline = self.baseline()

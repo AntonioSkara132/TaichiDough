@@ -50,6 +50,29 @@ def load_command(path: Path) -> list[str]:
     return value
 
 
+def rebase_workspace_paths(argv: Sequence[str], target_repo: Path | None = None) -> list[str]:
+    """Map paths under the saved command's workspace onto this checkout's workspace."""
+    if len(argv) < 2 or not Path(argv[1]).is_absolute():
+        return list(argv)
+    source_repo = Path(argv[1]).parent.parent
+    source_workspace = source_repo.parent
+    target_repo = (target_repo or Path(__file__).resolve().parents[1]).resolve()
+    target_workspace = target_repo.parent
+    result: list[str] = []
+    for value in argv:
+        path = Path(value)
+        if not path.is_absolute():
+            result.append(value)
+            continue
+        try:
+            relative = path.relative_to(source_workspace)
+        except ValueError:
+            result.append(value)
+        else:
+            result.append(str(target_workspace / relative))
+    return result
+
+
 def validate_baseline(argv: Sequence[str]) -> None:
     if int(required_option(argv, "--grid")) != 48:
         raise ValueError("Friction sweep requires --grid 48")
@@ -124,16 +147,20 @@ def write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n")
 
 
-def execute_case(root: Path, baseline: Sequence[str], case: Mapping[str, Any], timeout_s: float, resume: bool) -> dict[str, Any]:
+def execute_case(root: Path, baseline: Sequence[str], case: Mapping[str, Any], timeout_s: float, resume: bool, retry_failures: bool) -> dict[str, Any]:
     case_dir = root / "cases" / str(case["id"])
     simulation_dir = case_dir / "simulation"
     evaluation_dir = case_dir / "evaluation"
     result_path = case_dir / "result.json"
-    if result_path.is_file() and resume:
-        return json.loads(result_path.read_text())
-    if case_dir.exists():
-        raise ValueError(f"Case directory already exists: {case_dir}; use --resume")
-    case_dir.mkdir(parents=True)
+    if result_path.is_file():
+        previous = json.loads(result_path.read_text())
+        if resume and previous.get("status") == "complete":
+            return previous
+        if not retry_failures:
+            raise ValueError(f"Case result already exists: {result_path}; use --resume for complete cases or --retry-failures to rerun failed cases")
+    if case_dir.exists() and not retry_failures:
+        raise ValueError(f"Case directory already exists: {case_dir}; use --resume or --retry-failures")
+    case_dir.mkdir(parents=True, exist_ok=True)
     simulator = build_case_argv(baseline, float(case["tool_contact_friction"]), simulation_dir)
     evaluator = evaluator_argv(baseline, simulation_dir, evaluation_dir)
     write_json(case_dir / "simulator_command.json", {"argv": simulator})
@@ -183,6 +210,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=root / "output" / "episode18_e130579_dx8_tool_friction_sweep")
     parser.add_argument("--timeout-s", type=float, default=7200.0)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--retry-failures", action="store_true")
     parser.add_argument("--validate-only", action="store_true")
     return parser.parse_args(argv)
 
@@ -191,7 +219,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     if not math.isfinite(args.timeout_s) or args.timeout_s <= 0:
         raise ValueError("--timeout-s must be positive and finite")
-    baseline = load_command(args.source_command)
+    baseline = rebase_workspace_paths(load_command(args.source_command))
     validate_baseline(baseline)
     if args.validate_only:
         print(json.dumps({"status": "validated", "friction_values": FRICTION_VALUES}, indent=2))
@@ -200,7 +228,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if root.exists() and not args.resume:
         raise ValueError(f"Output directory already exists: {root}; use --resume")
     root.mkdir(parents=True, exist_ok=True)
-    cases = [execute_case(root, baseline, case, args.timeout_s, args.resume) for case in friction_cases()]
+    cases = [execute_case(root, baseline, case, args.timeout_s, args.resume, args.retry_failures) for case in friction_cases()]
     report = {
         "schema": "taichidough/episode18-tool-friction-sweep/v1",
         "fixed_parameters": {

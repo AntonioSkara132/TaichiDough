@@ -1,0 +1,56 @@
+{
+  "cases": [
+    {
+      "evaluator": null,
+      "failure_reason": "command exited with status 2",
+      "id": "friction_0p1",
+      "loss": null,
+      "simulator": {
+        "duration_s": 0.010975920013152063,
+        "failure_reason": "command exited with status 2",
+        "returncode": 2
+      },
+      "status": "failed",
+      "tool_contact_friction": 0.1
+    },
+    {
+      "evaluator": null,
+      "failure_reason": "command exited with status 2",
+      "id": "friction_0p2",
+      "loss": null,
+      "simulator": {
+        "duration_s": 0.010539419949054718,
+        "failure_reason": "command exited with status 2",
+        "returncode": 2
+      },
+      "status": "failed",
+      "tool_contact_friction": 0.2
+    },
+    {
+      "evaluator": null,
+      "failure_reason": "command exited with status 2",
+      "id": "friction_0p3",
+      "loss": null,
+      "simulator": {
+        "duration_s": 0.01056184503249824,
+        "failure_reason": "command exited with status 2",
+        "returncode": 2
+      },
+      "status": "failed",
+      "tool_contact_friction": 0.3
+    }
+  ],
+  "fixed_parameters": {
+    "grid": 48,
+    "tool_collision": "sdf",
+    "tool_contact_padding_m": 0.0026041666666666665,
+    "tool_sdf_resolution": 64,
+    "youngs_modulus_pa": 130579.320726
+  },
+  "limitation": "This compares effective tool-contact friction for this fixed Episode 18 numerical setup; it is not a universal plastic friction coefficient.",
+  "schema": "taichidough/episode18-tool-friction-sweep/v1",
+  "training_source_frame_range_inclusive": [
+    1,
+    60
+  ]
+}

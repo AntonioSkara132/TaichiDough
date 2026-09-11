@@ -1,0 +1,4 @@
+id,tool_contact_friction,status,weighted_total,failure_reason
+friction_0p1,0.1,failed,,command exited with status 2
+friction_0p2,0.2,failed,,command exited with status 2
+friction_0p3,0.3,failed,,command exited with status 2
