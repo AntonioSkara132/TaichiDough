@@ -19,7 +19,7 @@ This record concerns the experimental copy, not the independently corrected prod
 | Synthetic full-objective derivatives | `runs/synthetic_stable_normalization_gradient/result.json` | Current stable solver: all five coordinate and two directional FD checks pass for the 10 mm predictor. All fixed 2 mm target hashes match the preserved targets; source hashes were unchanged during the check. |
 | Synthetic fitting | `runs/tests/synthetic_412d75dddf7f422198aa6a0821516be8/result.json` | Current stable solver: 12 steps / 4 accepted updates reduce training by 33.18%; held-out loss also decreases. All eight synthetic tests pass, retaining the >1% assertion. Longer earlier evidence and the original 2 mm failure are described below. No unique parameter recovery claim. |
 | Real backward | `runs/episode18_gradient_stable_f32/result.json` | CPU f32 frames 0–2 / 334 steps complete with finite E/ν/viscosity derivatives and exact checkpoint/loss recomputation. A prior f64 short run also passed. This interval has floor response but no tool contacts; full-horizon backward and real fitting remain unqualified. |
-| CUDA | Remote user-provided log, 2026-09-12 | CUDA initializes and completes the 10,006-step forward replay. The first full backward evaluation fails because contact/yield counts differ during checkpoint recomputation at step 9,774. No optimizer update is accepted. Full CUDA calibration remains unqualified; the log does not establish whether GPU accumulation order or another replay issue caused the mismatch. |
+| CUDA | Remote user-provided fit/diagnostic logs, 2026-09-12 | Full forward replay completes, but two initial backward evaluations fail at steps 9,774 and 9,754 in segment `[9728, 9792)`. No optimizer update is accepted. Three later isolated diagnostic probes first differ at grid reduction, after identical restored inputs and material intermediates. Repeated segment states differ, while counts match in that diagnostic. Full CUDA calibration remains unqualified. |
 
 ## Full Episode 18 forward comparison
 
@@ -111,13 +111,55 @@ The selected training loss can be below the truth-reference loss because paramet
 
 The user-provided full CUDA f32 log from 2026-09-12 reaches frame 60 / step 10,006, then rejects the initial objective while recomputing step 9,774 within segment `[9728, 9792)`. Earlier segments may already have been differentiated, but the rejected evaluation supplies no usable complete gradient and no optimizer update is accepted.
 
-Source inspection found complete restoration of x/v/C/F/Jp, per-step control uploads, overwritten material/G2P scratch and cleared grid accumulators. Contested floating-point P2G additions are the leading explanation, not a confirmed remote measurement. Repeating from identical state/control and comparing material scratch before P2G with grid mass/momentum after P2G is needed to confirm it. Reverse-step scratch is recomputed again, so shorter segments alone do not guarantee consistent adjoint intermediates.
+A second user-provided full CUDA attempt rejects recomputation at step 9,754 in the same segment, with zero accepted updates. The subsequent forward-only diagnostic at remote `runs/recompute_20260912T091744_58db44/` repeats that segment and independently repeats step 9,754 three times. Every isolated probe restores identical state bytes and has identical trial/projected deformation, Jp history, rotation and stress affine arrays. Its first recorded difference is `grid_reduction` (grid mass/momentum), isolating the observed non-repeatability to P2G reduction.
+
+All three repeated segments retain matching aggregate contact counts but differ in state bytes. Their maximum x component difference is 1.1920929e-7 m (0.119 µm); maximum C difference across the repetitions is 1.4542602e-6. Jp is unchanged. The diagnostic does not reproduce the prior contact-count flip. Readbacks can change GPU scheduling, and matching aggregate counts do not establish identical contact identities. Reverse-step scratch is recomputed again, so shorter segments alone do not guarantee consistent adjoint intermediates.
 
 Exact count checks remain enabled. The new checkpoint diagnostics identify changed counts, both values and segment limits; the CLI stores those details and an invalid-initial result without claiming successful backward execution. Analytic checkpoint and mocked CLI tests pass in `runs/cuda_recompute_diagnostics_checks/`. Those tests verify reporting and rejection, not a fix for CUDA nondeterminism.
 
 The targeted `recompute_check.py` tool repeats the failing interval and independently repeats the chosen substep from its original input. It preserves full state/control bytes and compares material scratch before interpreting differences in grid mass/momentum. All 49 tests across checkpoint, CLI and diagnostic suites pass in `runs/cuda_recompute_diagnostics_final/`. A real four-particle CPU f64 forward-only diagnostic, including nonzero-slot restoration and state-buffer rollover, also passes exact repeated-state/count/intermediate comparisons at `runs/recompute_diagnostic_real_cpu_smoke/result.json`; its source identity is unchanged during execution. These tests do not reproduce or fix the remote CUDA failure.
 
 No full real CPU gradient or deterministic CUDA implementation has been qualified. Single-thread CPU removes competing scatter additions and is the next reference test. CUDA seeds, synchronization, one-thread blocks or float64 alone are not determinism guarantees.
+
+## Optional serial P2G
+
+Solver SHA-256 `3960d45a81d7ab406f029af50669d99d7254557a36bdbe2bc50fcc9cd5cae8d8` adds exactly one solver line: `ti.loop_config(serialize=ti.static(self.config.p2g_mode == "serial"))` before the existing P2G particle loop. Removing that line exactly recovers solver `75110847…`. The default is atomic. This changes accumulation order only when selected; no material/contact equation, mass threshold, checkpoint check or memory allocation is changed.
+
+### CPU solver derivatives and replay
+
+All four targeted tests pass without failures, errors or skips in `runs/serial_p2g_cpu_tests_20260912T094240_b4ec71/result.json`. Pinned solver/spectral/state/test hashes remain unchanged during execution:
+
+- Actual P2G on CPU f32 with four threads: cancellation-sensitive inputs produce the expected sequential result on repeated calls; generated velocity adjoints match analytical values.
+- CPU f64 atomic/serial elastic, plastic/floor and SDF forward arrays agree at rtol/atol 2e-12. Repeated serial five-step trajectories match all stored state/grid bytes exactly.
+- Five-step serial plastic/Jp material and all-state derivatives pass finite differences using the existing tolerances. Atomic/serial numerical gradients agree at rtol 1e-9 / atol 1e-10.
+- Serial moving/rotating two-tool SDF parameter and state derivatives pass finite differences.
+
+The full log retains Taichi generated-gradient warnings from the particle/grid kernels. Their presence alongside passing short tests does not establish validity for every input or full-horizon CUDA replay.
+
+Mode configuration, CLI propagation and changed-mode resume refusal pass 56 nonkernel tests at `runs/serial_p2g_cli_checks/`. Backend CLI propagation and failure/report tests pass separately at `runs/serial_p2g_backend_cli_checks/`. These mocked tests do not execute simulator kernels.
+
+### Actual Vulkan solver checks
+
+`runs/serial_p2g_vulkan_backend/backend_check.json` passes all 20 unchanged same-precision CPU comparisons with serial P2G. The three-step, four-particle fixture includes active stretch plasticity/Jp, viscosity, moving/rotating SDF tools, floor response, observation loss and all-state/material reverse differentiation. Actual architecture is `Arch.vulkan`, with an increased per-process amdgpu compute counter of 44,938,421 ns. Solver/source hashes remain fixed. Maximum position-component difference is 8.94e-8 m; maximum scaled material/contact derivative difference is 3.48e-7. This checks numerical gradient agreement, not bitwise equality of repeated gradients.
+
+The separate forward-only diagnostic at `runs/vulkan_serial_recompute_20260912T100139_f4f194/result.json` uses the same contact/plastic/Jp fixture, start step 2, interval length 3, probe step 3, three repeats and layout length 4. Every repeated state and grid array matches exactly. Every isolated probe matches restored input, all material intermediates and output bytes; all recorded maximum differences are zero. Aggregate counts also match. Hardware activity and unchanged experiment source identity are recorded; `reproduce.py` is archived alongside the results. This does not exercise loss or reverse differentiation.
+
+Both checks use tiny fixtures, not the 24,000-particle Episode 18 trajectory. Neither establishes full-episode or CUDA qualification.
+
+### Isolated CPU/Vulkan serialization and cost
+
+`runs/serial_p2g_microprobe_20260912_v1/summary.json` and `evidence_index.json` preserve the script, results and exact compiler-IR excerpts. For a minimal scalar scatter, serial mode compiles to one serial offload with a nested particle loop and zero atomic additions in both forward and generated reverse, on CPU and Vulkan. Atomic mode retains a parallel range offload. A separate 27-neighbor scatter probe passes order-sensitive, analytical and finite-difference checks.
+
+At 24,000 particles/grid48, five warmed repetitions produce one forward and one adjoint hash per backend in serial mode; atomic forward produces five distinct hashes per backend. This result concerns that scatter probe, not every solver or observation-loss reduction.
+
+| Backend | Atomic forward | Serial forward | Atomic reverse | Serial reverse |
+|---|---:|---:|---:|---:|
+| CPU, 8 threads | 3.170 ms | 1.047 ms | 0.959 ms | 1.904 ms |
+| Vulkan | 1.383 ms | 161.820 ms | 5.352 ms | 36.721 ms |
+
+These are medians of five warmed isolated scatter calls, excluding compilation, clearing/uploads and all other stages. Vulkan serial is 117× slower forward and 6.86× slower reverse. They are not full-solver or CUDA timing estimates. Local CUDA support is unavailable; `cuda_unavailable.json` records that initialization failure rather than substituting a backend.
+
+The option serializes P2G's forward and generated reverse particle loops. Other shared parameter-gradient and renderer/loss reductions remain parallel where they were parallel before. No bitwise whole-gradient, full-episode or CUDA qualification follows from these results.
 
 ## Interpreting execution records
 

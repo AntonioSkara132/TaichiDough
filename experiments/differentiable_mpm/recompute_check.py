@@ -25,7 +25,7 @@ import uuid
 import numpy as np
 
 from .results import EXPERIMENT_ROOT, RUN_ROOT, RunStore, source_identity
-from .state import ParticleState, STATE_NAMES
+from .state import ParticleState, STATE_NAMES, P2G_MODES
 
 
 SCHEMA = "taichidough/recompute-diagnostic/v1"
@@ -429,6 +429,8 @@ def parse_args(argv=None):
     parser.add_argument("--path", action="append", default=[], metavar="NAME=PATH")
     parser.add_argument("--backend", choices=("cpu", "cuda", "vulkan"))
     parser.add_argument("--precision", choices=("f32", "f64"))
+    parser.add_argument("--p2g-mode", choices=P2G_MODES,
+                        help="Override particle-to-grid transfer: atomic (default) or fixed-order serial; serial can be slower")
     parser.add_argument("--reference-policy", choices=("strict", "frozen"), default="strict")
     parser.add_argument("--cpu-threads", type=int, default=1)
     parser.add_argument("--debug", action="store_true")
@@ -464,6 +466,8 @@ def run(args):
         config.backend = args.backend
     if args.precision is not None:
         config.simulation["precision"] = args.precision
+    if args.p2g_mode is not None:
+        config.simulation["p2g_mode"] = args.p2g_mode
     config.validate()
     spec = DiagnosticSpec(args.start_step, args.steps, args.probe_step, args.repeats, config.segment_length)
     source = source_identity()
@@ -482,6 +486,8 @@ def run(args):
             print(PURPOSE.upper(), flush=True)
             print(f"Run directory: {store.path}", flush=True)
             print("Settings: " + json.dumps(asdict(spec), sort_keys=True), flush=True)
+            print(f"P2G mode: {config.simulation.get('p2g_mode', 'atomic')} "
+                  "(transfer mode only; other reductions are unchanged)", flush=True)
             with reference_policy(args.reference_policy):
                 verification = verify_reference()
                 store.write_json("reference_verification.json", verification)

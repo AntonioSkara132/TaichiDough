@@ -142,6 +142,46 @@ class CalibrateCliTests(unittest.TestCase):
         self.assertEqual(args.end_frame, 2)
         self.assertTrue(args.finite_difference)
 
+    def test_p2g_mode_validation_and_config_fingerprint(self):
+        self.assertEqual(SimulationConfig(n_particles=1).p2g_mode, 'atomic')
+        self.assertEqual(SimulationConfig(n_particles=1, p2g_mode='serial').p2g_mode, 'serial')
+        for value in ('parallel', '', None, True, 1, []):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, 'p2g_mode'):
+                SimulationConfig(n_particles=1, p2g_mode=value)
+        atomic = deepcopy(self.config)
+        atomic.simulation['p2g_mode'] = 'atomic'
+        serial = deepcopy(self.config)
+        serial.simulation['p2g_mode'] = 'serial'
+        atomic.validate()
+        serial.validate()
+        self.assertNotEqual(atomic.fingerprint, serial.fingerprint)
+        serial.simulation['p2g_mode'] = 'parallel'
+        with self.assertRaisesRegex(ValueError, 'p2g_mode'):
+            serial.validate()
+
+    def test_p2g_mode_config_default_and_cli_override_reach_run_identity(self):
+        self.assertIsNone(calibrate.parse_args(['validate']).p2g_mode)
+        cases = [(None, None, 'atomic'), ('serial', None, 'serial'),
+                 (None, 'serial', 'serial'), ('serial', 'atomic', 'atomic')]
+        for index, (configured, override, expected) in enumerate(cases):
+            config = deepcopy(self.config)
+            if configured is not None:
+                config.simulation['p2g_mode'] = configured
+            output = self.root / f'p2g_{index}'
+            arguments = ['validate', '--no-runtime', '--output-dir', str(output)]
+            if override is not None:
+                arguments += ['--p2g-mode', override]
+            with self.subTest(configured=configured, override=override), self.environment(config=config) as env:
+                self.assertEqual(self.run_cli(arguments), 0)
+                prepared_config = env.mocks['prepare_experiment'].call_args.args[0]
+                self.assertEqual(SimulationConfig(**prepared_config.simulation).p2g_mode, expected)
+                env.mocks['make_rollout'].assert_not_called()
+            manifest = json.loads((output / 'run_manifest.json').read_text())
+            simulation = manifest['identity']['prepared']['config']['simulation']
+            self.assertEqual(simulation.get('p2g_mode', 'atomic'), expected)
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            calibrate.parse_args(['validate', '--p2g-mode', 'parallel'])
+
     def test_main_applies_and_restores_explicit_reference_policy(self):
         from experiments.differentiable_mpm.reference_adapter import _REFERENCE_POLICY
         original = _REFERENCE_POLICY.get()
@@ -300,6 +340,7 @@ class CalibrateCliTests(unittest.TestCase):
         mutations = [
             ('backend', None, 'source-a', ['--backend', 'vulkan']),
             ('precision', None, 'source-a', ['--precision', 'f32']),
+            ('p2g_mode', None, 'source-a', ['--p2g-mode', 'serial']),
             ('path', None, 'source-a', ['--path', 'calibration=/different/calibration.json']),
             ('source', None, 'source-b', []),
             ('optimizer', None, 'source-a', ['--learning-rate', '0.001']),

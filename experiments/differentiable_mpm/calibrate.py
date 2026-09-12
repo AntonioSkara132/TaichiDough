@@ -20,7 +20,7 @@ from .reference_adapter import reference_policy, verify_reference
 from .results import EXPERIMENT_ROOT, RUN_ROOT, RunStore, json_value, source_identity
 from .runtime import init_runtime
 from .solver import Stepper
-from .state import PARAMETER_NAMES, InvalidStateError, validate_parameters
+from .state import PARAMETER_NAMES, P2G_MODES, InvalidStateError, validate_parameters
 
 
 DEFAULT_CONFIG = EXPERIMENT_ROOT / 'configs' / 'episode18_viscoelastic.json'
@@ -34,6 +34,8 @@ def parse_args(argv=None):
                         help='Explicit input path override; content hashes are still checked')
     parser.add_argument('--backend', choices=['cpu', 'cuda', 'vulkan'])
     parser.add_argument('--precision', choices=['f32', 'f64'])
+    parser.add_argument('--p2g-mode', choices=P2G_MODES,
+                        help='Override particle-to-grid transfer: atomic (default) or fixed-order serial; serial can be slower')
     parser.add_argument('--cpu-threads', type=int, default=1)
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--reference-policy', choices=['strict', 'frozen'], default='strict',
@@ -206,6 +208,8 @@ def run(args):
         config.backend = args.backend
     if args.precision is not None:
         config.simulation['precision'] = args.precision
+    if args.p2g_mode is not None:
+        config.simulation['p2g_mode'] = args.p2g_mode
     if args.segment_length is not None:
         config.segment_length = args.segment_length
     frozen_source = None
@@ -227,6 +231,8 @@ def run(args):
     print(f'Prepared {prepared.simulation_config.n_particles} particles; replay0–{prepared.end_frame}; '
           f'{prepared.total_steps} steps; {len(prepared.observations)} observations; backend={config.backend}', flush=True)
     print('Memory estimate: ' + json.dumps(memory), flush=True)
+    print(f'P2G mode: {prepared.simulation_config.p2g_mode} '
+          '(transfer mode only; other reductions are unchanged)', flush=True)
     options_dict = dict(config.optimizer)
     if args.learning_rate is not None:
         options_dict['learning_rate'] = args.learning_rate

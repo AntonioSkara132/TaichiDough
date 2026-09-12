@@ -12,7 +12,7 @@ from experiments.differentiable_mpm.state import (
 )
 
 
-def fixture(plastic=False, floor=False, sdf=False):
+def fixture(plastic=False, floor=False, sdf=False, p2g_mode="atomic"):
     config = SimulationConfig(n_particles=4, grid=12, precision="f64", dt=2e-4,
                               particle_mass=0.001, particle_volume=1e-6,
                               gravity=-2.0, plasticity="stretch-clamp" if plastic else "none",
@@ -21,7 +21,7 @@ def fixture(plastic=False, floor=False, sdf=False):
                               floor_plastic_damping_band=0.01 if floor else 0.0,
                               plastic_affine_damping=0.87 if floor else 1.0,
                               tool_collision="sdf" if sdf else "none",
-                              tool_contact_padding=0.004)
+                              tool_contact_padding=0.004, p2g_mode=p2g_mode)
     state = ParticleState.initial([[.417, .40, .405], [.441, .415, .409],
                                    [.456, .428, .432], [.431, .421, .445]], np.float64)
     state.v[:] = [[.1, -.2, .04], [-.05, -.1, .08], [.02, -.3, -.03], [.01, -.1, .07]]
@@ -156,6 +156,48 @@ class NormalizationAdjointTests(unittest.TestCase):
         self.assertLess(min(abs(value - derivative) for value in finite_differences), 2e-7)
 
 
+class SerialP2GOrderTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        ti.init(arch=ti.cpu, default_fp=ti.f32, cpu_max_num_threads=4, debug=True,
+                offline_cache=False)
+
+    def test_serial_particle_order_and_analytic_velocity_adjoint(self):
+        n = 4096
+        config = SimulationConfig(n_particles=n, grid=8, precision="f32", particle_mass=1.0,
+                                  p2g_mode="serial", gravity=0.0, floor_y=-1.0)
+        solver = Stepper(config, capacity=2)
+        state = ParticleState.initial(np.full((n, 3), 3.5 / 8, np.float32))
+        state.v[:, 0] = np.tile(np.array([2 ** 27, 8.0, -(2 ** 27), 8.0], np.float32), n // 4)
+        solver.load_state(0, state)
+        solver.affine.fill(0)
+        # Each of eight occupied nodes receives [2**24, 1, -2**24, 1] repeatedly.
+        # Strict particle-index accumulation is 1; reassociation can change it.
+        expected_mass = np.zeros((8, 8, 8), np.float32)
+        expected_momentum = np.zeros((8, 8, 8, 3), np.float32)
+        expected_mass[3:5, 3:5, 3:5] = n / 8
+        expected_momentum[3:5, 3:5, 3:5, 0] = 1.0
+        previous = None
+        for _ in range(3):
+            solver._clear_grid()
+            solver._p2g(0)
+            mass, momentum = solver.grid_m.to_numpy(), solver.grid_p.to_numpy()
+            np.testing.assert_array_equal(mass, expected_mass)
+            np.testing.assert_array_equal(momentum, expected_momentum)
+            current = mass.tobytes(), momentum.tobytes()
+            if previous is not None:
+                self.assertEqual(current, previous)
+            previous = current
+        solver.clear_state_gradients()
+        solver._clear_scratch_gradients()
+        seed = np.zeros_like(expected_momentum)
+        seed[3:5, 3:5, 3:5] = [1.0, -2.0, 3.0]
+        solver.grid_p.grad.from_numpy(seed)
+        solver._p2g.grad(0)
+        expected_velocity_gradient = np.tile(np.array([1.0, -2.0, 3.0], np.float32), (n, 1))
+        np.testing.assert_array_equal(solver.adjoint(0).v, expected_velocity_gradient)
+
+
 class SolverGradientTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -285,6 +327,75 @@ class SolverGradientTests(unittest.TestCase):
         velocity = solver.grid_v.to_numpy()
         self.assertTrue(np.any(mass < 0), "Fixture must exercise the admitted negative stencil weights")
         np.testing.assert_array_equal(velocity[mass <= 0], momentum[mass <= 0])
+
+    def test_atomic_default_and_serial_forward(self):
+        for options in ({}, {"plastic": True, "floor": True}, {"sdf": True}):
+            with self.subTest(options=options):
+                config, state, params, control, sdf = fixture(plastic=options.get("plastic", False),
+                                                            floor=options.get("floor", False),
+                                                            sdf=options.get("sdf", False))
+                self.assertEqual(config.p2g_mode, "atomic")
+                if options.get("floor"):
+                    config = replace(config, floor_y=0.0)
+                    state.x[:, 1] = [0.0, 1e-5, 2e-5, 3e-5]
+                atomic = Stepper(config, params, capacity=6, sdf=sdf)
+                serial = Stepper(replace(config, p2g_mode="serial"), params, capacity=6, sdf=sdf)
+                atomic.load_state(0, state)
+                serial.load_state(0, state)
+                original = []
+                grids = []
+                counts = []
+                for step in range(5):
+                    atomic.advance(step, control)
+                    serial.advance(step, control)
+                    atomic_state, serial_state = atomic.state(step + 1), serial.state(step + 1)
+                    for name in STATE_NAMES:
+                        np.testing.assert_allclose(getattr(serial_state, name), getattr(atomic_state, name),
+                                                   rtol=2e-12, atol=2e-12, err_msg=f"{name}, step={step}")
+                    self.assertEqual(serial.diagnostics(), atomic.diagnostics())
+                    original.append(serial_state)
+                    grids.append(tuple(getattr(serial, name).to_numpy().tobytes()
+                                       for name in ("grid_m", "grid_p", "grid_u", "grid_v")))
+                    counts.append(serial.diagnostics())
+                    if step == 0 and options.get("floor"):
+                        self.assertTrue(np.any(serial.grid_m.to_numpy() < 0))
+                serial.load_state(0, state)
+                for step in range(5):
+                    serial.advance(step, control)
+                    replay = serial.state(step + 1)
+                    for name in STATE_NAMES:
+                        self.assertEqual(getattr(replay, name).tobytes(), getattr(original[step], name).tobytes())
+                    self.assertEqual(tuple(getattr(serial, name).to_numpy().tobytes()
+                                           for name in ("grid_m", "grid_p", "grid_u", "grid_v")), grids[step])
+                    self.assertEqual(serial.diagnostics(), counts[step])
+
+    def test_serial_plastic_trajectory_gradients(self):
+        solver, state, params, control = self.make(plastic=True, p2g_mode="serial")
+        seed = terminal_seed(state)
+        self.check_parameter_gradients(solver, state, params, control, seed, steps=5,
+                                       names=("youngs_modulus", "poisson_ratio", "viscosity", "plastic_min", "plastic_max"))
+        self.check_state_gradients(solver, state, params, control, seed, steps=5)
+        atomic = Stepper(replace(solver.config, p2g_mode="atomic"), params, capacity=8)
+        _, atomic_state_gradient, atomic_parameter_gradient = self.gradients(atomic, state, params, control, seed, steps=5)
+        _, serial_state_gradient, serial_parameter_gradient = self.gradients(solver, state, params, control, seed, steps=5)
+        # Compare gradients numerically; serial P2G does not serialize other reductions.
+        for name in STATE_NAMES:
+            np.testing.assert_allclose(getattr(serial_state_gradient, name), getattr(atomic_state_gradient, name),
+                                       rtol=1e-9, atol=1e-10, err_msg=name)
+        for name in PARAMETER_NAMES:
+            np.testing.assert_allclose(serial_parameter_gradient[name], atomic_parameter_gradient[name],
+                                       rtol=1e-9, atol=1e-10, err_msg=name)
+
+    def test_serial_moving_rotating_sdf_gradients(self):
+        solver, state, params, control = self.make(sdf=True, p2g_mode="serial")
+        seed = terminal_seed(state)
+        self.check_parameter_gradients(solver, state, params, control, seed,
+                                       names=("tool_retention", "youngs_modulus", "viscosity"))
+        self.check_state_gradients(solver, state, params, control, seed)
+        counts = solver.diagnostics()
+        self.assertGreater(counts["grid_tool0"] + counts["grid_tool1"], 0)
+        self.assertGreater(counts["particle_tool0"], 0)
+        self.assertGreater(counts["particle_tool1"], 0)
 
     def test_invalid_deformation_and_stencil(self):
         solver, state, params, control = self.make()

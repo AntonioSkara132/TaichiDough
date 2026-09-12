@@ -1,6 +1,8 @@
 """Backend-report and failure-handling tests; no hardware initialization here."""
 
+from contextlib import redirect_stderr
 from copy import deepcopy
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -69,6 +71,47 @@ class BackendReportTests(unittest.TestCase):
             comparison = backend_check.compare_results(reference, candidate)
             self.assertFalse(comparison["passed"])
             self.assertEqual(comparison["checks"], [])
+
+    def test_p2g_mode_reaches_both_workers_and_fixture(self):
+        root = self.directory / "runs"
+        for mode in ("atomic", "serial"):
+            with self.subTest(mode=mode), patch.object(backend_check, "EVIDENCE_ROOT", root), \
+                    patch.object(backend_check, "_launch", return_value=_valid_result()) as launch:
+                arguments = ["--backend", "cuda", "--compare-cpu", "--output-dir", str(root / mode)]
+                if mode == "serial":
+                    arguments += ["--p2g-mode", mode]
+                self.assertEqual(backend_check.main(arguments), 0)
+                self.assertEqual([call.args[0] for call in launch.call_args_list], ["cuda", "cpu"])
+                self.assertTrue(all(call.args[4] == mode for call in launch.call_args_list))
+                result = json.loads((root / mode / "backend_check.json").read_text())
+                self.assertEqual(result["p2g_mode"], mode)
+                self.assertEqual(backend_check._fixture("f32", mode)[0].p2g_mode, mode)
+        with patch.object(backend_check, "_worker", return_value=0) as worker:
+            self.assertEqual(backend_check.main(["--backend", "cuda", "--p2g-mode", "serial",
+                                                 "--_worker-report", "test.json"]), 0)
+            worker.assert_called_once_with("cuda", "f32", "test.json", "serial")
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            backend_check.main(["--backend", "cuda", "--p2g-mode", "parallel"])
+
+    def test_serial_mode_reaches_subprocess_and_failure_record(self):
+        directory = self.directory / "serial_process"
+        directory.mkdir()
+        with patch.object(backend_check.subprocess, "run", return_value=SimpleNamespace(returncode=-11)) as run:
+            result = backend_check._launch("cuda", "f32", directory, 1, "serial")
+        argv = run.call_args.args[0]
+        self.assertEqual(argv[argv.index("--p2g-mode") + 1], "serial")
+        self.assertEqual(result["p2g_mode"], "serial")
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(json.loads((directory / "command.json").read_text())["argv"], argv)
+
+    def test_different_p2g_modes_refuse_comparison(self):
+        reference = _valid_result()
+        candidate = deepcopy(reference)
+        reference["configuration"]["p2g_mode"] = "atomic"
+        candidate["configuration"]["p2g_mode"] = "serial"
+        comparison = backend_check.compare_results(reference, candidate)
+        self.assertFalse(comparison["passed"])
+        self.assertEqual(comparison["checks"], [])
 
     def test_evidence_refuses_existing_or_external_directory(self):
         root = self.directory / "runs"

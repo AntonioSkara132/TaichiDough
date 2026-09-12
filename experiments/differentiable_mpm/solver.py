@@ -321,6 +321,7 @@ class Stepper:
 
     @ti.kernel
     def _p2g(self, slot: ti.i32):
+        ti.loop_config(serialize=ti.static(self.config.p2g_mode == "serial"))
         for p in range(self.n):
             base = (self.x[slot, p] * self.inv_dx - 0.5).cast(ti.i32)
             fx = self.x[slot, p] * self.inv_dx - base.cast(self.dtype)

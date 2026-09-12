@@ -360,9 +360,11 @@ class RecomputeCliTests(TemporaryRunTest):
                 with self.assertRaises(SystemExit):
                     diagnostic.parse_args(flags)
 
-    def fake_modules(self, perturb=None, runtime_error=None):
+    def fake_modules(self, perturb=None, runtime_error=None, configured_p2g=None):
         config = types.SimpleNamespace(backend="cpu", simulation={"precision": "f64"}, seed=19,
                                        segment_length=4, validate=Mock())
+        if configured_p2g is not None:
+            config.simulation["p2g_mode"] = configured_p2g
         config.as_dict = lambda: {"backend": config.backend, "simulation": config.simulation.copy(),
                                   "seed": config.seed, "segment_length": config.segment_length}
         prepared = types.SimpleNamespace(total_steps=12, initial_state=initial_state(), controls=controls(12),
@@ -389,13 +391,13 @@ class RecomputeCliTests(TemporaryRunTest):
             loaded[full_name] = module
         return loaded, modules, stepper
 
-    def run_mock_cli(self, perturb=None, runtime_error=None, extra=()):
+    def run_mock_cli(self, perturb=None, runtime_error=None, extra=(), configured_p2g=None):
         self.serial += 1
         output = self.root / f"cli_{self.serial}"
         args = diagnostic.parse_args(["--output-dir", str(output), "--start-step", "4", "--steps", "4",
                                       "--probe-step", "6", "--repeats", "2", "--end-frame", "60",
                                       "--backend", "cuda", "--precision", "f32", "--reference-policy", "frozen", *extra])
-        modules, records, stepper = self.fake_modules(perturb, runtime_error)
+        modules, records, stepper = self.fake_modules(perturb, runtime_error, configured_p2g)
         source = {"sources": {"solver.py": "mock-stable-hash"}}
         with patch.dict(sys.modules, modules), patch.object(diagnostic, "source_identity", return_value=source), \
                 patch.object(diagnostic, "RunStore", side_effect=lambda path, identity: RunStore(path, identity, allowed_root=self.root)), \
@@ -403,6 +405,23 @@ class RecomputeCliTests(TemporaryRunTest):
                 redirect_stdout(io.StringIO()):
             code = diagnostic.run(args)
         return code, output, records, stepper
+
+    def test_p2g_mode_config_default_and_cli_override(self):
+        self.assertIsNone(diagnostic.parse_args([]).p2g_mode)
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            diagnostic.parse_args(["--p2g-mode", "parallel"])
+        for configured, override, expected in ((None, None, "atomic"), ("serial", None, "serial"),
+                                               (None, "serial", "serial"), ("serial", "atomic", "atomic")):
+            extra = () if override is None else ("--p2g-mode", override)
+            with self.subTest(configured=configured, override=override):
+                code, output, records, _ = self.run_mock_cli(extra=extra, configured_p2g=configured)
+                self.assertEqual(code, 0)
+                current = records["data"]["prepare_experiment"].call_args.args[0]
+                self.assertEqual(current.simulation.get("p2g_mode", "atomic"), expected)
+                current.validate.assert_called_once()
+                manifest = json.loads((output / "run_manifest.json").read_text())
+                simulation = manifest["identity"]["configuration"]["simulation"]
+                self.assertEqual(simulation.get("p2g_mode", "atomic"), expected)
 
     def test_cli_records_runtime_settings_hashes_without_gradients(self):
         code, output, records, stepper = self.run_mock_cli(extra=("--path", "episode=/mnt/episode"))

@@ -16,6 +16,7 @@ DEFAULT_PARAMETERS = {
     "tool_retention": 0.2, "floor_retention": 0.4,
 }
 STATE_NAMES = ("x", "v", "C", "F", "Jp")
+P2G_MODES = ("atomic", "serial")
 
 
 class InvalidStateError(RuntimeError):
@@ -85,6 +86,7 @@ class SimulationConfig:
     plastic_affine_damping: float = 1.0
     precision: str = "f32"
     min_singular_value: float = 1e-6
+    p2g_mode: str = "atomic"
 
     def __post_init__(self):
         if self.n_particles < 1 or self.grid < 8:
@@ -95,6 +97,8 @@ class SimulationConfig:
             raise ValueError("The experiment supports recorded SDF tools or no tools")
         if self.precision not in {"f32", "f64"}:
             raise ValueError("precision must be f32 or f64")
+        if not isinstance(self.p2g_mode, str) or self.p2g_mode not in P2G_MODES:
+            raise ValueError("p2g_mode must be atomic or serial")
         for f in fields(self):
             value = getattr(self, f.name)
             if isinstance(value, (int, float)) and not np.isfinite(value):

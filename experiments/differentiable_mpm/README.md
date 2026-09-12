@@ -168,7 +168,7 @@ CUDA is requested with fallback disabled. The previous `CUDA_ERROR_COMPAT_NOT_SU
 
 A full remote CUDA f32 run completed the forward trajectory but rejected the first backward evaluation at step 9774 with `Contact/yield summaries differ on recomputation`. No parameter update was accepted. This is a replay-consistency failure, not evidence that the initial material parameters are physically invalid. The accompanying Taichi compiler warnings are separate from the explicit rejection.
 
-Parallel floating-point additions in P2G can produce slightly different grid values when the same checkpoint is replayed. A hard-contact threshold can then choose a different branch. Source inspection found all five particle-state components restored and forward scratch buffers overwritten; confirming the remote cause requires repeated-stage measurements.
+The user's subsequent CUDA diagnostic on 2026-09-12 isolates the observed non-repeatability to P2G grid reduction: all three isolated repetitions at step 9754 restore identical inputs and produce identical material intermediates, then differ in grid mass/momentum. All three repeated segments have small state differences (maximum x component difference 1.1921e-7 m), but matching aggregate contact counts. This diagnostic reproduces the numerical differences, not the earlier contact-count flip. Parallel floating-point additions in P2G can change grid values enough to change a later hard-contact decision; readbacks can also affect GPU scheduling.
 
 Keep the exact consistency check. A smaller segment length, fixed seed, `ti.sync()`, or higher precision alone does not guarantee deterministic CUDA accumulation. For a full-horizon reference gradient, use a fresh run with `gradient --backend cpu --cpu-threads 1 --precision f64 --end-frame 60`, retaining the same config and input overrides. This is a qualification step; a full real CPU gradient has not yet been verified.
 
@@ -191,6 +191,36 @@ Use the same explicit `--path episode=...` and `--path calibration=...` override
 The diagnostic advances the original prefix through step 9792, records the target segment, then repeats only its 64 steps three times from the saved checkpoint. It also repeats step 9774 independently from its original input state, comparing material intermediates and grid mass/momentum/velocity. Target states are streamed to disk rather than retaining the whole prefix in RAM. Output includes `stdout.log`, `comparison.json`, `result.json`, exact checkpoints, control hashes and source/runtime records.
 
 Exit 2 means a recorded mismatch or a source change was detected. Exit 0 means only that these recorded comparisons agree: readbacks can affect GPU scheduling, matching aggregate counts do not prove equal contact identities, and this forward-only probe does not qualify gradients or full calibration.
+
+### Optional fixed-order P2G
+
+`calibrate`, `recompute_check` and `backend_check` accept `--p2g-mode serial`. The equivalent configuration field is `simulation.p2g_mode`; its default is `atomic`. CLI overrides take precedence. The selected mode is printed and recorded in run identity, and changing it rejects resume. No additional particle/grid buffers are allocated.
+
+Serial mode fixes the particle iteration order for grid accumulation. Taichi also serializes the generated P2G reverse loop. Material/contact equations and exact replay checks are unchanged. Other material/contact parameter-gradient and observation-loss reductions remain as before; **serial P2G is not a claim of bitwise deterministic whole-objective gradients**.
+
+The four targeted CPU solver tests pass, including exact repeated forward states/grids, atomic/serial forward agreement, and parameter/state finite differences with plasticity, Jp and moving SDF tools. A serial three-step Vulkan solver/loss backward check passes all 20 CPU comparisons, and a separate tiny Vulkan forward replay diagnostic matches every recorded state/material/grid byte across three repetitions. Independent CPU/Vulkan scatter tests confirm actual serialization in compiled forward/reverse code. See `VALIDATION.md` for evidence and the remaining full-episode/CUDA checks.
+
+**Serial GPU transfer can be much slower.** A warmed isolated 24,000-particle/grid48 Vulkan probe measures 161.82 ms serial versus 1.383 ms atomic for P2G forward (117×), and 36.72 ms versus 5.352 ms for its reverse (6.86×). These are local Vulkan stage timings, not CUDA or complete-simulation estimates. This option first tests repeatability; fast deterministic parallel reduction would require a separate implementation.
+
+After transferring the updated experimental code to the remote checkout, first run the small CUDA execution/CPU-comparison check. It requires no Episode 18 inputs:
+
+```bash
+python3 -u -m experiments.differentiable_mpm.backend_check \
+  --backend cuda --precision f32 --p2g-mode serial --compare-cpu
+```
+
+Only if that passes, repeat the real forward-only diagnostic with the same mode:
+
+```bash
+python3 -u -m experiments.differentiable_mpm.recompute_check \
+  --config experiments/differentiable_mpm/configs/episode18_viscoelastic.json \
+  --reference-policy frozen --backend cuda --precision f32 --p2g-mode serial \
+  --path episode=/mnt/Data/studenti/antonio_skara/data/DeformPath3/DeformPath3/snimanje_23_10/episode18_kugla \
+  --path calibration=/mnt/Data/studenti/antonio_skara/data/DeformPath3/DeformPath3/snimanje_23_10/episode18_kugla/scene_calibration_v2.json \
+  --end-frame 60 --start-step 9728 --steps 64 --probe-step 9754 --repeats 3
+```
+
+Both commands automatically choose new output directories. Keep the failed atomic runs. This diagnostic advances through 9,792 original steps before repeating the 64-step interval, so the serial cost applies to the entire prefix. Passing the probe is followed by a full `calibrate gradient` check with `--p2g-mode serial` and the same inputs/backend/precision; fitting still requires a valid complete gradient. No successful full real serial/CUDA gradient or calibration is established by the local tests.
 
 ## Run records
 
