@@ -97,7 +97,7 @@ At the saved v2 plateau:
 
 The synthetic default predictor uses 10 mm temperature; target generation remains at 2 mm. The real-data configuration retains its separately declared 5 mm temperature. These are different objectives, so raw loss values must not be compared directly with the 2 mm synthetic predictor.
 
-Current-source evidence:
+Stable-normalization revision evidence (solver `75110847…`):
 
 - All five initial coordinate derivatives pass at multiple step sizes. Best relative errors are at most 1.39e-6. Both mixed and descent-direction checks pass, with best errors 4.79e-7 and 1.30e-6.
 - Target summary hashes match the preserved 2 mm-generated training and held-out targets exactly. Numerical/source files were unchanged throughout the derivative check.
@@ -137,6 +137,8 @@ All four targeted tests pass without failures, errors or skips in `runs/serial_p
 The full log retains Taichi generated-gradient warnings from the particle/grid kernels. Their presence alongside passing short tests does not establish validity for every input or full-horizon CUDA replay.
 
 Mode configuration, CLI propagation and changed-mode resume refusal pass 56 nonkernel tests at `runs/serial_p2g_cli_checks/`. Backend CLI propagation and failure/report tests pass separately at `runs/serial_p2g_backend_cli_checks/`. These mocked tests do not execute simulator kernels.
+
+The additional `runs/serial_p2g_segmented_cpu_checks/result.json` passes both existing eight-particle/eight-step trajectory tests with only the fixture's P2G mode set to serial. Source hashes are unchanged. Elastic/viscous and active plastic/Jp cases retain exact endpoint replay checks, compare full storage with segment lengths 1, 3 and 4, carry all five state adjoints, and inject every observation exactly once. Parameter finite differences pass the unchanged 1e-3 error limit; the largest best error across the checked parameters/cases is 9.29e-6. A reproducer and complete log are saved with the result.
 
 ### Actual Vulkan solver checks
 
