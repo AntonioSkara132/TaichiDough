@@ -103,6 +103,22 @@ class CheckpointedRollout:
                     f"Checkpoint recomputation differs at step {global_step}, {name}: "
                     f"max absolute difference {delta.max():.8g}; backward evaluation rejected")
 
+    def _check_signature(self, expected, actual, global_step, first, last):
+        if actual == expected:
+            return
+        differences = {
+            name: {"forward": expected.get(name), "recomputed": actual.get(name)}
+            for name in sorted(set(expected) | set(actual))
+            if expected.get(name) != actual.get(name)
+        }
+        self._notify("recompute_mismatch", global_step,
+                     stage="segment_forward_recompute", segment_start_step=first,
+                     segment_end_step=last, expected_counts=expected,
+                     recomputed_counts=actual, differing_counts=differences)
+        raise InvalidStateError(
+            f"Contact/yield summaries differ on recomputation at step {global_step} "
+            f"(segment {first}–{last}): {differences}; backward evaluation rejected")
+
     def _validate_adjoint(self, adjoint, global_step):
         try:
             adjoint.validate()
@@ -222,8 +238,8 @@ class CheckpointedRollout:
             for global_input in range(first, last):
                 local = global_input - first
                 stepper.advance(local, self.controls[global_input])
-                if self._signature() != signatures[global_input]:
-                    raise InvalidStateError(f"Contact/yield summaries differ on recomputation at step {global_input}")
+                self._check_signature(signatures[global_input], self._signature(),
+                                      global_input, first, last)
             self._check_endpoint(checkpoints[last], stepper.state(last - first), last, maxima)
             stepper.load_adjoint(last - first, carry)
             for global_output in range(last, first, -1):

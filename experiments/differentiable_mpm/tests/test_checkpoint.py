@@ -142,6 +142,36 @@ class CheckpointTests(unittest.TestCase):
         with self.assertRaisesRegex(InvalidStateError, "Checkpoint recomputation"):
             self.rollout(3, drift=True).value_and_gradient(self.parameters)
 
+    def test_recomputed_count_difference_reports_segment_and_rejects_before_reverse(self):
+        events, reverse_calls = [], []
+        rollout = self.rollout(3)
+        rollout.progress = events.append
+        stepper = rollout.stepper
+        stepper.diagnostics = lambda: {"branch_counts": {
+            "active": 2 if stepper.reverse_started else 1, "unchanged": 4}}
+        stepper.reverse_step = lambda *args: reverse_calls.append(args)
+        with self.assertRaisesRegex(InvalidStateError, r"step 6 .*segment 6–8"):
+            rollout.value_and_gradient(self.parameters)
+        self.assertEqual(reverse_calls, [])
+        failure = [event for event in events if event['phase'] == 'recompute_mismatch']
+        self.assertEqual(len(failure), 1)
+        event = failure[0]
+        self.assertEqual(event['stage'], 'segment_forward_recompute')
+        self.assertEqual(event['step'], 6)
+        self.assertEqual(event['segment_start_step'], 6)
+        self.assertEqual(event['segment_end_step'], 8)
+        self.assertEqual(event['expected_counts'], {'active': 1, 'unchanged': 4})
+        self.assertEqual(event['recomputed_counts'], {'active': 2, 'unchanged': 4})
+        self.assertEqual(event['differing_counts'], {'active': {'forward': 1, 'recomputed': 2}})
+
+    def test_missing_count_is_not_treated_as_zero(self):
+        events = []
+        rollout = self.rollout(3)
+        rollout.progress = events.append
+        with self.assertRaises(InvalidStateError):
+            rollout._check_signature({'active': 0}, {}, 1, 0, 3)
+        self.assertEqual(events[0]['differing_counts'], {'active': {'forward': 0, 'recomputed': None}})
+
     def test_zero_step_initial_observation(self):
         observation = Observation(0, 0, np.zeros((1, 3)))
         r = CheckpointedRollout(LinearStepper(2), self.initial, [], [observation], QuadraticLoss(), 1)

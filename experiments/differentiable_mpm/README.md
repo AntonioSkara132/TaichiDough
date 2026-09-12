@@ -164,6 +164,34 @@ Run from `/mnt/Data/studenti/antonio_skara/TaichiDough`. If the reconstruction i
 
 CUDA is requested with fallback disabled. The previous `CUDA_ERROR_COMPAT_NOT_SUPPORTED_ON_DEVICE` is a driver/library initialization failure; this implementation does not repair it. CPU, Vulkan and CUDA execution evidence must be reported separately.
 
+### CUDA checkpoint-replay failures
+
+A full remote CUDA f32 run completed the forward trajectory but rejected the first backward evaluation at step 9774 with `Contact/yield summaries differ on recomputation`. No parameter update was accepted. This is a replay-consistency failure, not evidence that the initial material parameters are physically invalid. The accompanying Taichi compiler warnings are separate from the explicit rejection.
+
+Parallel floating-point additions in P2G can produce slightly different grid values when the same checkpoint is replayed. A hard-contact threshold can then choose a different branch. Source inspection found all five particle-state components restored and forward scratch buffers overwritten; confirming the remote cause requires repeated-stage measurements.
+
+Keep the exact consistency check. A smaller segment length, fixed seed, `ti.sync()`, or higher precision alone does not guarantee deterministic CUDA accumulation. For a full-horizon reference gradient, use a fresh run with `gradient --backend cpu --cpu-threads 1 --precision f64 --end-frame 60`, retaining the same config and input overrides. This is a qualification step; a full real CPU gradient has not yet been verified.
+
+Mismatch diagnostics now print expected/recomputed counts and segment bounds, persist `last_recompute_failure.json`, and write `result.json` for an invalid initial fit. Existing failed runs are preserved. Source/backend/precision changes require a new run, not `--resume`.
+
+### Targeted forward replay probe
+
+To investigate the failing CUDA segment without computing gradients or fitting parameters:
+
+```bash
+python3 -u -m experiments.differentiable_mpm.recompute_check \
+  --config experiments/differentiable_mpm/configs/episode18_viscoelastic.json \
+  --reference-policy frozen --backend cuda --precision f32 \
+  --end-frame 60 --start-step 9728 --steps 64 --probe-step 9774 --repeats 3 \
+  --output-dir experiments/differentiable_mpm/runs/cuda_recompute_9728
+```
+
+Use the same explicit `--path episode=...` and `--path calibration=...` overrides on the remote machine. The configured checkpoint length stays at 64; `--steps` specifies the diagnostic interval, not a different state-buffer layout.
+
+The diagnostic advances the original prefix through step 9792, records the target segment, then repeats only its 64 steps three times from the saved checkpoint. It also repeats step 9774 independently from its original input state, comparing material intermediates and grid mass/momentum/velocity. Target states are streamed to disk rather than retaining the whole prefix in RAM. Output includes `stdout.log`, `comparison.json`, `result.json`, exact checkpoints, control hashes and source/runtime records.
+
+Exit 2 means a recorded mismatch or a source change was detected. Exit 0 means only that these recorded comparisons agree: readbacks can affect GPU scheduling, matching aggregate counts do not prove equal contact identities, and this forward-only probe does not qualify gradients or full calibration.
+
 ## Run records
 
 - `run_manifest.json`: complete run identity, numerical configuration and input/code/dependency fingerprints.

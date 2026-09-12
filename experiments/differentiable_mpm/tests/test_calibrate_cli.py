@@ -373,6 +373,42 @@ class CalibrateCliTests(unittest.TestCase):
         self.assertFalse(result['runtime'].get('backward_verified', False))
         self.assertNotIn('gradient', result)
 
+    def test_invalid_initial_fit_persists_failure_without_selected_parameters(self):
+        output = self.root / 'invalid_initial_fit'
+        rollout = AnalyticRollout()
+        rollout.value_and_gradient = Mock(side_effect=InvalidStateError(
+            'Contact/yield summaries differ on recomputation at step 9774'))
+        with self.environment(rollout=rollout):
+            with self.assertRaisesRegex(InvalidStateError, 'step 9774'):
+                self.run_cli(['fit', '--iterations', '20', '--no-evaluate', '--output-dir', str(output)])
+        result = json.loads((output / 'result.json').read_text())
+        self.assertEqual(result['status'], 'invalid_initial')
+        self.assertEqual(result['accepted_updates'], 0)
+        self.assertEqual(result['optimizer_evaluations'], 1)
+        self.assertFalse(result['runtime']['backward_verified'])
+        self.assertEqual(result['runtime']['successful_objectives_in_process'], 0)
+        self.assertFalse((output / 'selected_parameters.json').exists())
+        saved = json.loads((output / 'optimizer_state.json').read_text())
+        self.assertEqual(saved['state']['status'], 'invalid_initial')
+        events = [json.loads(line) for line in (output / 'events.jsonl').read_text().splitlines()]
+        self.assertTrue(any(event.get('event') == 'fit_failed' for event in events))
+
+    def test_recompute_failure_is_printed_and_persisted(self):
+        event = {'phase': 'recompute_mismatch', 'step': 9774, 'total_steps': 10006,
+                 'stage': 'segment_forward_recompute', 'segment_start_step': 9728,
+                 'segment_end_step': 9792, 'expected_counts': {'particle_tool0': 18},
+                 'recomputed_counts': {'particle_tool0': 19},
+                 'differing_counts': {'particle_tool0': {'forward': 18, 'recomputed': 19}}}
+        store = Mock()
+        stream = io.StringIO()
+        with redirect_stdout(stream):
+            calibrate.stored_progress(store)(event)
+        store.write_json.assert_called_once_with('last_recompute_failure.json', event)
+        store.append_event.assert_called_once_with({'event': 'replay_progress', **event})
+        self.assertIn('9774/10006', stream.getvalue())
+        self.assertIn('9728–9792', stream.getvalue())
+        self.assertIn('particle_tool0', stream.getvalue())
+
     def test_failed_required_strict_evaluation_is_not_reported_as_complete(self):
         output = self.root / 'failed_evaluate'
         source = self.parameters_file(self.config.parameters)

@@ -19,7 +19,7 @@ This record concerns the experimental copy, not the independently corrected prod
 | Synthetic full-objective derivatives | `runs/synthetic_stable_normalization_gradient/result.json` | Current stable solver: all five coordinate and two directional FD checks pass for the 10 mm predictor. All fixed 2 mm target hashes match the preserved targets; source hashes were unchanged during the check. |
 | Synthetic fitting | `runs/tests/synthetic_412d75dddf7f422198aa6a0821516be8/result.json` | Current stable solver: 12 steps / 4 accepted updates reduce training by 33.18%; held-out loss also decreases. All eight synthetic tests pass, retaining the >1% assertion. Longer earlier evidence and the original 2 mm failure are described below. No unique parameter recovery claim. |
 | Real backward | `runs/episode18_gradient_stable_f32/result.json` | CPU f32 frames 0–2 / 334 steps complete with finite E/ν/viscosity derivatives and exact checkpoint/loss recomputation. A prior f64 short run also passed. This interval has floor response but no tool contacts; full-horizon backward and real fitting remain unqualified. |
-| CUDA | No successful qualification | Local CUDA lacks the required library; the remote machine previously had a distinct driver/library compatibility failure. Neither was repaired by this task. |
+| CUDA | Remote user-provided log, 2026-09-12 | CUDA initializes and completes the 10,006-step forward replay. The first full backward evaluation fails because contact/yield counts differ during checkpoint recomputation at step 9,774. No optimizer update is accepted. Full CUDA calibration remains unqualified; the log does not establish whether GPU accumulation order or another replay issue caused the mismatch. |
 
 ## Full Episode 18 forward comparison
 
@@ -106,6 +106,18 @@ Current-source evidence:
 The earlier 32-step, 48-update run at `runs/synthetic_joint_cpu_f64_v2_10mm_fixed_48/result.json` reduced training 4.539283 → 2.158032 (52.46%) and held-out 3.826273 → 2.348899. That longer fit predates the stable-normalization solver revision; it is not a rerun of 48 updates on the current source. `budget_exhausted` records completion of the requested updates, not convergence.
 
 The selected training loss can be below the truth-reference loss because parameters can compensate for observation smoothing. These results demonstrate gradient propagation and loss reduction, not unique E/ν/viscosity/plastic-bound identification.
+
+## Remote CUDA replay failure
+
+The user-provided full CUDA f32 log from 2026-09-12 reaches frame 60 / step 10,006, then rejects the initial objective while recomputing step 9,774 within segment `[9728, 9792)`. Earlier segments may already have been differentiated, but the rejected evaluation supplies no usable complete gradient and no optimizer update is accepted.
+
+Source inspection found complete restoration of x/v/C/F/Jp, per-step control uploads, overwritten material/G2P scratch and cleared grid accumulators. Contested floating-point P2G additions are the leading explanation, not a confirmed remote measurement. Repeating from identical state/control and comparing material scratch before P2G with grid mass/momentum after P2G is needed to confirm it. Reverse-step scratch is recomputed again, so shorter segments alone do not guarantee consistent adjoint intermediates.
+
+Exact count checks remain enabled. The new checkpoint diagnostics identify changed counts, both values and segment limits; the CLI stores those details and an invalid-initial result without claiming successful backward execution. Analytic checkpoint and mocked CLI tests pass in `runs/cuda_recompute_diagnostics_checks/`. Those tests verify reporting and rejection, not a fix for CUDA nondeterminism.
+
+The targeted `recompute_check.py` tool repeats the failing interval and independently repeats the chosen substep from its original input. It preserves full state/control bytes and compares material scratch before interpreting differences in grid mass/momentum. All 49 tests across checkpoint, CLI and diagnostic suites pass in `runs/cuda_recompute_diagnostics_final/`. A real four-particle CPU f64 forward-only diagnostic, including nonzero-slot restoration and state-buffer rollover, also passes exact repeated-state/count/intermediate comparisons at `runs/recompute_diagnostic_real_cpu_smoke/result.json`; its source identity is unchanged during execution. These tests do not reproduce or fix the remote CUDA failure.
+
+No full real CPU gradient or deterministic CUDA implementation has been qualified. Single-thread CPU removes competing scatter additions and is the next reference test. CUDA seeds, synchronization, one-thread blocks or float64 alone are not determinism guarantees.
 
 ## Interpreting execution records
 

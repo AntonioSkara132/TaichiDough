@@ -108,12 +108,18 @@ def progress_printer(event):
         print(f'Forward complete; starting backward replay over {total} steps (first call compiles adjoints)', flush=True)
     elif phase == 'backward_segment' and (step == 0 or step % 1024 == 0):
         print(f'backward step={step}/{total}', flush=True)
+    elif phase == 'recompute_mismatch':
+        print(f'Replay mismatch at step={step}/{total}, '
+              f'segment={event["segment_start_step"]}–{event["segment_end_step"]}: '
+              + json.dumps(json_value(event['differing_counts']), sort_keys=True), flush=True)
 
 
 def stored_progress(store):
     def callback(event):
         progress_printer(event)
-        if (event['phase'] in {'observation', 'invalid_adjoint'}
+        if event['phase'] == 'recompute_mismatch':
+            store.write_json('last_recompute_failure.json', event)
+        if (event['phase'] in {'observation', 'invalid_adjoint', 'recompute_mismatch'}
                 or (event['phase'] == 'backward_segment' and event['step'] % 1024 == 0)
                 or event['step'] == event['total_steps']):
             store.append_event({'event': 'replay_progress', **event})
@@ -300,7 +306,20 @@ def run(args):
         optimizer = ProjectedAdam(space, objective, options, callback, objective_id=store.identity_hash)
         if args.resume:
             optimizer.load_state_dict(store.optimizer_state())
-        optimization = optimizer.run(args.iterations)
+        try:
+            optimization = optimizer.run(args.iterations)
+        except InvalidStateError as error:
+            failure = {
+                'status': optimizer.status if optimizer.status == 'invalid_initial' else 'fit_failed',
+                'error': str(error), 'optimizer_evaluations': optimizer.evaluations,
+                'accepted_updates': optimizer.accepted_updates,
+                'runtime': {**runtime, 'backward_verified': successful_objectives[0] > 0,
+                            'successful_objectives_in_process': successful_objectives[0],
+                            'execution_scope': 'this process; rejected evaluations are not verified gradients'},
+            }
+            store.write_json('result.json', failure)
+            store.append_event({'event': 'fit_failed', **failure})
+            raise
         selected = {'best_parameters': optimization.best_parameters, 'training_value': optimization.best_value,
                     'selection_frames': list(prepared.scored_frames), 'selection_split': 'training',
                     'identity_sha256': store.identity_hash,

@@ -12,7 +12,7 @@ from .results import EXPERIMENT_ROOT, RUN_ROOT, RunStore, source_identity
 
 STANDARD_TESTS = (
     'test_preservation', 'test_checkpoint', 'test_results', 'test_optimizer',
-    'test_inputs', 'test_calibrate_cli', 'test_backend', 'test_spectral', 'test_loss',
+    'test_inputs', 'test_calibrate_cli', 'test_recompute_check', 'test_backend', 'test_spectral', 'test_loss',
     'test_solver', 'test_trajectory', 'test_forward_parity', 'test_synthetic',
 )
 
@@ -29,7 +29,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.timeout_s <= 0:
         parser.error('--timeout-s must be positive')
-    names = list(args.only or (STANDARD_TESTS[:6] if args.quick else STANDARD_TESTS))
+    names = list(args.only or (STANDARD_TESTS[:7] if args.quick else STANDARD_TESTS))
     repo = EXPERIMENT_ROOT.parents[1]
     commands = []
     for name in names:
