@@ -105,10 +105,11 @@ class CheckpointTests(unittest.TestCase):
                     for i, s in enumerate([0, 2, 3, 3, 4, 6, 8])]
         self.parameters = dict(DEFAULT_PARAMETERS, youngs_modulus=3.0)
 
-    def rollout(self, length, initial=None, drift=False):
+    def rollout(self, length, initial=None, drift=False, ignore_recompute_mismatch=False):
         return CheckpointedRollout(LinearStepper(length + 1, drift),
                                   initial or self.initial, self.controls, self.obs, QuadraticLoss(),
-                                  length, replay_rtol=0, replay_atol={n: 0 for n in self.initial.arrays()})
+                                  length, replay_rtol=0, replay_atol={n: 0 for n in self.initial.arrays()},
+                                  ignore_recompute_mismatch=ignore_recompute_mismatch)
 
     def test_segment_lengths_match_full_history(self):
         full = self.rollout(8).value_and_gradient(self.parameters)
@@ -157,6 +158,10 @@ class CheckpointTests(unittest.TestCase):
         self.assertEqual(len(failure), 1)
         event = failure[0]
         self.assertEqual(event['stage'], 'segment_forward_recompute')
+        self.assertEqual(event['mismatch_kind'], 'contact_counts')
+        self.assertFalse(event['ignored'])
+        self.assertEqual(event['mismatch_number'], 1)
+        self.assertIn('backward evaluation rejected', event['message'])
         self.assertEqual(event['step'], 6)
         self.assertEqual(event['segment_start_step'], 6)
         self.assertEqual(event['segment_end_step'], 8)
@@ -196,6 +201,177 @@ class CheckpointTests(unittest.TestCase):
         self.assertEqual(failure[0]['arrays']['x']['nonfinite_count'], 1)
         self.assertEqual(failure[0]['arrays']['x']['first_nonfinite_indices'], [[0, 0]])
         self.assertEqual(failure[0]['arrays']['v']['nonfinite_count'], 0)
+
+    def test_ignored_count_mismatches_continue_with_unchanged_adjoint_carry(self):
+        expected = self.rollout(3).value_and_gradient(self.parameters)
+        events = []
+        rollout = self.rollout(3, ignore_recompute_mismatch=True)
+        rollout.progress = events.append
+        rollout.stepper.diagnostics = lambda: {"branch_counts": {
+            "active": 2 if rollout.stepper.reverse_started else 1, "unchanged": 4}}
+        result = rollout.value_and_gradient(self.parameters)
+        self.assertEqual(result.value, expected.value)
+        np.testing.assert_array_equal(list(result.gradient.values()), list(expected.gradient.values()))
+        np.testing.assert_array_equal(flatten(result.initial_gradient), flatten(expected.initial_gradient))
+        self.assertTrue(result.diagnostics["ignore_recompute_mismatch"])
+        self.assertFalse(result.diagnostics["replay_consistent"])
+        self.assertTrue(result.diagnostics["replay_consistency_checked"])
+        self.assertEqual(result.diagnostics["recompute_mismatch_counts"],
+                         {"contact_counts": 8, "checkpoint_state": 0, "observation_loss": 0})
+        self.assertEqual(result.diagnostics["recompute_mismatch_count"], 8)
+        mismatches = [event for event in events if event["phase"] == "recompute_mismatch"]
+        self.assertEqual([event["mismatch_number"] for event in mismatches], list(range(1, 9)))
+        self.assertEqual([event["step"] for event in mismatches], [6, 7, 3, 4, 5, 0, 1, 2])
+        for event in mismatches:
+            self.assertTrue(event["ignored"])
+            self.assertEqual(event["mismatch_kind"], "contact_counts")
+            self.assertEqual(event["differing_counts"], {"active": {"forward": 1, "recomputed": 2}})
+            self.assertIn("continuing because ignore_recompute_mismatch=True", event["message"])
+        self.assertEqual(result.diagnostics["observation_gradient_injections"], [1] * len(self.obs))
+
+    def test_ignored_state_and_loss_mismatches_are_recorded(self):
+        events = []
+        rollout = self.rollout(3, drift=True, ignore_recompute_mismatch=True)
+        rollout.progress = events.append
+        result = rollout.value_and_gradient(self.parameters)
+        self.assertTrue(np.isfinite(list(result.gradient.values())).all())
+        self.assertGreater(np.linalg.norm(flatten(result.initial_gradient)), 0)
+        self.assertFalse(result.diagnostics["replay_consistent"])
+        self.assertEqual(result.diagnostics["recompute_mismatch_counts"],
+                         {"contact_counts": 0, "checkpoint_state": 15, "observation_loss": 6})
+        mismatches = [event for event in events if event["phase"] == "recompute_mismatch"]
+        self.assertEqual([event["mismatch_number"] for event in mismatches], list(range(1, 22)))
+        state_events = [event for event in mismatches if event["mismatch_kind"] == "checkpoint_state"]
+        self.assertEqual({event["step"] for event in state_events}, {3, 6, 8})
+        self.assertEqual({event["array"] for event in state_events}, set(self.initial.arrays()))
+        for event in state_events:
+            self.assertTrue(event["ignored"])
+            self.assertGreater(event["max_abs_difference"], 0)
+            self.assertEqual(event["replay_atol"], 0)
+            self.assertIn("Checkpoint recomputation differs", event["message"])
+        for event in mismatches:
+            if event["mismatch_kind"] == "observation_loss":
+                self.assertTrue(event["ignored"])
+                self.assertNotEqual(event["expected_value"], event["recomputed_value"])
+                self.assertEqual(event["max_abs_difference"], abs(event["expected_value"] - event["recomputed_value"]))
+                self.assertEqual(event["step"], self.obs[event["frame_index"]].step)
+                self.assertEqual(event["replay_atol"], 1e-8)
+
+    def test_loss_mismatch_default_rejects_and_opt_in_continues(self):
+        class ChangedLoss(QuadraticLoss):
+            def value_and_grad_positions(self, positions, observation, compute_grad=True):
+                record = super().value_and_grad_positions(positions, observation, compute_grad)
+                if compute_grad:
+                    record.value += 1.0
+                return record
+
+        for ignore in (False, True):
+            with self.subTest(ignore=ignore):
+                events = []
+                rollout = self.rollout(3, ignore_recompute_mismatch=ignore)
+                rollout.loss = ChangedLoss()
+                rollout.progress = events.append
+                if ignore:
+                    result = rollout.value_and_gradient(self.parameters)
+                    self.assertEqual(result.diagnostics["recompute_mismatch_counts"],
+                                     {"contact_counts": 0, "checkpoint_state": 0, "observation_loss": 7})
+                    self.assertFalse(result.diagnostics["replay_consistent"])
+                else:
+                    with self.assertRaisesRegex(InvalidStateError, "Loss recomputation differs at frame 6"):
+                        rollout.value_and_gradient(self.parameters)
+                mismatches = [event for event in events if event["phase"] == "recompute_mismatch"]
+                self.assertEqual(mismatches[0]["mismatch_kind"], "observation_loss")
+                self.assertEqual(mismatches[0]["ignored"], ignore)
+                self.assertEqual(mismatches[0]["step"], 8)
+                self.assertEqual(mismatches[0]["mismatch_number"], 1)
+
+    def test_endpoint_default_reports_and_rejects_first_array(self):
+        events = []
+        rollout = self.rollout(3, drift=True)
+        rollout.progress = events.append
+        with self.assertRaisesRegex(InvalidStateError, "Checkpoint recomputation differs at step 8, x"):
+            rollout.value_and_gradient(self.parameters)
+        mismatches = [event for event in events if event["phase"] == "recompute_mismatch"]
+        self.assertEqual(len(mismatches), 1)
+        self.assertEqual(mismatches[0]["mismatch_kind"], "checkpoint_state")
+        self.assertEqual(mismatches[0]["array"], "x")
+        self.assertFalse(mismatches[0]["ignored"])
+
+    def test_mismatch_counts_reset_without_mutating_previous_result(self):
+        events = []
+        rollout = self.rollout(3, drift=True, ignore_recompute_mismatch=True)
+        rollout.progress = events.append
+        first = rollout.value_and_gradient(self.parameters)
+        saved_counts = dict(first.diagnostics["recompute_mismatch_counts"])
+        self.assertEqual(saved_counts, {"contact_counts": 0, "checkpoint_state": 15, "observation_loss": 6})
+        rollout.stepper.drift = False
+        second = rollout.value_and_gradient(self.parameters)
+        self.assertTrue(second.diagnostics["replay_consistent"])
+        self.assertEqual(second.diagnostics["recompute_mismatch_count"], 0)
+        self.assertEqual(first.diagnostics["recompute_mismatch_counts"], saved_counts)
+        self.assertIsNot(first.diagnostics["recompute_mismatch_counts"], second.diagnostics["recompute_mismatch_counts"])
+        events.clear()
+        rollout.stepper.diagnostics = lambda: {"active": 2 if rollout.stepper.reverse_started else 1}
+        third = rollout.value_and_gradient(self.parameters)
+        mismatches = [event for event in events if event["phase"] == "recompute_mismatch"]
+        self.assertEqual(mismatches[0]["mismatch_number"], 1)
+        self.assertEqual(third.diagnostics["recompute_mismatch_count"], 8)
+        forward = rollout.value_and_gradient(self.parameters, compute_grad=False)
+        self.assertFalse(forward.diagnostics["replay_consistency_checked"])
+        self.assertEqual(forward.diagnostics["recompute_mismatch_count"], 0)
+        self.assertEqual(first.diagnostics["recompute_mismatch_counts"], saved_counts)
+        self.assertEqual(third.diagnostics["recompute_mismatch_counts"]["contact_counts"], 8)
+        self.assertFalse(first.diagnostics["replay_consistent"])
+
+    def test_ignore_never_accepts_nonfinite_counts_states_or_adjoints(self):
+        for failure in ("count", "state", "adjoint", "parameter_gradient", "invalid_step"):
+            with self.subTest(failure=failure):
+                rollout = self.rollout(3, ignore_recompute_mismatch=True)
+                stepper = rollout.stepper
+                if failure == "count":
+                    stepper.diagnostics = lambda: {"active": np.nan if stepper.reverse_started else 1}
+                elif failure in ("state", "invalid_step"):
+                    advance = stepper.advance
+                    def invalid_advance(slot, control):
+                        advance(slot, control)
+                        if stepper.reverse_started:
+                            if failure == "invalid_step":
+                                raise InvalidStateError("Injected invalid deformation")
+                            stepper.states[slot + 1][0, 15] = np.nan
+                    stepper.advance = invalid_advance
+                elif failure == "adjoint":
+                    reverse = stepper.reverse_step
+                    def invalid_reverse(slot, control):
+                        reverse(slot, control)
+                        stepper.grads[slot][0, 0] = np.inf
+                    stepper.reverse_step = invalid_reverse
+                else:
+                    stepper.parameter_gradients = lambda: dict.fromkeys(PARAMETER_NAMES, np.nan)
+                with self.assertRaises(InvalidStateError):
+                    rollout.value_and_gradient(self.parameters)
+
+    def test_ignore_never_accepts_nonfinite_loss_or_invalid_loss_gradient(self):
+        for failure in ("forward_loss", "recomputed_loss", "gradient_nan", "gradient_dimensions"):
+            with self.subTest(failure=failure):
+                rollout = self.rollout(3, ignore_recompute_mismatch=True)
+                evaluate = rollout.loss.value_and_grad_positions
+                def invalid_loss(positions, observation, compute_grad=True):
+                    record = evaluate(positions, observation, compute_grad)
+                    if failure == "forward_loss" or (failure == "recomputed_loss" and compute_grad):
+                        record.value = np.nan
+                    if compute_grad and failure == "gradient_nan":
+                        record.gradient[:] = np.nan
+                    if compute_grad and failure == "gradient_dimensions":
+                        record.gradient = np.zeros((1, 2))
+                    return record
+                rollout.loss.value_and_grad_positions = invalid_loss
+                with self.assertRaises(InvalidStateError):
+                    rollout.value_and_gradient(self.parameters)
+
+    def test_ignore_flag_requires_an_explicit_boolean(self):
+        for value in ("false", "true", 1, None):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "must be a boolean"):
+                self.rollout(3, ignore_recompute_mismatch=value)
 
     def test_memory_is_bounded_by_segment(self):
         estimate = estimate_memory(24000, 10000, 64)

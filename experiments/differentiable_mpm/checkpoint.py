@@ -44,11 +44,18 @@ class CheckpointedRollout:
     from value_and_grad_positions(x, observation, compute_grad=...). Observation
     records expose integer step and frame_index. An observation at a segment start
     is differentiated by the preceding segment, except at global state zero.
+
+    Ignoring finite recomputation mismatches is explicitly opt-in. The objective
+    remains the original forward loss, but its returned gradient then uses changed
+    replay states and is not established as the derivative of that objective.
     """
 
     def __init__(self, stepper, initial_state: ParticleState, controls: Sequence,
                  observations: Sequence, loss, segment_length=64, *, replay_rtol=1e-5,
-                 replay_atol=None, loss_replay_rtol=2e-5, progress: Callable | None = None):
+                 replay_atol=None, loss_replay_rtol=2e-5, progress: Callable | None = None,
+                 ignore_recompute_mismatch: bool = False):
+        if not isinstance(ignore_recompute_mismatch, bool):
+            raise ValueError("ignore_recompute_mismatch must be a boolean")
         initial_state.validate()
         self.stepper = stepper
         self.initial_state = initial_state.copy()
@@ -80,6 +87,32 @@ class CheckpointedRollout:
             raise ValueError("Recomputation tolerances must be nonnegative")
         self.loss_replay_rtol = loss_replay_rtol
         self.progress = progress
+        self.ignore_recompute_mismatch = ignore_recompute_mismatch
+        self._reset_recompute_mismatches()
+
+    def _reset_recompute_mismatches(self):
+        self._recompute_mismatch_counts = {
+            "contact_counts": 0, "checkpoint_state": 0, "observation_loss": 0,
+        }
+
+    def _recompute_diagnostics(self):
+        counts = dict(self._recompute_mismatch_counts)
+        total = sum(counts.values())
+        return {"ignore_recompute_mismatch": self.ignore_recompute_mismatch,
+                "recompute_mismatch_counts": counts, "recompute_mismatch_count": total,
+                "replay_consistent": total == 0}
+
+    def _recompute_mismatch(self, kind, global_step, message, **details):
+        self._recompute_mismatch_counts[kind] += 1
+        suffix = ("; continuing because ignore_recompute_mismatch=True"
+                  if self.ignore_recompute_mismatch else "; backward evaluation rejected")
+        message += suffix
+        self._notify("recompute_mismatch", global_step, mismatch_kind=kind,
+                     ignored=self.ignore_recompute_mismatch,
+                     mismatch_number=sum(self._recompute_mismatch_counts.values()),
+                     message=message, **details)
+        if not self.ignore_recompute_mismatch:
+            raise InvalidStateError(message)
 
     def _notify(self, phase, step, **extra):
         if self.progress is not None:
@@ -96,12 +129,21 @@ class CheckpointedRollout:
         actual.validate()
         for name in STATE_NAMES:
             a, b = getattr(expected, name), getattr(actual, name)
-            delta = np.abs(a.astype(np.float64) - b.astype(np.float64))
-            maxima[name] = max(maxima[name], float(delta.max()))
+            if a.shape != b.shape:
+                raise InvalidStateError(f"Checkpoint state dimensions differ at step {global_step}, {name}")
+            with np.errstate(over="ignore", invalid="ignore"):
+                delta = np.abs(a.astype(np.float64) - b.astype(np.float64))
+            if not np.isfinite(delta).all():
+                raise InvalidStateError(f"Nonfinite checkpoint recomputation difference at step {global_step}, {name}")
+            maximum = float(delta.max())
+            maxima[name] = max(maxima[name], maximum)
             if not np.allclose(a, b, rtol=self.replay_rtol, atol=self.replay_atol[name]):
-                raise InvalidStateError(
+                self._recompute_mismatch(
+                    "checkpoint_state", global_step,
                     f"Checkpoint recomputation differs at step {global_step}, {name}: "
-                    f"max absolute difference {delta.max():.8g}; backward evaluation rejected")
+                    f"max absolute difference {maximum:.8g}",
+                    stage="checkpoint_endpoint_recompute", array=name, max_abs_difference=maximum,
+                    replay_rtol=self.replay_rtol, replay_atol=self.replay_atol[name])
 
     def _check_signature(self, expected, actual, global_step, first, last):
         if actual == expected:
@@ -111,13 +153,13 @@ class CheckpointedRollout:
             for name in sorted(set(expected) | set(actual))
             if expected.get(name) != actual.get(name)
         }
-        self._notify("recompute_mismatch", global_step,
-                     stage="segment_forward_recompute", segment_start_step=first,
-                     segment_end_step=last, expected_counts=expected,
-                     recomputed_counts=actual, differing_counts=differences)
-        raise InvalidStateError(
+        self._recompute_mismatch(
+            "contact_counts", global_step,
             f"Contact/yield summaries differ on recomputation at step {global_step} "
-            f"(segment {first}–{last}): {differences}; backward evaluation rejected")
+            f"(segment {first}–{last}): {differences}",
+            stage="segment_forward_recompute", segment_start_step=first,
+            segment_end_step=last, expected_counts=expected,
+            recomputed_counts=actual, differing_counts=differences)
 
     def _validate_adjoint(self, adjoint, global_step):
         try:
@@ -145,6 +187,7 @@ class CheckpointedRollout:
                 raise InvalidStateError("Observation position derivative is invalid")
 
     def value_and_gradient(self, parameters, *, compute_grad=True, frame_callback=None, frame_steps=None):
+        self._reset_recompute_mismatches()
         start_time = perf_counter()
         export_steps = set(self.by_step) | {0} if frame_steps is None else set(frame_steps)
         if any(not isinstance(s, (int, np.integer)) or not 0 <= s <= self.total_steps for s in export_steps):
@@ -198,6 +241,7 @@ class CheckpointedRollout:
         frame_records = [record for record in records if record is not None]
         forward_seconds = perf_counter() - start_time
         diagnostics: dict[str, Any] = {
+            **self._recompute_diagnostics(), "replay_consistency_checked": bool(compute_grad),
             "total_steps": self.total_steps, "observation_count": len(records),
             "segment_length": self.segment_length, "forward_seconds": forward_seconds,
             "backward_seconds": 0.0, "gradient_method": "reverse-mode segmented full trajectory" if compute_grad else None,
@@ -225,9 +269,17 @@ class CheckpointedRollout:
                 record = self.loss.value_and_grad_positions(positions, self.observations[index], compute_grad=True)
                 self._validate_record(record, len(positions), True)
                 old_value = frame_records[index]["value"]
-                loss_drift_max = max(loss_drift_max, abs(float(record.value) - old_value))
+                difference = abs(float(record.value) - old_value)
+                if not np.isfinite(difference):
+                    raise InvalidStateError(f"Nonfinite loss recomputation difference at step {global_step}")
+                loss_drift_max = max(loss_drift_max, difference)
                 if not np.isclose(record.value, old_value, rtol=self.loss_replay_rtol, atol=1e-8):
-                    raise InvalidStateError(f"Loss recomputation differs at frame {self.observations[index].frame_index}")
+                    self._recompute_mismatch(
+                        "observation_loss", global_step,
+                        f"Loss recomputation differs at frame {self.observations[index].frame_index}",
+                        stage="observation_loss_recompute", frame_index=int(self.observations[index].frame_index),
+                        expected_value=old_value, recomputed_value=float(record.value), max_abs_difference=difference,
+                        replay_rtol=self.loss_replay_rtol, replay_atol=1e-8)
                 stepper.seed_positions(slot, record.gradient, weight=self.weight)
                 observation_gradient_count[index] += 1
 
@@ -263,6 +315,7 @@ class CheckpointedRollout:
         if set(gradient) != set(parameters) or not all(np.isfinite(v) for v in gradient.values()):
             raise InvalidStateError("Parameter derivatives are missing or nonfinite")
         diagnostics.update({
+            **self._recompute_diagnostics(),
             "backward_seconds": perf_counter() - reverse_start,
             "host_checkpoint_count": len(checkpoints),
             "recomputed_endpoint_max_abs": maxima,

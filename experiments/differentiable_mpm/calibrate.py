@@ -41,6 +41,8 @@ def parse_args(argv=None):
     parser.add_argument('--reference-policy', choices=['strict', 'frozen'], default='strict',
                         help='strict checks live originals; frozen explicitly targets verified snapshots and records live changes')
     parser.add_argument('--segment-length', type=int)
+    parser.add_argument('--ignore-recompute-mismatch', action='store_true',
+                        help='Continue through finite replay mismatches with warnings; gradients may be approximate')
     parser.add_argument('--end-frame', type=int, help='Shorter endpoint inside the configured scoring window')
     parser.add_argument('--split', choices=['training', 'validation'])
     parser.add_argument('--output-dir', type=Path)
@@ -111,16 +113,24 @@ def progress_printer(event):
     elif phase == 'backward_segment' and (step == 0 or step % 1024 == 0):
         print(f'backward step={step}/{total}', flush=True)
     elif phase == 'recompute_mismatch':
-        print(f'Replay mismatch at step={step}/{total}, '
-              f'segment={event["segment_start_step"]}–{event["segment_end_step"]}: '
-              + json.dumps(json_value(event['differing_counts']), sort_keys=True), flush=True)
+        ignored = event.get('ignored', False)
+        number = event.get('mismatch_number', 1)
+        if ignored and number > 3 and number % 100 != 0:
+            return
+        label = 'WARNING: ignoring replay mismatch' if ignored else 'Replay mismatch'
+        segment = (f', segment={event["segment_start_step"]}–{event["segment_end_step"]}'
+                   if 'segment_start_step' in event else '')
+        detail = (json.dumps(json_value(event['differing_counts']), sort_keys=True)
+                  if 'differing_counts' in event else event.get('message', event.get('mismatch_kind', '')))
+        print(f'{label} at step={step}/{total}{segment}: {detail}', flush=True)
 
 
 def stored_progress(store):
     def callback(event):
         progress_printer(event)
         if event['phase'] == 'recompute_mismatch':
-            store.write_json('last_recompute_failure.json', event)
+            filename = 'last_recompute_warning.json' if event.get('ignored', False) else 'last_recompute_failure.json'
+            store.write_json(filename, event)
         if (event['phase'] in {'observation', 'invalid_adjoint', 'recompute_mismatch'}
                 or (event['phase'] == 'backward_segment' and event['step'] % 1024 == 0)
                 or event['step'] == event['total_steps']):
@@ -128,7 +138,7 @@ def stored_progress(store):
     return callback
 
 
-def make_rollout(prepared, stepper=None, progress=progress_printer):
+def make_rollout(prepared, stepper=None, progress=progress_printer, *, ignore_recompute_mismatch=False):
     length = min(prepared.config.segment_length, max(1, prepared.total_steps))
     if stepper is None:
         stepper = Stepper(prepared.simulation_config, prepared.parameters, capacity=length + 1, sdf=prepared.sdf)
@@ -137,7 +147,8 @@ def make_rollout(prepared, stepper=None, progress=progress_printer):
     loss = ObservationLoss(prepared.camera, prepared.loss_config, prepared.initial_state.x,
                            precision=prepared.simulation_config.precision)
     rollout = CheckpointedRollout(stepper, prepared.initial_state, prepared.controls,
-                                  prepared.observations, loss, length, progress=progress)
+                                  prepared.observations, loss, length, progress=progress,
+                                  ignore_recompute_mismatch=ignore_recompute_mismatch)
     return stepper, rollout
 
 
@@ -174,7 +185,8 @@ def finite_difference_report(rollout, space, parameters, physical_gradient):
 
 def export_and_evaluate(prepared, stepper, parameters, store, runtime, *, strict=True):
     from .evaluate import export_replay, run_strict_evaluation
-    _, rollout = make_rollout(prepared, stepper, progress=stored_progress(store))
+    _, rollout = make_rollout(prepared, stepper, progress=stored_progress(store),
+                              ignore_recompute_mismatch=runtime.get('ignore_recompute_mismatch', False))
     positions = {}
     frame_steps = {f.completed_substeps for f in prepared.frames}
     def collect(step, state):
@@ -224,6 +236,10 @@ def run(args):
     runtime = ({'initialization_verified': False, 'backend': config.backend}
                if args.no_runtime else init_runtime(config.backend, config.simulation.get('precision', 'f32'),
                                                     args.cpu_threads, args.debug, config.seed))
+    runtime = {**runtime, 'ignore_recompute_mismatch': args.ignore_recompute_mismatch}
+    if args.ignore_recompute_mismatch:
+        print('WARNING: finite replay mismatches will be logged and ignored; gradients may be approximate. '
+              'Invalid states and nonfinite losses/gradients still reject an evaluation.', flush=True)
     split = args.split or ('validation' if args.action == 'evaluate' else 'training')
     prepared = prepare_experiment(config, split=split, end_frame=args.end_frame, build_sdf=True)
     memory = estimate_memory(prepared.simulation_config.n_particles, prepared.total_steps, config.segment_length,
@@ -263,7 +279,8 @@ def run(args):
             store.write_json('result.json', result)
             print(f'Input validation written to {store.path / "result.json"}', flush=True)
             return 0
-        stepper, rollout = make_rollout(prepared, progress=stored_progress(store))
+        stepper, rollout = make_rollout(prepared, progress=stored_progress(store),
+                                        ignore_recompute_mismatch=args.ignore_recompute_mismatch)
         if args.action == 'gradient':
             try:
                 evaluation = rollout.value_and_gradient(prepared.parameters)
@@ -273,7 +290,8 @@ def run(args):
                 store.append_event({'event': 'gradient_failed', 'error': str(error)})
                 raise
             result = {'status': 'gradient_computed', 'parameters': prepared.parameters,
-                      'runtime': {**runtime, 'forward_verified': True, 'backward_verified': True},
+                      'runtime': {**runtime, 'forward_verified': True, 'backward_verified': True,
+                                  'backward_replay_consistent': evaluation.diagnostics.get('replay_consistent', True)},
                       'evaluation': evaluation_record(evaluation),
                       'coordinate_gradient': space.pullback(space.coordinates(), evaluation.gradient).tolist()}
             if args.finite_difference:
@@ -296,12 +314,17 @@ def run(args):
 
         count = [0]
         successful_objectives = [0]
+        objectives_with_mismatches = [0]
         def objective(parameters):
             count[0] += 1
             store.append_event({'event': 'objective_started', 'call_in_process': count[0], 'parameters': parameters})
             print(f'Objective call {count[0]}: {parameters}', flush=True)
             evaluation = rollout.value_and_gradient(parameters)
             successful_objectives[0] += 1
+            if not evaluation.diagnostics.get('replay_consistent', True):
+                objectives_with_mismatches[0] += 1
+                print('WARNING: objective gradient used mismatched replay; counts='
+                      + json.dumps(evaluation.diagnostics.get('recompute_mismatch_counts', {})), flush=True)
             record = evaluation_record(evaluation)
             store.write_json('last_objective.json', {'parameters': parameters, **record})
             print(f'Objective loss={evaluation.value:.9g}; physical_gradient={evaluation.gradient}', flush=True)
@@ -321,6 +344,7 @@ def run(args):
                 'accepted_updates': optimizer.accepted_updates,
                 'runtime': {**runtime, 'backward_verified': successful_objectives[0] > 0,
                             'successful_objectives_in_process': successful_objectives[0],
+                            'objectives_with_replay_mismatch': objectives_with_mismatches[0],
                             'execution_scope': 'this process; rejected evaluations are not verified gradients'},
             }
             store.write_json('result.json', failure)
@@ -329,6 +353,7 @@ def run(args):
         selected = {'best_parameters': optimization.best_parameters, 'training_value': optimization.best_value,
                     'selection_frames': list(prepared.scored_frames), 'selection_split': 'training',
                     'identity_sha256': store.identity_hash,
+                    'ignore_recompute_mismatch': args.ignore_recompute_mismatch,
                     'simulator_reference_sha256': next((row['expected_sha256']
                         for row in reference_verification.get('files', [])
                         if row['source'] == 'scripts/taichi_viscoelastic_mpm_scene.py'), None),
@@ -352,6 +377,8 @@ def run(args):
                              'forward_verified': successful_objectives[0] > 0 or bool(result['evaluations']),
                              'backward_verified': successful_objectives[0] > 0,
                              'successful_objectives_in_process': successful_objectives[0],
+                             'objectives_with_replay_mismatch': objectives_with_mismatches[0],
+                             'backward_replay_consistent': successful_objectives[0] > 0 and objectives_with_mismatches[0] == 0,
                              'execution_scope': 'this process; restored optimizer records are not new execution'}
         store.write_json('result.json', result)
         print(f'Calibration result: {store.path / "result.json"}', flush=True)

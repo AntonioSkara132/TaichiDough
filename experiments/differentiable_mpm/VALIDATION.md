@@ -121,9 +121,19 @@ The targeted `recompute_check.py` tool repeats the failing interval and independ
 
 No full real CPU gradient or deterministic CUDA implementation has been qualified. Single-thread CPU removes competing scatter additions and is the next reference test. CUDA seeds, synchronization, one-thread blocks or float64 alone are not determinism guarantees.
 
+### Remote small CUDA backward check
+
+The user-provided `runs/backend_20260912T101209Z_a748cb1d/backend_check.json` passes CUDA f32 forward, observation loss, backward execution and all 20 CPU comparisons. Its recorded solver hash is `75110847…`, the pre-serialization solver, while all six other backend-check source hashes match the serial-option revision. Although the command and configuration request `serial`, that solver does not contain the serialization line. This is useful small-fixture CUDA backward evidence for the older solver, not CUDA-serial execution or full-episode qualification. Transfer the matching solver file and rerun before interpreting the flag as proof of execution mode.
+
+The runtime records `Arch.cuda`; the CPU comparison separately records `Arch.x64`. Optional DRM counters are absent on that NVIDIA system, so their `verified=false` value is not evidence of CPU fallback. No traceback, fatal runtime error or initialization failure is present. Each backend stderr log contains 81 generated-gradient warnings (54 particle-operation and 27 grid-operation warnings); this passing fixture does not establish that every possible branch is valid. The report SHA-256 is `b52303bf4bf194d2e6f4deb36a2fcddc2a44f2714c604f50e152aa8c9eeaa857`.
+
 ## Optional serial P2G
 
 Solver SHA-256 `3960d45a81d7ab406f029af50669d99d7254557a36bdbe2bc50fcc9cd5cae8d8` adds exactly one solver line: `ti.loop_config(serialize=ti.static(self.config.p2g_mode == "serial"))` before the existing P2G particle loop. Removing that line exactly recovers solver `75110847…`. The default is atomic. This changes accumulation order only when selected; no material/contact equation, mass threshold, checkpoint check or memory allocation is changed.
+
+### Complete local regression run
+
+`runs/serial_p2g_final_suite/result.json` passes all 17 suites, totaling 197 unittest cases with no reported skips: 172 experiment tests and 25 existing production sweep/padding tests. The experiment Python/dependency identity still matches the launch manifest after completion. This includes preservation, default atomic forward/derivative checks, serial solver tests, loss, checkpointing, optimizer, input/CLI/storage, forward-reference fixtures and the unchanged synthetic fitting tests. Current production files are exercised by their own regression tests; the experiment's frozen-reference tests still target the preserved baseline. No real Episode 18 calibration is launched by this suite.
 
 ### CPU solver derivatives and replay
 
@@ -162,6 +172,12 @@ At 24,000 particles/grid48, five warmed repetitions produce one forward and one 
 These are medians of five warmed isolated scatter calls, excluding compilation, clearing/uploads and all other stages. Vulkan serial is 117× slower forward and 6.86× slower reverse. They are not full-solver or CUDA timing estimates. Local CUDA support is unavailable; `cuda_unavailable.json` records that initialization failure rather than substituting a backend.
 
 The option serializes P2G's forward and generated reverse particle loops. Other shared parameter-gradient and renderer/loss reductions remain parallel where they were parallel before. No bitwise whole-gradient, full-episode or CUDA qualification follows from these results.
+
+## Opt-in finite mismatch override
+
+`--ignore-recompute-mismatch` lets calibration continue through finite contact-count, checkpoint-state and observation-loss replay differences. It is disabled by default, independent of atomic/serial P2G, and included in run identity. Every ignored discrepancy remains recorded; objective diagnostics identify counts and replay inconsistency. State/loss/gradient validation and optimizer acceptance rules remain active. A completed backward pass with ignored discrepancies is not established as the derivative of the recorded forward loss.
+
+All 97 focused nonkernel tests pass at `runs/ignore_recompute_final_checks/result.json`, with the experiment source identity unchanged: 16 checkpoint, 29 CLI, 28 optimizer, 4 result-storage and 20 recomputation-diagnostic tests. Coverage includes strict rejection, explicit continuation for all three mismatch kinds, invalid/nonfinite rejection, per-evaluation counter resets and retained diagnostic snapshots, warning persistence/throttling, policy propagation, resume refusal after policy changes, and approximate-gradient metadata. No full-episode CUDA run or calibration was executed to qualify this override; numerical MPM kernels and production files are unchanged by it.
 
 ## Interpreting execution records
 

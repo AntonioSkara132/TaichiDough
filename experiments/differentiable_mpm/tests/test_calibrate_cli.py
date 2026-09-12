@@ -341,6 +341,7 @@ class CalibrateCliTests(unittest.TestCase):
             ('backend', None, 'source-a', ['--backend', 'vulkan']),
             ('precision', None, 'source-a', ['--precision', 'f32']),
             ('p2g_mode', None, 'source-a', ['--p2g-mode', 'serial']),
+            ('replay_policy', None, 'source-a', ['--ignore-recompute-mismatch']),
             ('path', None, 'source-a', ['--path', 'calibration=/different/calibration.json']),
             ('source', None, 'source-b', []),
             ('optimizer', None, 'source-a', ['--learning-rate', '0.001']),
@@ -433,6 +434,81 @@ class CalibrateCliTests(unittest.TestCase):
         self.assertEqual(saved['state']['status'], 'invalid_initial')
         events = [json.loads(line) for line in (output / 'events.jsonl').read_text().splitlines()]
         self.assertTrue(any(event.get('event') == 'fit_failed' for event in events))
+
+    def test_ignore_mismatch_flag_reaches_rollout_and_run_identity(self):
+        self.assertFalse(calibrate.parse_args(['gradient']).ignore_recompute_mismatch)
+        self.assertTrue(calibrate.parse_args(['gradient', '--ignore-recompute-mismatch']).ignore_recompute_mismatch)
+        for enabled in (False, True):
+            output = self.root / f'ignore_mismatch_{enabled}'
+            flags = ['--ignore-recompute-mismatch'] if enabled else []
+            with self.environment() as env:
+                self.assertEqual(self.run_cli(['gradient', '--output-dir', str(output), *flags]), 0)
+                self.assertEqual(env.mocks['make_rollout'].call_args.kwargs['ignore_recompute_mismatch'], enabled)
+            manifest = json.loads((output / 'run_manifest.json').read_text())
+            result = json.loads((output / 'result.json').read_text())
+            self.assertEqual(manifest['identity']['runtime']['ignore_recompute_mismatch'], enabled)
+            self.assertEqual(result['runtime']['ignore_recompute_mismatch'], enabled)
+
+    def test_make_rollout_passes_override_to_checkpoint_constructor(self):
+        prepared = SimpleNamespace(config=self.config, total_steps=3,
+                                   simulation_config=SimulationConfig(**self.config.simulation),
+                                   parameters=self.config.parameters, sdf=None, camera=None, loss_config=None,
+                                   initial_state=SimpleNamespace(x=np.zeros((1, 3))), controls=[], observations=[])
+        with patch.object(calibrate, 'Stepper'), patch.object(calibrate, 'ObservationLoss'), \
+                patch.object(calibrate, 'CheckpointedRollout') as constructor:
+            calibrate.make_rollout(prepared)
+            self.assertFalse(constructor.call_args.kwargs['ignore_recompute_mismatch'])
+            calibrate.make_rollout(prepared, ignore_recompute_mismatch=True)
+            self.assertTrue(constructor.call_args.kwargs['ignore_recompute_mismatch'])
+
+    def test_mismatched_gradient_is_marked_in_gradient_and_fit_results(self):
+        for action in ('gradient', 'fit'):
+            output = self.root / f'approximate_{action}'
+            rollout = AnalyticRollout()
+            original = rollout.value_and_gradient
+            def approximate(*args, **kwargs):
+                evaluation = original(*args, **kwargs)
+                evaluation.diagnostics.update(replay_consistent=False, recompute_mismatch_count=2,
+                                              recompute_mismatch_counts={'contact_counts': 2})
+                return evaluation
+            rollout.value_and_gradient = approximate
+            with self.environment(rollout=rollout):
+                self.assertEqual(self.run_cli([action, '--iterations', '0', '--no-evaluate',
+                                              '--ignore-recompute-mismatch', '--output-dir', str(output)]), 0)
+            result = json.loads((output / 'result.json').read_text())
+            self.assertTrue(result['runtime']['backward_verified'])
+            self.assertFalse(result['runtime']['backward_replay_consistent'])
+            if action == 'fit':
+                self.assertEqual(result['runtime']['objectives_with_replay_mismatch'], 1)
+                self.assertTrue(json.loads((output / 'selected_parameters.json').read_text())['ignore_recompute_mismatch'])
+            else:
+                self.assertEqual(result['evaluation']['diagnostics']['recompute_mismatch_count'], 2)
+
+    def test_override_does_not_swallow_invalid_gradient(self):
+        output = self.root / 'ignore_still_invalid'
+        rollout = AnalyticRollout()
+        rollout.value_and_gradient = Mock(side_effect=InvalidStateError('nonfinite adjoint'))
+        with self.environment(rollout=rollout), self.assertRaisesRegex(InvalidStateError, 'nonfinite adjoint'):
+            self.run_cli(['gradient', '--ignore-recompute-mismatch', '--output-dir', str(output)])
+        result = json.loads((output / 'result.json').read_text())
+        self.assertEqual(result['status'], 'gradient_failed')
+        self.assertFalse(result['runtime'].get('backward_verified', False))
+
+    def test_ignored_mismatch_warnings_are_persisted_even_when_console_is_throttled(self):
+        for kind in ('contact_counts', 'checkpoint_state', 'observation_loss'):
+            for number in (1, 4, 100):
+                event = {'phase': 'recompute_mismatch', 'step': 7, 'total_steps': 10, 'ignored': True,
+                         'mismatch_kind': kind, 'mismatch_number': number, 'message': f'{kind} differs'}
+                store, stream = Mock(), io.StringIO()
+                with redirect_stdout(stream):
+                    calibrate.stored_progress(store)(event)
+                store.write_json.assert_called_once_with('last_recompute_warning.json', event)
+                store.append_event.assert_called_once_with({'event': 'replay_progress', **event})
+                if number == 4:
+                    self.assertEqual(stream.getvalue(), '')
+                else:
+                    self.assertIn('WARNING: ignoring replay mismatch', stream.getvalue())
+                    self.assertIn(kind, stream.getvalue())
 
     def test_recompute_failure_is_printed_and_persisted(self):
         event = {'phase': 'recompute_mismatch', 'step': 9774, 'total_steps': 10006,

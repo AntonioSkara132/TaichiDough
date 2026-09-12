@@ -8,7 +8,7 @@ The default strict reference policy stops if live sources differ. To deliberatel
 
 ## Validation status
 
-See [VALIDATION.md](VALIDATION.md) for measured results and limitations. Component and short-trajectory gradients pass finite-difference tests, and the full recorded forward replay passes position tolerances. A real CPU f32 backward pass through 334 steps now completes with finite gradients and exact checkpoint recomputation. A fresh short Vulkan test also passes its CPU comparisons. Full-horizon real backward/parameter fitting is still under qualification.
+See [VALIDATION.md](VALIDATION.md) for measured results and limitations. Component and short-trajectory gradients pass finite-difference tests, and the full recorded forward replay passes position tolerances. A real CPU f32 backward pass through 334 steps completes with finite gradients and exact checkpoint recomputation on the stable-normalization revision. The optional serial-P2G revision passes all 197 cases in the complete local test/regression run, two additional segmented-trajectory tests, and short Vulkan forward/backward/replay checks. Full-horizon real backward/parameter fitting is still under qualification.
 
 The synthetic example explicitly uses a 10 mm prediction visibility temperature with fixed 2 mm-generated targets. Current-source checks pass for all five coordinate gradients and two combined directions, with unchanged target hashes. All eight synthetic tests pass; four optimizer updates reduce training loss by 33.18% and also improve the unused excitation. The previous 2 mm predictor had poor optimization despite accurate local derivatives. That failure remains recorded, and the >1% short-fit assertion has not been weakened.
 
@@ -28,7 +28,7 @@ The forward physics follows `reference/taichi_viscoelastic_mpm_scene.py`:
 
 The experiment does not change the model to von Mises plasticity or Coulomb friction. `tool_retention` and `floor_retention` name the existing velocity multipliers more accurately: smaller values remove more remaining relative velocity. Absorption/stickiness remain fixed because their products with retention cannot be identified separately by this law.
 
-Parameters are differentiated through every replay step. Host checkpoints and a configurable device history bound memory. At segment boundaries, **all five state adjoints are carried backward**, rather than detached. Grid/material/contact intermediates are recomputed. Checkpoint endpoint and contact/yield-count disagreement rejects a backward evaluation.
+Parameters are differentiated through every replay step. Host checkpoints and a configurable device history bound memory. At segment boundaries, **all five state adjoints are carried backward**, rather than detached. Grid/material/contact intermediates are recomputed. By default, checkpoint endpoint and contact/yield-count disagreement rejects a backward evaluation.
 
 ### Partial-observation training loss
 
@@ -170,9 +170,19 @@ A full remote CUDA f32 run completed the forward trajectory but rejected the fir
 
 The user's subsequent CUDA diagnostic on 2026-09-12 isolates the observed non-repeatability to P2G grid reduction: all three isolated repetitions at step 9754 restore identical inputs and produce identical material intermediates, then differ in grid mass/momentum. All three repeated segments have small state differences (maximum x component difference 1.1921e-7 m), but matching aggregate contact counts. This diagnostic reproduces the numerical differences, not the earlier contact-count flip. Parallel floating-point additions in P2G can change grid values enough to change a later hard-contact decision; readbacks can also affect GPU scheduling.
 
-Keep the exact consistency check. A smaller segment length, fixed seed, `ti.sync()`, or higher precision alone does not guarantee deterministic CUDA accumulation. For a full-horizon reference gradient, use a fresh run with `gradient --backend cpu --cpu-threads 1 --precision f64 --end-frame 60`, retaining the same config and input overrides. This is a qualification step; a full real CPU gradient has not yet been verified.
+Strict consistency checks remain the default; the explicit approximate-gradient override is described below. A smaller segment length, fixed seed, `ti.sync()`, or higher precision alone does not guarantee deterministic CUDA accumulation. For a full-horizon reference gradient, use a fresh run with `gradient --backend cpu --cpu-threads 1 --precision f64 --end-frame 60`, retaining the same config and input overrides. This is a qualification step; a full real CPU gradient has not yet been verified.
 
 Mismatch diagnostics now print expected/recomputed counts and segment bounds, persist `last_recompute_failure.json`, and write `result.json` for an invalid initial fit. Existing failed runs are preserved. Source/backend/precision changes require a new run, not `--resume`.
+
+### Allow finite replay mismatches
+
+`calibrate fit` and `calibrate gradient` accept `--ignore-recompute-mismatch`. It is off by default. Add it to the existing command, and use `--p2g-mode atomic` to keep parallel P2G instead of serial transfer.
+
+When enabled, finite contact/yield-count differences, checkpoint-state tolerance violations and observation-loss recomputation differences produce warnings rather than rejecting the gradient evaluation. State, loss and gradient validity checks remain active: NaNs, infinities, invalid deformation and missing derivatives are not ignored. Numerical equations, replay tolerances, adjoint propagation and optimizer acceptance rules are unchanged.
+
+Every mismatch is saved to `events.jsonl`; the latest ignored mismatch is saved to `last_recompute_warning.json`. The console prints the first three and every hundredth mismatch per objective, plus a summary when a fitting objective completes with mismatches. Diagnostics contain counts by kind and `replay_consistent`; gradient/fit runtime records distinguish completed backward execution from replay consistency. `backward_verified` means execution completed, not that an ignored mismatch was validated as harmless.
+
+The flag is part of run identity and is recorded with selected parameters. Use a new run when changing it; `--resume` rejects a changed policy. This is an explicit approximate-gradient experiment, not a demonstrated fix for the full-episode CUDA gradients.
 
 ### Targeted forward replay probe
 
@@ -202,7 +212,9 @@ The four targeted CPU solver tests pass, including exact repeated forward states
 
 **Serial GPU transfer can be much slower.** A warmed isolated 24,000-particle/grid48 Vulkan probe measures 161.82 ms serial versus 1.383 ms atomic for P2G forward (117×), and 36.72 ms versus 5.352 ms for its reverse (6.86×). These are local Vulkan stage timings, not CUDA or complete-simulation estimates. This option first tests repeatability; fast deterministic parallel reduction would require a separate implementation.
 
-After transferring the updated experimental code to the remote checkout, first run the small CUDA execution/CPU-comparison check. It requires no Episode 18 inputs:
+Transfer the updated experimental code together, including `solver.py`. A user-provided remote run accepted the serial flag but recorded the pre-serialization solver hash `75110847…`; its passing CUDA test therefore does not qualify serial transfer. The locally qualified serial-option solver has SHA-256 `3960d45a81d7ab406f029af50669d99d7254557a36bdbe2bc50fcc9cd5cae8d8`. Check the run's recorded solver hash, not only its command line.
+
+First run the small CUDA execution/CPU-comparison check. It requires no Episode 18 inputs:
 
 ```bash
 python3 -u -m experiments.differentiable_mpm.backend_check \
