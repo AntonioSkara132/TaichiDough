@@ -9,10 +9,20 @@ from typing import Any
 
 import numpy as np
 
-from .config import EXPERIMENT_ROOT, ExperimentConfig, canonical_hash, file_sha256, verify_input_paths
+from .config import EXPERIMENT_ROOT, ExperimentConfig, FrameWindow, canonical_hash, file_sha256, verify_input_paths
 from .reference_adapter import get_reference_modules
 from .replay import RecordedControls, ReplayFrame, observation_schedule
 from .state import ParticleState, SDFData, SimulationConfig
+
+
+def validate_initial_stencils(particles, config: SimulationConfig):
+    """Use the selected solver's base rounding and logical grid bounds."""
+    positions = np.asarray(particles, dtype=config.numpy_dtype)
+    scaled = positions * config.grid - 0.5
+    corrected = config.physics_version == "corrected-v1"
+    base = (np.floor(scaled) if corrected else np.trunc(scaled)).astype(np.int64)
+    if np.any(base < (-1 if corrected else 0)) or np.any(base + 2 >= config.grid):
+        raise ValueError("Initial particle has an unsafe MPM grid stencil")
 
 
 def array_fingerprint(values: np.ndarray) -> str:
@@ -215,18 +225,24 @@ class PreparedExperiment:
                 "sdf_built": self.sdf is not None, "fingerprint": self.fingerprint, "provenance": self.provenance}
 
 
-def prepare_experiment(config: ExperimentConfig, split="training", end_frame=None, build_sdf=True) -> PreparedExperiment:
-    """Verify inputs and prepare a replay from reconstruction state zero."""
+def prepare_experiment(config: ExperimentConfig, split="training", end_frame=None, build_sdf=True,
+                       *, scored_window: FrameWindow | None = None) -> PreparedExperiment:
+    """Verify inputs and replay from state zero, optionally scoring an explicit window."""
     from .loss import LossConfig, Observation
 
+    if scored_window is not None and not isinstance(scored_window, FrameWindow):
+        raise ValueError("scored_window must be a FrameWindow or None")
+    if split not in {"training", "validation", "held-out"}:
+        raise ValueError("split must be training or validation")
+    window = config.window(split) if scored_window is None else scored_window
     records = verify_input_paths(config)
     helpers = get_reference_modules()
     simulator, dynamics, topview = helpers.simulator, helpers.dynamics, helpers.topview
     calibration = topview.load_calibration(config.paths["calibration"])
     if not calibration.is_metric or calibration.schema != "taichidough/scene-calibration/v2":
         raise ValueError("Differentiable training requires a metric v2 camera calibration")
-    if calibration.source_frame != "mocap" or calibration.scene_frame != "mocap":
-        raise ValueError("Recorded dough replay requires mocap source and scene coordinates")
+    if calibration.source_frame != "mocap" or calibration.scene_frame not in {"mocap", "table-aligned"}:
+        raise ValueError("Recorded dough replay requires mocap source and mocap or table-aligned scene coordinates")
     distortion = np.asarray(calibration.camera.get("d", []), dtype=float)
     if distortion.size and not np.allclose(distortion, 0, rtol=0, atol=1e-12):
         raise ValueError("Nonzero camera distortion is not supported by the differentiable pinhole renderer")
@@ -234,7 +250,6 @@ def prepare_experiment(config: ExperimentConfig, split="training", end_frame=Non
     if config.expected_sequence_fingerprint and sequence.fingerprint != config.expected_sequence_fingerprint:
         raise ValueError("Recorded sequence fingerprint does not match the explicit expected value")
     source = verify_source_manifest(config, records, sequence.fingerprint)
-    window = config.window(split)
     if end_frame is not None and (isinstance(end_frame, (bool, np.bool_)) or not isinstance(end_frame, (int, np.integer))):
         raise ValueError("Replay endpoint must be an integer source-frame index")
     selected_end = window.end_frame if end_frame is None else int(end_frame)
@@ -266,9 +281,7 @@ def prepare_experiment(config: ExperimentConfig, split="training", end_frame=Non
         raise ValueError("Configured floor differs from reconstruction floor")
     numerical.update(floor_y=reconstruction["floor_y"], particle_mass=mass["particle_mass_kg"], particle_volume=mass["particle_volume_m3"])
     sim_config = SimulationConfig(**numerical)
-    base = np.trunc(particles * sim_config.grid - 0.5).astype(np.int64)
-    if np.any(base < 0) or np.any(base + 2 >= sim_config.grid):
-        raise ValueError("Initial particle has an unsafe MPM grid stencil")
+    validate_initial_stencils(particles, sim_config)
     state = ParticleState.initial(particles, sim_config.numpy_dtype)
     state.validate()
     geometry = dynamics.load_tool_geometry(config.paths["tool_geometry"], sequence.names)
@@ -323,6 +336,8 @@ def prepare_experiment(config: ExperimentConfig, split="training", end_frame=Non
                   "observation_filter_counts": filter_counts,
                   "control_arrays": {"poses": array_fingerprint(controls.poses), "velocities": array_fingerprint(controls.velocities)},
                   "reference_sources": frozen["files"]}
+    if scored_window is not None:
+        provenance["scored_window_override"] = asdict(scored_window)
     return PreparedExperiment(config, sim_config, state, dict(config.parameters), sdf, controls,
                               observations, camera, loss_config, provenance, total_steps, frames,
                               split, scored_frames, calibration, sequence, geometry, reconstruction, mass)

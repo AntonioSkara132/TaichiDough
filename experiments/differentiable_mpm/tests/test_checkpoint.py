@@ -373,6 +373,17 @@ class CheckpointTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaisesRegex(ValueError, "must be a boolean"):
                 self.rollout(3, ignore_recompute_mismatch=value)
 
+    def test_memory_uses_physics_specific_grid_allocation(self):
+        for version, allocated in (("corrected-v1", 49), ("legacy-v1", 48)):
+            for precision, size in (("f32", 4), ("f64", 8)):
+                values = estimate_memory(24000, 10000, precision=precision, physics_version=version)
+                self.assertEqual(values["physical_grid"], 48)
+                self.assertEqual(values["allocated_grid"], allocated)
+                self.assertEqual(values["grid_primal_and_adjoint_estimate_bytes"], allocated ** 3 * 20 * size)
+        self.assertEqual(estimate_memory(1, 1)["physics_version"], "corrected-v1")
+        with self.assertRaisesRegex(ValueError, "physics_version"):
+            estimate_memory(1, 1, physics_version="unknown")
+
     def test_memory_is_bounded_by_segment(self):
         estimate = estimate_memory(24000, 10000, 64)
         self.assertLess(estimate["local_particle_history_and_adjoint_bytes"], 400_000_000)

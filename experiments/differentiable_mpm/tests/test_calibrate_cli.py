@@ -114,6 +114,9 @@ class CalibrateCliTests(unittest.TestCase):
             for name, replacement in (
                 ('load_config', Mock(side_effect=load)),
                 ('verify_reference', Mock(return_value={})),
+                ('reference_identity', Mock(side_effect=lambda version: {'physics_version': version,
+                    'simulator_sha256': version + '-fixture-sha', 'simulator_snapshot': version,
+                    'manifest_sha256': 'fixture-manifest'})),
                 ('verify_input_paths', Mock(return_value={'mock_verified': True})),
                 ('prepare_experiment', Mock(side_effect=prepare)),
                 ('init_runtime', Mock(side_effect=runtime)),
@@ -141,6 +144,35 @@ class CalibrateCliTests(unittest.TestCase):
         self.assertEqual(args.segment_length, 8)
         self.assertEqual(args.end_frame, 2)
         self.assertTrue(args.finite_difference)
+
+    def test_physics_version_defaults_overrides_and_provenance(self):
+        self.assertIsNone(calibrate.parse_args(['validate']).physics_version)
+        for bad in ('unknown', '', None, True, [], 1):
+            with self.subTest(bad=bad), self.assertRaisesRegex(ValueError, 'physics_version'):
+                SimulationConfig(n_particles=1, physics_version=bad)
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            calibrate.parse_args(['validate', '--physics-version', 'unknown'])
+        for i, (configured, override, expected) in enumerate((
+                (None, None, 'corrected-v1'), ('legacy-v1', None, 'legacy-v1'),
+                (None, 'legacy-v1', 'legacy-v1'), ('legacy-v1', 'corrected-v1', 'corrected-v1'))):
+            config = deepcopy(self.config)
+            if configured:
+                config.simulation['physics_version'] = configured
+            output = self.root / f'physics_{i}'
+            argv = ['fit', '--iterations', '0', '--no-evaluate', '--output-dir', str(output)]
+            if override:
+                argv += ['--physics-version', override]
+            with self.environment(config=config) as env:
+                self.assertEqual(self.run_cli(argv), 0)
+                prepared_config = env.mocks['prepare_experiment'].call_args.args[0]
+                self.assertEqual(prepared_config.simulation['physics_version'], expected)
+                env.mocks['reference_identity'].assert_called_once_with(expected)
+                self.assertEqual(env.mocks['estimate_memory'].call_args.kwargs['physics_version'], expected)
+            selected = json.loads((output / 'selected_parameters.json').read_text())
+            self.assertEqual(selected['physics_version'], expected)
+            self.assertEqual(selected['simulator_reference_sha256'], expected + '-fixture-sha')
+            manifest = json.loads((output / 'run_manifest.json').read_text())
+            self.assertEqual(manifest['identity']['runtime']['physics_version'], expected)
 
     def test_p2g_mode_validation_and_config_fingerprint(self):
         self.assertEqual(SimulationConfig(n_particles=1).p2g_mode, 'atomic')
@@ -341,6 +373,7 @@ class CalibrateCliTests(unittest.TestCase):
             ('backend', None, 'source-a', ['--backend', 'vulkan']),
             ('precision', None, 'source-a', ['--precision', 'f32']),
             ('p2g_mode', None, 'source-a', ['--p2g-mode', 'serial']),
+            ('physics_version', None, 'source-a', ['--physics-version', 'legacy-v1']),
             ('replay_policy', None, 'source-a', ['--ignore-recompute-mismatch']),
             ('path', None, 'source-a', ['--path', 'calibration=/different/calibration.json']),
             ('source', None, 'source-b', []),

@@ -89,9 +89,36 @@ class BackendReportTests(unittest.TestCase):
         with patch.object(backend_check, "_worker", return_value=0) as worker:
             self.assertEqual(backend_check.main(["--backend", "cuda", "--p2g-mode", "serial",
                                                  "--_worker-report", "test.json"]), 0)
-            worker.assert_called_once_with("cuda", "f32", "test.json", "serial")
+            worker.assert_called_once_with("cuda", "f32", "test.json", "serial", "corrected-v1")
         with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             backend_check.main(["--backend", "cuda", "--p2g-mode", "parallel"])
+
+    def test_physics_version_reaches_workers_fixture_and_failure_record(self):
+        root = self.directory / 'physics_runs'
+        for version in ('corrected-v1', 'legacy-v1'):
+            flags = [] if version == 'corrected-v1' else ['--physics-version', version]
+            with patch.object(backend_check, 'EVIDENCE_ROOT', root), \
+                    patch.object(backend_check, '_launch', return_value=_valid_result()) as launch:
+                self.assertEqual(backend_check.main(['--backend', 'cuda', '--compare-cpu',
+                    '--output-dir', str(root / version), *flags]), 0)
+                self.assertEqual([call.args[5] for call in launch.call_args_list], [version, version])
+            self.assertEqual(backend_check._fixture('f32', physics_version=version)[0].physics_version, version)
+            directory = self.directory / version
+            directory.mkdir()
+            with patch.object(backend_check.subprocess, 'run', return_value=SimpleNamespace(returncode=-11)) as run:
+                report = backend_check._launch('cuda', 'f32', directory, 1, physics_version=version)
+            argv = run.call_args.args[0]
+            self.assertEqual(argv[argv.index('--physics-version') + 1], version)
+            self.assertEqual(report['physics_version'], version)
+        with patch.object(backend_check, '_worker', return_value=0) as worker:
+            backend_check.main(['--backend', 'cuda', '--physics-version', 'legacy-v1', '--_worker-report', 'p.json'])
+            worker.assert_called_once_with('cuda', 'f32', 'p.json', 'atomic', 'legacy-v1')
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            backend_check.main(['--backend', 'cpu', '--physics-version', 'unknown'])
+        reference, candidate = _valid_result(), _valid_result()
+        reference['configuration']['physics_version'] = 'corrected-v1'
+        candidate['configuration']['physics_version'] = 'legacy-v1'
+        self.assertFalse(backend_check.compare_results(reference, candidate)['passed'])
 
     def test_serial_mode_reaches_subprocess_and_failure_record(self):
         directory = self.directory / "serial_process"

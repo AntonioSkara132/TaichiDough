@@ -1,4 +1,5 @@
 """Input integrity, timestamp scheduling and strict-frame validation tests."""
+from contextlib import ExitStack
 from dataclasses import replace
 import json
 import os
@@ -54,6 +55,33 @@ class InputTests(unittest.TestCase):
         config.paths["initial_particles"] = self.directory / "different_workspace" / "initial_particles"
         with self.assertRaisesRegex(FileNotFoundError, "Explicit initial_particles"):
             verify_input_paths(config)
+
+    def test_initial_stencil_bounds_match_each_physics_version(self):
+        from experiments.differentiable_mpm.data import validate_initial_stencils
+        from experiments.differentiable_mpm.state import SimulationConfig
+        for version in ('corrected-v1', 'legacy-v1'):
+            config = SimulationConfig(n_particles=1, grid=8, precision='f64', physics_version=version)
+            # Corrected base -1 includes the exact lower edge; truncation excludes it.
+            lower = -0.5 / config.grid
+            accepted = lower if version == 'corrected-v1' else lower + 1e-8
+            for axis in range(3):
+                for value in (0.0, accepted, (config.grid - 1.5) / config.grid - 1e-8):
+                    point = np.full((1, 3), 0.4)
+                    point[0, axis] = value
+                    validate_initial_stencils(point, config)
+                for value in (lower - 1e-8, (config.grid - 1.5) / config.grid):
+                    point = np.full((1, 3), 0.4)
+                    point[0, axis] = value
+                    with self.subTest(version=version, axis=axis, value=value), self.assertRaisesRegex(ValueError, 'unsafe MPM'):
+                        validate_initial_stencils(point, config)
+            if version == 'legacy-v1':
+                with self.assertRaisesRegex(ValueError, 'unsafe MPM'):
+                    validate_initial_stencils([[0.4, lower, 0.4]], config)
+
+    def test_examples_select_corrected_physics_explicitly(self):
+        for name in ('episode18_viscoelastic.json', 'episode18_stretch_clamp.json'):
+            config = load_config(EXPERIMENT_ROOT / 'configs' / name)
+            self.assertEqual(config.simulation['physics_version'], 'corrected-v1')
 
     def test_examples_select_plasticity_explicitly(self):
         pure = load_config(EXPERIMENT_ROOT / "configs" / "episode18_viscoelastic.json")
@@ -216,6 +244,79 @@ class InputTests(unittest.TestCase):
             with helpers.temporary_directory() as child:
                 self.assertEqual(Path(child).parent, expected)
             self.assertTrue(expected.is_dir())
+
+    def test_explicit_scored_window_preserves_full_replay_and_provenance(self):
+        from experiments.differentiable_mpm import data
+        from experiments.differentiable_mpm.state import ToolControl
+
+        config = self.fixture_config()
+        config.observation = ObservationSettings(width=4, height=4)
+        particles = np.array([[0.4, 0.4, 0.4]], dtype=np.float32)
+        np.save(config.paths["initial_particles"], particles)
+        # np.save appends an extension for this intentionally extensionless input path.
+        config.paths["initial_particles"] = Path(str(config.paths["initial_particles"]) + ".npy")
+        camera = {"width": 4, "height": 4, "fx": 4., "fy": 4., "cx": 2., "cy": 2.,
+                  "zNear": .01, "zFar": 5.}
+        calibration = SimpleNamespace(is_metric=True, schema="taichidough/scene-calibration/v2",
+                                      source_frame="mocap", scene_frame="mocap", camera=camera,
+                                      scene_from_camera=np.eye(4))
+        sequence = SimpleNamespace(fingerprint="sequence", times=np.arange(9) * .01,
+                                   original_indices=np.arange(9), points=[particles] * 9, names=("a", "b"))
+        stationary = ToolControl.stationary()
+        replay = SimpleNamespace(times=sequence.times,
+                                 at=lambda time: (stationary.poses, stationary.velocities))
+        geometry = SimpleNamespace(marker_from_collider=None)
+        reconstruction = {"scene_frame": "mocap", "floor_y": 0., "object_volume_m3": .001,
+                          "metadata_sha256": "metadata"}
+        simulator = SimpleNamespace(
+            load_initial_particles=lambda path: particles,
+            load_reconstruction_metadata=lambda *args: reconstruction,
+            compute_mass_properties=lambda *args: {"density_kg_m3": config.density_kg_m3,
+                                                   "particle_mass_kg": .25, "particle_volume_m3": .001},
+            particle_array_sha256=lambda values: "particles")
+        topview = SimpleNamespace(
+            load_calibration=lambda path: calibration, rigid_inverse=np.linalg.inv,
+            apply_calibration=lambda points, calibration: points, filter_xyz=lambda points, trim: points,
+            rasterize_depth=lambda *args: (np.ones((4, 4)), np.zeros((4, 4), dtype=int)),
+            calibration_metadata=lambda calibration: {"camera": camera})
+        dynamics = SimpleNamespace(
+            load_observation_sequence=lambda path: sequence, load_tool_geometry=lambda *args: geometry,
+            ToolReplay=lambda *args, **kwargs: replay, load_scene_point_filter=lambda *args: None,
+            filter_scene_points=lambda points, filter: (points, {}), tool_geometry_metadata=lambda geometry: {})
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(data, "verify_input_paths", return_value={}))
+            stack.enter_context(patch.object(data, "get_reference_modules", return_value=SimpleNamespace(
+                simulator=simulator, dynamics=dynamics, topview=topview)))
+            stack.enter_context(patch.object(data, "resolved_reconstruction", return_value=(
+                config.paths["reconstruction_metadata"], {})))
+            stack.enter_context(patch.object(data, "collision_inputs", return_value=(None, None)))
+            original_window = config.validation
+            prepared = data.prepare_experiment(config, split="validation", scored_window=FrameWindow(1, 8, 3))
+            self.assertEqual(prepared.scored_frames, (1, 4, 7, 8))
+            self.assertEqual([frame.source_frame for frame in prepared.frames], list(range(9)))
+            self.assertEqual([observation.frame_index for observation in prepared.observations], [1, 4, 7, 8])
+            self.assertEqual(prepared.provenance["scored_window_override"],
+                             {"start_frame": 1, "end_frame": 8, "stride": 3})
+            self.assertEqual(config.validation, original_window)
+            default = data.prepare_experiment(config, split="validation")
+            self.assertEqual(default.scored_frames, (3, 4))
+            self.assertNotIn("scored_window_override", default.provenance)
+            self.assertNotEqual(default.fingerprint, prepared.fingerprint)
+            shortened = data.prepare_experiment(config, split="validation", end_frame=6,
+                                                scored_window=FrameWindow(1, 8, 3))
+            self.assertEqual(shortened.scored_frames, (1, 4, 6))
+            self.assertEqual(shortened.end_frame, 6)
+
+    def test_scored_window_rejects_invalid_type_before_input_loading(self):
+        from experiments.differentiable_mpm import data
+        config = self.fixture_config()
+        with patch.object(data, "verify_input_paths") as verify:
+            for value in ({"start_frame": 1, "end_frame": 8}, True, [1, 8]):
+                with self.assertRaisesRegex(ValueError, "scored_window"):
+                    data.prepare_experiment(config, scored_window=value)
+            with self.assertRaisesRegex(ValueError, "split"):
+                data.prepare_experiment(config, split="unknown", scored_window=FrameWindow(1, 8))
+            verify.assert_not_called()
 
     def test_invalid_observation_settings(self):
         for settings in ({"width": 0}, {"splat_radius": -1}, {"trim_quantile": .5}):

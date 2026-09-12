@@ -1,0 +1,31 @@
+{
+  "schema": "taichidough/differentiable-dataset/v1",
+  "name": "episode18-dataset-nonsticky-smoke",
+  "shared_parameters": {
+    "initial": {
+      "youngs_modulus": 130579.320726,
+      "poisson_ratio": 0.3,
+      "viscosity": 0.0,
+      "plastic_min": 0.9,
+      "plastic_max": 1.1
+    },
+    "fit": ["youngs_modulus", "poisson_ratio", "viscosity", "plastic_min", "plastic_max"],
+    "bounds": {
+      "youngs_modulus": [10000.0, 300000.0],
+      "poisson_ratio": [0.15, 0.45],
+      "viscosity": [0.0, 100.0],
+      "plastic_min": [0.7, 0.999],
+      "plastic_max": [1.001, 1.3]
+    }
+  },
+  "tool_contact": {"retention": 1.0, "absorption": 0.0, "stickiness": 0.0},
+  "episodes": [
+    {
+      "id": "snimanje_23_10-episode18",
+      "config": "episode18_stretch_clamp.json",
+      "membership": "training",
+      "weight": 1.0,
+      "scored_window": {"start_frame": 1, "end_frame": 2, "stride": 1}
+    }
+  ]
+}

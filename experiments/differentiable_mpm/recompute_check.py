@@ -25,7 +25,7 @@ import uuid
 import numpy as np
 
 from .results import EXPERIMENT_ROOT, RUN_ROOT, RunStore, source_identity
-from .state import ParticleState, STATE_NAMES, P2G_MODES
+from .state import ParticleState, STATE_NAMES, P2G_MODES, PHYSICS_VERSIONS
 
 
 SCHEMA = "taichidough/recompute-diagnostic/v1"
@@ -196,12 +196,16 @@ def _first_probe_stage(restoration, scratch, output, counts):
     return None
 
 
-def diagnostic_memory_estimate(initial_state, grid, spec):
+def diagnostic_memory_estimate(initial_state, grid, spec, *, physics_version="corrected-v1"):
+    if physics_version not in PHYSICS_VERSIONS:
+        raise ValueError("Invalid physics_version")
+    allocated_grid = grid + (physics_version == "corrected-v1")
     state_bytes = sum(array.nbytes for array in initial_state.arrays().values())
     scalar_bytes = initial_state.x.dtype.itemsize
     # Four 3x3 matrices plus Jp history; mass plus three grid vector fields.
-    scratch_bytes = (37 * len(initial_state.x) + 10 * grid ** 3) * scalar_bytes
-    return {"state_bytes": state_bytes, "probe_scratch_bytes": scratch_bytes,
+    scratch_bytes = (37 * len(initial_state.x) + 10 * allocated_grid ** 3) * scalar_bytes
+    return {"physics_version": physics_version, "physical_grid": grid, "allocated_grid": allocated_grid,
+            "state_bytes": state_bytes, "probe_scratch_bytes": scratch_bytes,
             "device_state_primal_and_adjoint_bytes": 2 * (spec.layout_length + 1) * state_bytes,
             "original_segment_state_disk_bytes_uncompressed": (spec.steps + 1) * state_bytes,
             "probe_scratch_disk_bytes_uncompressed": (spec.repeats + 1) * scratch_bytes,
@@ -431,6 +435,8 @@ def parse_args(argv=None):
     parser.add_argument("--precision", choices=("f32", "f64"))
     parser.add_argument("--p2g-mode", choices=P2G_MODES,
                         help="Override particle-to-grid transfer: atomic (default) or fixed-order serial; serial can be slower")
+    parser.add_argument("--physics-version", choices=PHYSICS_VERSIONS,
+                        help="Override solver physics: corrected-v1 (default) or legacy-v1 for old-run reproduction")
     parser.add_argument("--reference-policy", choices=("strict", "frozen"), default="strict")
     parser.add_argument("--cpu-threads", type=int, default=1)
     parser.add_argument("--debug", action="store_true")
@@ -468,6 +474,7 @@ def run(args):
         config.simulation["precision"] = args.precision
     if args.p2g_mode is not None:
         config.simulation["p2g_mode"] = args.p2g_mode
+    config.simulation["physics_version"] = args.physics_version or config.simulation.get("physics_version", "corrected-v1")
     config.validate()
     spec = DiagnosticSpec(args.start_step, args.steps, args.probe_step, args.repeats, config.segment_length)
     source = source_identity()
@@ -486,24 +493,27 @@ def run(args):
             print(PURPOSE.upper(), flush=True)
             print(f"Run directory: {store.path}", flush=True)
             print("Settings: " + json.dumps(asdict(spec), sort_keys=True), flush=True)
+            print(f"Physics version: {config.simulation['physics_version']}", flush=True)
             print(f"P2G mode: {config.simulation.get('p2g_mode', 'atomic')} "
                   "(transfer mode only; other reductions are unchanged)", flush=True)
             with reference_policy(args.reference_policy):
                 verification = verify_reference()
                 store.write_json("reference_verification.json", verification)
                 if verification.get("originals_unchanged") is False:
-                    print("Working originals differ; explicit frozen policy uses the preserved physics.", flush=True)
+                    print("Working originals differ; frozen policy uses verified helpers, independently of solver physics.", flush=True)
                 store.write_json("input_verification.json", verify_input_paths(config))
                 from .runtime import init_runtime
                 runtime = init_runtime(config.backend, config.simulation.get("precision", "f32"),
                                        args.cpu_threads, args.debug, config.seed)
+                runtime = {**runtime, "physics_version": config.simulation["physics_version"]}
                 store.write_json("runtime.json", runtime)
                 from .data import prepare_experiment
                 prepared = prepare_experiment(config, end_frame=args.end_frame, build_sdf=True)
                 spec.validate(prepared.total_steps, spec.layout_length + 1)
                 store.write_json("resolved_inputs.json", prepared.summary())
                 store.write_json("prepared_provenance.json", prepared.provenance)
-                memory = diagnostic_memory_estimate(prepared.initial_state, prepared.simulation_config.grid, spec)
+                memory = diagnostic_memory_estimate(prepared.initial_state, prepared.simulation_config.grid, spec,
+                                                    physics_version=prepared.simulation_config.physics_version)
                 store.write_json("memory_estimate.json", memory)
                 print("Memory/disk estimate: " + json.dumps(memory, sort_keys=True), flush=True)
                 print(f"Actual backend: {runtime['actual_arch']}; prepared steps={prepared.total_steps}; "

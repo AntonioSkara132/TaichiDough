@@ -83,6 +83,54 @@ class PreservationTests(unittest.TestCase):
                 else:
                     sys.modules[name] = module
 
+    def test_physics_selects_distinct_verified_simulators_and_preserved_helpers(self):
+        with adapter.reference_policy("frozen"):
+            old = adapter.reference_identity("legacy-v1")
+            new = adapter.reference_identity("corrected-v1")
+            self.assertEqual(old["simulator_sha256"],
+                             "6653543ac16c8fcbdc111c73ebaa2c5e2d8c1cdc899e3750dce539b2730a2f07")
+            self.assertEqual(new["simulator_sha256"],
+                             "d33f0aec3952fa72282cd181757f678b2e2a48e5b51016c23d40fd05d6a3ac3e")
+            legacy = adapter.get_reference_modules(physics_version="legacy-v1")
+            corrected = adapter.get_reference_modules(physics_version="corrected-v1")
+            self.assertIsNot(legacy.simulator, corrected.simulator)
+            self.assertIs(adapter.load_reference(), legacy.simulator)
+            self.assertIs(corrected.simulator.apply_calibration, corrected.topview.apply_calibration)
+            self.assertEqual(Path(corrected.simulator.__file__), adapter.EXPERIMENT_ROOT / new["simulator_snapshot"])
+            for name, path in legacy.source_paths.items():
+                if name != "scripts/taichi_viscoelastic_mpm_scene.py":
+                    self.assertEqual(corrected.source_paths[name], path)
+            with self.assertRaisesRegex(ValueError, "Unknown reference physics"):
+                adapter.reference_identity("unknown")
+
+    def test_corrected_reference_rejects_snapshot_and_manifest_changes(self):
+        with temporary_directory() as temporary:
+            root, experiment, _ = self._copy_recorded_files(temporary)
+            manifest_path = adapter.EXPERIMENT_ROOT / "reference_corrected_manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            snapshot = experiment / manifest["snapshot"]
+            snapshot.parent.mkdir()
+            original = (adapter.EXPERIMENT_ROOT / manifest["snapshot"]).read_bytes()
+            snapshot.write_bytes(original)
+            target_manifest = experiment / manifest_path.name
+            shutil.copy2(manifest_path, target_manifest)
+            adapter.reference_identity("corrected-v1", root, experiment)
+            snapshot.write_bytes(original + b"\n# changed\n")
+            with self.assertRaisesRegex(ValueError, "Corrected snapshot"):
+                adapter.reference_identity("corrected-v1", root, experiment)
+            manifest["sha256"] = hashlib.sha256(snapshot.read_bytes()).hexdigest()
+            target_manifest.write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(ValueError, "Corrected reference manifest"):
+                adapter.reference_identity("corrected-v1", root, experiment)
+            snapshot.write_bytes(original)
+            shutil.copy2(manifest_path, target_manifest)
+            (root / "scripts/taichi_viscoelastic_mpm_scene.py").write_text("# live drift\n")
+            with self.assertRaisesRegex(ValueError, "Working source"):
+                adapter.reference_identity("corrected-v1", root, experiment)
+            with adapter.reference_policy("frozen"):
+                selected = adapter.reference_identity("corrected-v1", root, experiment)
+                self.assertEqual(selected["simulator_sha256"], hashlib.sha256(original).hexdigest())
+
     def _copy_recorded_files(self, temporary, include_supplement=True):
         root = Path(temporary) / "repo"
         experiment = root / "experiments" / "differentiable_mpm"
@@ -336,6 +384,49 @@ class PreservationTests(unittest.TestCase):
                                               "--stage", "short", "--run-dir", "test-run"]), 0)
             worker.assert_called_once()
         self.assertEqual(adapter.current_reference_policy(), "strict")
+
+    def test_parity_worker_commands_propagate_physics_independently(self):
+        from experiments.differentiable_mpm.tests import test_forward_parity
+        for policy in ("strict", "frozen"):
+            for version in ("corrected-v1", "legacy-v1"):
+                with adapter.reference_policy(policy):
+                    command = test_forward_parity.worker_command("reference", "elastic", 1, Path("out.npz"), version)
+                self.assertEqual(command[command.index("--reference-policy") + 1], policy)
+                self.assertEqual(command[command.index("--physics-version") + 1], version)
+                self.assertEqual(test_forward_parity.make_fixture("elastic", 1, version)[0].physics_version, version)
+
+    def test_real_parity_rejects_mixed_reference_identity_without_running(self):
+        from experiments.differentiable_mpm import real_parity
+        with temporary_directory() as temporary, adapter.reference_policy("frozen"):
+            root = Path(temporary)
+            (root / "inputs.npz").write_bytes(b"fixture")
+            source = root / "candidate_source"
+            source.mkdir()
+            hashes = {}
+            for name in real_parity.PINNED_FILES:
+                (source / name).write_text("# synthetic source\n")
+                hashes[name] = real_parity._hash_file(source / name)
+            metadata = {"schema": "taichidough/real-forward-parity-inputs/v1",
+                        "simulation": {"physics_version": "corrected-v1"},
+                        "candidate_source_sha256": hashes,
+                        "inputs_npz_sha256": real_parity._hash_file(root / "inputs.npz"),
+                        "position_acceptance_limits": real_parity.POSITION_LIMITS,
+                        "reference_identity": adapter.reference_identity("corrected-v1")}
+            path = root / "inputs.json"
+            path.write_text(json.dumps(metadata))
+            self.assertEqual(real_parity._verified_metadata(root), metadata)
+            metadata["reference_identity"] = adapter.reference_identity("legacy-v1")
+            path.write_text(json.dumps(metadata))
+            with self.assertRaisesRegex(ValueError, "reference identity"):
+                real_parity._verified_metadata(root)
+            metadata.pop("reference_identity")
+            path.write_text(json.dumps(metadata))
+            with self.assertRaisesRegex(ValueError, "reference identity"):
+                real_parity._verified_metadata(root)
+            # Historical runs remain legacy records, without assigning them a new identity.
+            metadata["simulation"].pop("physics_version")
+            path.write_text(json.dumps(metadata))
+            self.assertNotIn("reference_identity", real_parity._verified_metadata(root))
 
     def test_arguments_preserve_physics_and_disable_scripted_tools(self):
         config = SimulationConfig(n_particles=8, plasticity="stretch-clamp", use_jp=True,

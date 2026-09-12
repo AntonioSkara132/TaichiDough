@@ -1,0 +1,146 @@
+{
+  "schema": "taichidough/differentiable-mpm-experiment/v1",
+  "name": "episode18-table-aligned-registered-tools",
+  "paths": {
+    "episode": "../data/deformpath_training/DeformPath3/snimanje_23_10/episode18_kugla",
+    "calibration": "experiments/differentiable_mpm/data/episode18_registered_tools_v1/scene_calibration_v2.json",
+    "initial_particles": "experiments/differentiable_mpm/data/episode18_registered_tools_v1/sampled_particles_xyz.npy",
+    "reconstruction_metadata": "experiments/differentiable_mpm/data/episode18_registered_tools_v1/reconstruction_metadata.json",
+    "tool_geometry": "experiments/differentiable_mpm/data/episode18_registered_tools_v1/tool_geometry.json",
+    "collision_manifest": "experiments/differentiable_mpm/data/episode18_registered_tools_v1/collision_manifest.json",
+    "ur_collision_mesh": "experiments/differentiable_mpm/data/episode18_registered_tools_v1/ur_spathla_collision_solid.stl",
+    "kinova_collision_mesh": "experiments/differentiable_mpm/data/episode18_registered_tools_v1/gen3_spathla_collision_solid.stl"
+  },
+  "expected_sha256": {
+    "calibration": "8d0eba7c434d5afe64c611895d8bfd8bb06aace7bcb4a84393d852f64f2d2af3",
+    "initial_particles": "26382223d7abfe900489f3005b84e7a0b7a906b68006f2ed6d38e4e7008cec39",
+    "reconstruction_metadata": "f817e008f3d55cdf391442c1d5c0761e8211835593a5e1cd21d7ac87cfd69d21",
+    "tool_geometry": "f26aca9216379925d746f55c61eb9c8ed591f7feaa4412556ed27d1b31c05ef7",
+    "collision_manifest": "678d2885ec7bd67b89ccc802e3a87296d8f93cf134ba412b3128e7b4b483f10a",
+    "ur_collision_mesh": "65e2afa80894c45dde9ef1791786c8652d1de22a0a6b39de098fb2567552b251",
+    "kinova_collision_mesh": "c4d7a910e928d265f387003f33638a3ac123f7c8472af5d691882a099fb4867a"
+  },
+  "expected_sequence_fingerprint": "b5b2225335813b6c61f1777194c92cfa5de93b082dcf1a4974cd9cf992b825cb",
+  "simulation": {
+    "physics_version": "corrected-v1",
+    "n_particles": 24000,
+    "grid": 48,
+    "dt": 0.0002,
+    "gravity": -9.81,
+    "floor_y": 0.0,
+    "plasticity": "stretch-clamp",
+    "use_jp": false,
+    "jp_hardening": 0.0,
+    "jp_min": 0.5,
+    "jp_max": 2.0,
+    "tool_collision": "sdf",
+    "tool_contact_padding": 0.0026041666666666665,
+    "tool_contact_absorption": 0.0,
+    "tool_stickiness": 0.0,
+    "floor_absorption": 0.0,
+    "floor_stickiness": 0.0,
+    "floor_plastic_damping_band": 0.0,
+    "velocity_damping": 1.0,
+    "plastic_velocity_damping": 1.0,
+    "plastic_affine_damping": 1.0,
+    "precision": "f32",
+    "tool_contact_model": "coulomb-v1",
+    "tool_friction_coefficient": 0.5
+  },
+  "mass_kg": 0.25,
+  "density_kg_m3": 2196.21898938787,
+  "parameters": {
+    "youngs_modulus": 130579.320726,
+    "poisson_ratio": 0.3,
+    "viscosity": 0.0,
+    "plastic_min": 0.9,
+    "plastic_max": 1.1,
+    "tool_retention": 1.0,
+    "floor_retention": 0.4
+  },
+  "fit_parameters": [
+    "youngs_modulus",
+    "poisson_ratio",
+    "viscosity",
+    "plastic_min",
+    "plastic_max"
+  ],
+  "parameter_bounds": {
+    "youngs_modulus": [
+      10000.0,
+      300000.0
+    ],
+    "poisson_ratio": [
+      0.15,
+      0.45
+    ],
+    "viscosity": [
+      0.0,
+      100.0
+    ],
+    "plastic_min": [
+      0.7,
+      0.999
+    ],
+    "plastic_max": [
+      1.001,
+      1.3
+    ]
+  },
+  "training": {
+    "start_frame": 1,
+    "end_frame": 60,
+    "stride": 1
+  },
+  "validation": {
+    "start_frame": 61,
+    "end_frame": 97,
+    "stride": 1
+  },
+  "observation": {
+    "width": 160,
+    "height": 120,
+    "splat_radius": 1,
+    "strict_splat_radius": 1,
+    "trim_quantile": 0.005
+  },
+  "loss": {
+    "version": "partial-visible-splats-v2",
+    "footprint_radius": 2,
+    "visibility_temperature_m": 0.005,
+    "depth_scale_m": 0.01,
+    "distance_scale_m": 0.01,
+    "huber_delta": 1.0,
+    "depth_weight": 1.0,
+    "coverage_weight": 0.5,
+    "distance_weight": 0.5,
+    "min_observed_pixels": 4,
+    "max_observed_points": 1024,
+    "min_predicted_pixels": 1
+  },
+  "strict_loss": {
+    "weights": {
+      "depth_change": 1.0,
+      "mask_iou": 1.0,
+      "observed_to_simulation_distance": 1.0,
+      "real_coverage": 1.0
+    },
+    "depth_scale_m": 0.01,
+    "distance_scale_m": 0.01,
+    "huber_delta": 1.0,
+    "min_common_pixels": 50,
+    "min_observed_pixels": 50,
+    "min_simulation_pixels": 50,
+    "min_observed_points": 50,
+    "min_simulation_points": 50,
+    "nearest_chunk_size": 1024,
+    "require_all_frames": true
+  },
+  "replay_max_gap_s": 0.1,
+  "tool_sdf_resolution": 64,
+  "tool_mesh_scale": 0.001,
+  "backend": "cuda",
+  "segment_length": 64,
+  "seed": 0,
+  "optimizer": {}
+}

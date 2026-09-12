@@ -1,8 +1,48 @@
 # Differentiable MPM validation
 
-This record concerns the experimental copy, not the independently corrected production simulator. The authoritative simulator snapshot is SHA-256 `6653543ac16c8fcbdc111c73ebaa2c5e2d8c1cdc899e3750dce539b2730a2f07`. Its affine transfer and floor stencil retain the original behavior. No production file was changed by this experiment's implementation work.
+## Multi-episode driver
 
-## Current status
+The shared-material dataset driver is implemented, and its small corrected multi-motion numerical checks pass. Its objective averages existing episode-mean losses with fixed normalized weights and accumulates shared physical gradients. The existing optimizer evaluates every training episode for each proposal/backtrack. Subprocesses run sequentially; input preparation and compilation repeat. First-setup tools use retention1/absorption0/stickiness0, with each episode's floor parameters preserved.
+
+- **Four actual corrected CPU f64 multi-motion tests pass** in `runs/multi_trajectory_validation_20260912T133705307972Z/`, with complete Python source identity unchanged. A weighted 1:2 two-motion fit reduces combined training loss from 3.0445477861 to 1.8871840942 (38.0143%) in four accepted updates without retuning. All five material AD/FD checks at two perturbation sizes pass (largest printed relative error 2.573e-7). The held-out motion is not called during fitting and is evaluated only after selection. Actual `EpisodeProcessEvaluator` → `episode_worker` execution matches direct value and all seven returned physical gradients exactly; raw-data loading/preparation is mocked only for this tiny synthetic worker comparison.
+- **276 host/regression tests pass** across 15 suites in `runs/checks_20260912T133643_504575/`. This includes existing single-episode input/CLI/optimizer/storage checks, new manifest/inventory/worker/objective/dataset-CLI checks, and 25 existing production sweep regressions. Python/dependency identity matched at verification. Numerical kernels are not exercised by this host/regression count.
+- The genuine Episode18 two-frame dataset smoke configuration passes **input-only, no-runtime validation**: `runs/dataset_validate_20260912T133654_e29e974e/result.json`, with detailed worker/preflight records in `runs/dataset_preflight_20260912T133654_1a0eb3a4/`. This executes saved-input preparation, not MPM forward/backward, and does not resolve the observed floor inconsistency.
+- Metadata-only inventory is recorded in `runs/dataset_inventory_20260912T132102Z_4a3449/`. Across ten known roots it finds 370 episode-named directories and 64 duplicate recording groups; these are processed variants, not 370 independent trials. Only Episode18 has the identified attached calibration and reconstructed initialization. Other selected episodes require their own verified inputs before a real dataset fit.
+- The separate Episode18 floor investigation (`runs/episode18_floor_height_20260912_hsv/`) reports an observed table plane about47.6mm above the configured floor beneath the dough and about5° tilt. Saved metadata consistency is not evidence that this physical discrepancy is corrected. This implementation changes neither floor nor camera calibration.
+
+No real multi-episode fit has been launched. See [MULTI_EPISODE.md](MULTI_EPISODE.md) for operation, limitations and remote commands.
+
+This record concerns the experimental copy. No production file was changed by this experiment's implementation work.
+
+## Non-adhesive Coulomb tool contact
+
+A separate `coulomb-v1` tool-contact model is implemented without changing the default `retention-v1` behavior. It removes inward normal relative velocity, limits tangential velocity change by `mu * delta_v_n`, and leaves separating velocity unchanged. Grid and particle contact use the same response; particle angular collider velocity is evaluated after position projection. Absorption and stickiness must be zero, and the fixed friction coefficient is not a fitted parameter.
+
+Evidence in `runs/coulomb_contact_cpu_20260912T164000Z/`:
+
+- Six CPU f64 analytic/integration tests pass: zero friction, kinetic sliding, static stop, separating and withdrawing contact, moving-tool drag, continuity away from switches, both grid/particle paths, projected-position angular velocity and invalid configuration.
+- One actual one-step moving/rotating SDF test passes state and E/Poisson/viscosity AD-versus-finite-difference checks away from branch switches. `tool_retention` has exactly zero derivative in `coulomb-v1`.
+- The existing `retention-v1` moving/rotating SDF state/parameter derivative regression passes.
+- A 12-step corrected f32 SDF forward comparison against the independent reference passes with unchanged tolerances. Maximum differences are x0, v9.31e-10, C5.96e-8, F3.64e-12 and Jp0.
+- Solver/state/test hashes are identical before and after the archived tests. Taichi's existing reverse-kernel uninitialized-local warnings remain in the logs.
+
+This is a velocity-level approximation, not a full pressure/impulse complementarity solve. Its friction limit is based on inward relative normal velocity after stress/gravity/grid updates. Resting contact with no inward normal velocity can therefore receive no tangential friction in a step. No real Episode18 replay, coefficient calibration, CUDA test or full-horizon gradient was run for this model.
+
+## Corrected physics local qualification
+
+The experimental configuration now distinguishes `corrected-v1` (default) from explicit `legacy-v1`. The correction uses `4 * inv_dx**2` in G2P with metric `dpos`, floor-based stencil indices, and a grid padded at logical index -1. The original reference snapshot remains unchanged at SHA-256 `6653543ac16c8fcbdc111c73ebaa2c5e2d8c1cdc899e3750dce539b2730a2f07`. A separate corrected reference is pinned to SHA-256 `d33f0aec3952fa72282cd181757f678b2e2a48e5b51016c23d40fd05d6a3ac3e`.
+
+**Corrected local numerical checks pass; full-episode calibration remains unqualified.** Five CPU f64 analytic transfer tests pass on solver `263e3568…`: affine reconstruction at grids 24/48/96, padded-grid G2P adjoints, floor conservation/nonnegative masses, known-viscosity stress/transfer, and stencil bounds. Evidence: `runs/corrected_transfer_cpu_20260912T114149_c6306f/`.
+
+The corrected-v1 serial-P2G small Vulkan f32 forward/loss/backward fixture also passes its CPU comparison: `runs/backend_20260912T114258Z_d56b4b15/backend_check.json`. The report records actual `Arch.vulkan`, solver `263e3568…`, and amdgpu compute-counter increase of 49,953,951 ns. This is a four-particle, three-step test, not full-horizon GPU or CUDA qualification. Corrected and legacy short forward parity both pass: nine fixtures per version, twelve steps per fixture, comparing all x/v/C/F/Jp arrays against each version's independent reference snapshot. Original tolerances are unchanged; corrected floor masses are nonnegative and the legacy negative-mass fixture remains explicit. All eight recorded source hashes stayed unchanged. Evidence: `runs/physics_reference_parity_20260912T114148Z/{parity.log,verification.json}`. All 18 solver/transfer tests pass with zero failures, errors or skips, including material, plasticity/Jp, floor/SDF derivatives, explicit legacy behavior, and corrected atomic/serial forward and gradient checks. Numerical/test hashes are unchanged across all five groups. Combined evidence: `runs/corrected_solver_combined_20260912T120613Z/summary.json`.
+
+CPU f64 synthetic (9 tests) and trajectory (5 tests) suites pass in `runs/corrected_synthetic_trajectory_20260912T114053144307Z/`. Corrected full-storage versus segment-4 observation gradients and five material finite differences pass (largest printed relative error 1.288e-7). The unchanged 12-step, four-update synthetic fit reduces training loss from 3.5580313124 to 2.1879261617 (38.5074%) and held-out loss from 2.8736226660 to 1.8772705569; held-out data does not select updates. This demonstrates loss reduction, not unique parameter recovery. Solver/test sources were unchanged, but `checkpoint.py` changed during these tests while the memory-estimate integration was in progress. Exact before/after hashes were subsequently recovered and verified in `runs/physics_cli_20260912T114826_cf8f76/checkpoint_source_transition/`: only `estimate_memory` changed, every other AST node is equal, and `CheckpointedRollout` onward is byte-identical. The tested replay/adjoint implementation therefore did not change; this run is still not described as whole-source-stable. Reverse-kernel warnings remain in the logs.
+
+The physics-version integration passes 101 host-only tests, recorded in `runs/physics_cli_20260912T114826_cf8f76/`: defaults and overrides, invalid versions, reference labels, changed-version resume rejection, worker propagation, padded memory estimates, and precision-matched input stencil bounds. These tests do not execute MPM kernels.
+
+The historical results below concern the original G2P/stencil physics, even where their original descriptions say “current” or “stable.” They are not corrected-model validation. No corrected full Episode18 calibration has been launched. Old fitted material parameters remain initial guesses; there is no constant conversion that preserves the full trajectory.
+
+## Historical legacy-physics status
 
 **The differentiable implementation is experimental. Full-horizon real-data calibration is not yet qualified.** Component and short-trajectory derivatives pass tests. A 334-step real CPU f32 backward pass and a fresh Vulkan/CPU comparison pass with the stable grid-normalization adjoint. Current-source synthetic coordinate/directional gradients and the unchanged short-fit acceptance test pass with a declared 10 mm prediction temperature and fixed 2 mm targets; both training and held-out losses improve. A completed full forward replay does not establish full-horizon backward stability or parameter identifiability.
 

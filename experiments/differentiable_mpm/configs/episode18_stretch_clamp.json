@@ -24,6 +24,7 @@
   },
   "expected_sequence_fingerprint": "b5b2225335813b6c61f1777194c92cfa5de93b082dcf1a4974cd9cf992b825cb",
   "simulation": {
+    "physics_version": "corrected-v1",
     "n_particles": 24000,
     "grid": 48,
     "dt": 0.0002,

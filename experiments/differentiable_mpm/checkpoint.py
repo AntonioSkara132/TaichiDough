@@ -5,7 +5,7 @@ from typing import Any, Callable, Sequence
 
 import numpy as np
 
-from .state import InvalidStateError, ParticleState, STATE_NAMES
+from .state import InvalidStateError, ParticleState, STATE_NAMES, PHYSICS_VERSIONS
 
 
 @dataclass
@@ -17,10 +17,14 @@ class RolloutEvaluation:
     diagnostics: dict
 
 
-def estimate_memory(n_particles, total_steps, segment_length=64, precision="f32", grid=48, sdf_resolution=64):
+def estimate_memory(n_particles, total_steps, segment_length=64, precision="f32", grid=48, sdf_resolution=64,
+                    *, physics_version="corrected-v1"):
     """Allocation estimates, not a measurement of the Taichi process or device allocator."""
     if min(n_particles, segment_length, grid) < 1 or total_steps < 0:
         raise ValueError("Invalid allocation dimensions")
+    if physics_version not in PHYSICS_VERSIONS:
+        raise ValueError("Invalid physics_version")
+    allocated_grid = grid + (physics_version == "corrected-v1")
     itemsize = 4 if precision == "f32" else 8
     segment_length = min(segment_length, max(1, total_steps))
     state_bytes = n_particles * 25 * itemsize
@@ -30,7 +34,10 @@ def estimate_memory(n_particles, total_steps, segment_length=64, precision="f32"
         "local_particle_history_and_adjoint_bytes": 2 * (segment_length + 1) * state_bytes,
         "host_checkpoint_bytes": checkpoint_count * state_bytes,
         "host_boundary_adjoint_bytes": state_bytes,
-        "grid_primal_and_adjoint_estimate_bytes": grid ** 3 * 20 * itemsize,
+        "physics_version": physics_version,
+        "physical_grid": grid,
+        "allocated_grid": allocated_grid,
+        "grid_primal_and_adjoint_estimate_bytes": allocated_grid ** 3 * 20 * itemsize,
         "sdf_estimate_bytes": 2 * sdf_resolution ** 3 * 4 * itemsize,
         "full_particle_history_and_adjoint_bytes": 2 * (total_steps + 1) * state_bytes,
         "note": "Material/contact scratch, loss fields, compiler and allocator overhead are additional.",

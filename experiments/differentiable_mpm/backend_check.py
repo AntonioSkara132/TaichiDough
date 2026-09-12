@@ -25,7 +25,7 @@ import uuid
 
 import numpy as np
 
-from .state import P2G_MODES
+from .state import P2G_MODES, PHYSICS_VERSIONS
 
 
 EXPERIMENT_ROOT = Path(__file__).resolve().parent
@@ -117,7 +117,7 @@ def create_evidence_directory(requested=None):
     return path
 
 
-def _fixture(precision, p2g_mode="atomic"):
+def _fixture(precision, p2g_mode="atomic", physics_version="corrected-v1"):
     from .state import DEFAULT_PARAMETERS, ParticleState, SDFData, SimulationConfig, ToolControl
 
     dtype = np.float32 if precision == "f32" else np.float64
@@ -126,7 +126,7 @@ def _fixture(precision, p2g_mode="atomic"):
                               plasticity="stretch-clamp", use_jp=True, jp_hardening=2.0,
                               floor_y=0.412, floor_plastic_damping_band=0.01,
                               plastic_affine_damping=0.87, tool_collision="sdf",
-                              tool_contact_padding=0.004, p2g_mode=p2g_mode)
+                              tool_contact_padding=0.004, p2g_mode=p2g_mode, physics_version=physics_version)
     state = ParticleState.initial([[.417, .40, .405], [.441, .415, .409],
                                    [.456, .428, .432], [.431, .421, .445]], dtype)
     state.v[:] = [[.1, -.2, .04], [-.05, -.1, .08], [.02, -.3, -.03], [.01, -.1, .07]]
@@ -167,7 +167,7 @@ def _observation_objective(initial, precision):
     return objective, observation
 
 
-def _worker(backend, precision, report_path, p2g_mode="atomic"):
+def _worker(backend, precision, report_path, p2g_mode="atomic", physics_version="corrected-v1"):
     import taichi as ti
     from .runtime import init_runtime
     from .solver import Stepper
@@ -178,7 +178,7 @@ def _worker(backend, precision, report_path, p2g_mode="atomic"):
         raise ValueError("Worker report must be a new file in the experiment runs directory")
     started = time.monotonic()
     report = {"schema_version": SCHEMA_VERSION, "fixture_version": FIXTURE_VERSION,
-              "requested_backend": backend, "precision": precision, "p2g_mode": p2g_mode, "status": "running",
+              "requested_backend": backend, "precision": precision, "p2g_mode": p2g_mode, "physics_version": physics_version, "status": "running",
               "stage": "initialization", "source_hashes": source_hashes(),
               "device_inventory": device_inventory(), "stages": {}}
 
@@ -202,7 +202,7 @@ def _worker(backend, precision, report_path, p2g_mode="atomic"):
             ti.set_logging_level(ti.INFO)
         report["drm_after_initialization"] = drm_clients()
         stage("initialization", True)
-        config, initial, parameters, control, sdf = _fixture(precision, p2g_mode)
+        config, initial, parameters, control, sdf = _fixture(precision, p2g_mode, physics_version)
         report["configuration"] = asdict(config)
         report["parameters"] = parameters
         report["steps"] = 3
@@ -325,11 +325,11 @@ def compare_results(reference, candidate):
             "note": f"Tolerances apply to this short {reference['precision']} contact fixture, not long-horizon GPU replay."}
 
 
-def _launch(backend, precision, directory, timeout_s, p2g_mode="atomic"):
+def _launch(backend, precision, directory, timeout_s, p2g_mode="atomic", physics_version="corrected-v1"):
     report_path = directory / "worker_result.json"
     command = [sys.executable, "-m", "experiments.differentiable_mpm.backend_check",
                "--backend", backend, "--precision", precision, "--p2g-mode", p2g_mode,
-               "--_worker-report", str(report_path)]
+               "--physics-version", physics_version, "--_worker-report", str(report_path)]
     _write_json(directory / "command.json", {"argv": command})
     stdout_path, stderr_path = directory / "stdout.log", directory / "stderr.log"
     timeout = False
@@ -342,7 +342,7 @@ def _launch(backend, precision, directory, timeout_s, p2g_mode="atomic"):
     try:
         report = json.loads(report_path.read_text())
     except (OSError, ValueError):
-        report = {"requested_backend": backend, "precision": precision, "p2g_mode": p2g_mode, "status": "failed",
+        report = {"requested_backend": backend, "precision": precision, "p2g_mode": p2g_mode, "physics_version": physics_version, "status": "failed",
                   "stage": "worker_process", "error": {"message": "Worker produced no complete JSON record"}}
     if timeout or returncode != 0:
         report["status"] = "failed"
@@ -360,13 +360,14 @@ def main(argv=None):
     parser.add_argument("--precision", default="f32", choices=("f32", "f64"))
     parser.add_argument("--p2g-mode", default="atomic", choices=P2G_MODES,
                         help="Transfer mode for both backends; serial can be much slower on GPUs")
+    parser.add_argument("--physics-version", default="corrected-v1", choices=PHYSICS_VERSIONS)
     parser.add_argument("--compare-cpu", action="store_true", help="Run the identical fixture on CPU in a separate process")
     parser.add_argument("--output-dir", type=Path, help="A new directory under experiments/differentiable_mpm/runs")
     parser.add_argument("--timeout-s", type=float, default=600.0, help="Maximum time per backend process")
     parser.add_argument("--_worker-report", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args._worker_report:
-        return _worker(args.backend, args.precision, args._worker_report, args.p2g_mode)
+        return _worker(args.backend, args.precision, args._worker_report, args.p2g_mode, args.physics_version)
     if not np.isfinite(args.timeout_s) or args.timeout_s <= 0:
         parser.error("--timeout-s must be finite and positive")
     if args.compare_cpu and args.backend == "cpu":
@@ -375,14 +376,14 @@ def main(argv=None):
     print(f"Backend evidence: {directory}", flush=True)
     requested_dir = directory / "requested_backend"
     requested_dir.mkdir()
-    print(f"P2G mode: {args.p2g_mode}", flush=True)
-    candidate = _launch(args.backend, args.precision, requested_dir, args.timeout_s, args.p2g_mode)
+    print(f"P2G mode: {args.p2g_mode}; physics version: {args.physics_version}", flush=True)
+    candidate = _launch(args.backend, args.precision, requested_dir, args.timeout_s, args.p2g_mode, args.physics_version)
     reference, comparison = None, None
     if args.compare_cpu:
         if candidate.get("status") == "execution_passed":
             cpu_dir = directory / "cpu_reference"
             cpu_dir.mkdir()
-            reference = _launch("cpu", args.precision, cpu_dir, args.timeout_s, args.p2g_mode)
+            reference = _launch("cpu", args.precision, cpu_dir, args.timeout_s, args.p2g_mode, args.physics_version)
             comparison = compare_results(reference, candidate)
         else:
             comparison = {"passed": False, "checks": [],
@@ -390,7 +391,7 @@ def main(argv=None):
     passed = candidate.get("status") == "execution_passed" and (comparison is None or comparison["passed"])
     summary = {"schema_version": SCHEMA_VERSION, "fixture_version": FIXTURE_VERSION,
                "status": "passed" if passed else "failed", "requested_backend": args.backend,
-               "precision": args.precision, "p2g_mode": args.p2g_mode,
+               "precision": args.precision, "p2g_mode": args.p2g_mode, "physics_version": args.physics_version,
                "execution_verified": candidate.get("status") == "execution_passed",
                "cpu_comparison": comparison, "candidate": candidate, "cpu_reference": reference,
                "scope": "Three-step 4-particle MLS-MPM with active stretch plasticity/Jp, viscosity, moving rotating SDF tools, floor and observation-loss reverse differentiation; not full Episode18 qualification."}

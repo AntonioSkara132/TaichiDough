@@ -360,11 +360,13 @@ class RecomputeCliTests(TemporaryRunTest):
                 with self.assertRaises(SystemExit):
                     diagnostic.parse_args(flags)
 
-    def fake_modules(self, perturb=None, runtime_error=None, configured_p2g=None):
+    def fake_modules(self, perturb=None, runtime_error=None, configured_p2g=None, configured_physics=None):
         config = types.SimpleNamespace(backend="cpu", simulation={"precision": "f64"}, seed=19,
                                        segment_length=4, validate=Mock())
         if configured_p2g is not None:
             config.simulation["p2g_mode"] = configured_p2g
+        if configured_physics is not None:
+            config.simulation["physics_version"] = configured_physics
         config.as_dict = lambda: {"backend": config.backend, "simulation": config.simulation.copy(),
                                   "seed": config.seed, "segment_length": config.segment_length}
         prepared = types.SimpleNamespace(total_steps=12, initial_state=initial_state(), controls=controls(12),
@@ -380,7 +382,8 @@ class RecomputeCliTests(TemporaryRunTest):
             "reference_adapter": {"reference_policy": Mock(side_effect=lambda policy: nullcontext()),
                                   "verify_reference": Mock(return_value={"originals_unchanged": False, "mock_test": True})},
             "runtime": {"init_runtime": runtime},
-            "data": {"prepare_experiment": Mock(return_value=prepared)},
+            "data": {"prepare_experiment": Mock(side_effect=lambda current, **kwargs: (
+                setattr(prepared.simulation_config, "physics_version", current.simulation["physics_version"]) or prepared))},
             "solver": {"Stepper": Mock(return_value=stepper)},
         }
         loaded = {}
@@ -391,13 +394,13 @@ class RecomputeCliTests(TemporaryRunTest):
             loaded[full_name] = module
         return loaded, modules, stepper
 
-    def run_mock_cli(self, perturb=None, runtime_error=None, extra=(), configured_p2g=None):
+    def run_mock_cli(self, perturb=None, runtime_error=None, extra=(), configured_p2g=None, configured_physics=None):
         self.serial += 1
         output = self.root / f"cli_{self.serial}"
         args = diagnostic.parse_args(["--output-dir", str(output), "--start-step", "4", "--steps", "4",
                                       "--probe-step", "6", "--repeats", "2", "--end-frame", "60",
                                       "--backend", "cuda", "--precision", "f32", "--reference-policy", "frozen", *extra])
-        modules, records, stepper = self.fake_modules(perturb, runtime_error, configured_p2g)
+        modules, records, stepper = self.fake_modules(perturb, runtime_error, configured_p2g, configured_physics)
         source = {"sources": {"solver.py": "mock-stable-hash"}}
         with patch.dict(sys.modules, modules), patch.object(diagnostic, "source_identity", return_value=source), \
                 patch.object(diagnostic, "RunStore", side_effect=lambda path, identity: RunStore(path, identity, allowed_root=self.root)), \
@@ -422,6 +425,32 @@ class RecomputeCliTests(TemporaryRunTest):
                 manifest = json.loads((output / "run_manifest.json").read_text())
                 simulation = manifest["identity"]["configuration"]["simulation"]
                 self.assertEqual(simulation.get("p2g_mode", "atomic"), expected)
+
+    def test_physics_version_reaches_preparation_identity_and_memory(self):
+        self.assertIsNone(diagnostic.parse_args([]).physics_version)
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            diagnostic.parse_args(['--physics-version', 'unknown'])
+        for configured, override, version, allocated in (
+                (None, None, 'corrected-v1', 9), ('legacy-v1', None, 'legacy-v1', 8),
+                (None, 'legacy-v1', 'legacy-v1', 8), ('legacy-v1', 'corrected-v1', 'corrected-v1', 9)):
+            extra = () if override is None else ('--physics-version', override)
+            code, output, records, _ = self.run_mock_cli(extra=extra, configured_physics=configured)
+            self.assertEqual(code, 0)
+            current = records['data']['prepare_experiment'].call_args.args[0]
+            self.assertEqual(current.simulation['physics_version'], version)
+            simulation = records['solver']['Stepper'].call_args.args[0]
+            self.assertEqual(simulation.physics_version, version)
+            manifest = json.loads((output / 'run_manifest.json').read_text())
+            self.assertEqual(manifest['identity']['configuration']['simulation']['physics_version'], version)
+            memory = json.loads((output / 'memory_estimate.json').read_text())
+            self.assertEqual(memory['allocated_grid'], allocated)
+            self.assertEqual(memory['physical_grid'], 8)
+            state = initial_state()
+            expected = (37 * len(state.x) + 10 * allocated ** 3) * state.x.dtype.itemsize
+            self.assertEqual(memory['probe_scratch_bytes'], expected)
+            self.assertEqual(json.loads((output / 'result.json').read_text())['runtime']['physics_version'], version)
+        with self.assertRaisesRegex(ValueError, 'physics_version'):
+            diagnostic.diagnostic_memory_estimate(initial_state(), 8, diagnostic.DiagnosticSpec(), physics_version='unknown')
 
     def test_cli_records_runtime_settings_hashes_without_gradients(self):
         code, output, records, stepper = self.run_mock_cli(extra=("--path", "episode=/mnt/episode"))

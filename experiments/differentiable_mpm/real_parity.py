@@ -23,7 +23,7 @@ from typing import Any
 import numpy as np
 from contextlib import ExitStack
 
-from .reference_adapter import current_reference_policy, reference_policy
+from .reference_adapter import current_reference_policy, reference_policy, reference_identity
 
 
 EXPERIMENT_ROOT = Path(__file__).resolve().parent
@@ -109,6 +109,7 @@ def prepare_run(config_path, output_dir, short_end_frame, end_frame):
         "candidate_source_sha256": hashes,
         "inputs_npz_sha256": _hash_file(root / "inputs.npz"),
         "reference_verification": verify_reference(),
+        "reference_identity": reference_identity(prepared.simulation_config.physics_version),
         "position_acceptance_limits": POSITION_LIMITS,
         "preparation_seconds": time.perf_counter() - started,
     }
@@ -131,6 +132,12 @@ def _verified_metadata(root):
             raise ValueError(f"Pinned candidate source changed: {name}")
     if metadata["position_acceptance_limits"] != POSITION_LIMITS:
         raise ValueError("Saved position criteria differ from the declared comparison criteria")
+    if "physics_version" in metadata["simulation"]:
+        selected = reference_identity(metadata["simulation"]["physics_version"])
+        if metadata.get("reference_identity") != selected:
+            raise ValueError("Saved reference identity differs from the selected verified physics")
+    elif "reference_identity" in metadata:
+        raise ValueError("Versioned reference identity requires explicit simulation.physics_version")
     return metadata
 
 
@@ -212,6 +219,8 @@ def run_worker(root, stage, kind):
             adapter.REPOSITORY_ROOT = REPOSITORY_ROOT
             policy_contexts.enter_context(adapter.reference_policy(current_reference_policy()))
             solver = adapter.ReferenceStepper(config, metadata["parameters"], sdf=sdf)
+            if "reference_identity" in metadata and solver.reference_identity != metadata["reference_identity"]:
+                raise ValueError("Reference worker loaded a different simulator identity")
             solver.load_state(initial)
             read_state = solver.state
         else:
@@ -267,6 +276,8 @@ def run_worker(root, stage, kind):
                       contact_counts_sha256=_hash_file(output / "contact_counts.npy"),
                       inputs_npz_sha256=metadata["inputs_npz_sha256"],
                       candidate_source_sha256=metadata["candidate_source_sha256"])
+        if "reference_identity" in metadata:
+            status["reference_identity"] = metadata["reference_identity"]
         _verified_metadata(root)
         _write_json_new(output / "result.json", status)
     except BaseException as exc:
@@ -324,6 +335,8 @@ def compare_stage(root, stage):
     endpoint = metadata["short_end_frame"] if stage == "short" else metadata["end_frame"]
     expected = list(range(endpoint + 1))
     for result in (reference, candidate):
+        if result.get("reference_identity") != metadata.get("reference_identity"):
+            raise ValueError("Worker reference identity differs from prepared inputs")
         if [row["source_frame"] for row in result["frames"]] != expected:
             raise ValueError("Forward comparison is missing or duplicates expected frames")
         if result["inputs_npz_sha256"] != metadata["inputs_npz_sha256"]:
@@ -412,6 +425,8 @@ def compare_stage(root, stage):
                     "candidate": {k: candidate[k] for k in ("setup_seconds", "first_step_seconds", "forward_seconds", "total_seconds")}},
         "endpoint_metrics": {"reference": reference["frames"][-1]["physical_state_metrics"],
                              "candidate": candidate["frames"][-1]["physical_state_metrics"]},
+        "reference_identity": metadata.get("reference_identity"),
+        "physics_version": metadata["simulation"].get("physics_version", "legacy-v1"),
         "tested_candidate_source_sha256": metadata["candidate_source_sha256"],
         "current_candidate_source_sha256": {name: _hash_file(EXPERIMENT_ROOT / name) for name in PINNED_FILES},
         "prepared_fingerprint": metadata["prepared_fingerprint"],

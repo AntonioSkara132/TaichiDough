@@ -18,6 +18,7 @@ DEFAULT_PARAMETERS = {
 STATE_NAMES = ("x", "v", "C", "F", "Jp")
 P2G_MODES = ("atomic", "serial")
 PHYSICS_VERSIONS = ("corrected-v1", "legacy-v1")
+TOOL_CONTACT_MODELS = ("retention-v1", "coulomb-v1")
 
 
 class InvalidStateError(RuntimeError):
@@ -77,6 +78,8 @@ class SimulationConfig:
     jp_max: float = 2.0
     tool_collision: str = "none"
     tool_contact_padding: float = 1.0 / 384.0
+    tool_contact_model: str = "retention-v1"
+    tool_friction_coefficient: float = 0.5
     tool_contact_absorption: float = 0.0
     tool_stickiness: float = 0.0
     floor_absorption: float = 0.0
@@ -97,6 +100,14 @@ class SimulationConfig:
             raise ValueError("plasticity must be none or stretch-clamp")
         if self.tool_collision not in {"none", "sdf"}:
             raise ValueError("The experiment supports recorded SDF tools or no tools")
+        if not isinstance(self.tool_contact_model, str) or self.tool_contact_model not in TOOL_CONTACT_MODELS:
+            raise ValueError("tool_contact_model must be retention-v1 or coulomb-v1")
+        if (isinstance(self.tool_friction_coefficient, (bool, np.bool_)) or
+                not isinstance(self.tool_friction_coefficient, (int, float)) or
+                not np.isfinite(self.tool_friction_coefficient) or self.tool_friction_coefficient < 0):
+            raise ValueError("tool_friction_coefficient must be finite and nonnegative")
+        if self.tool_contact_model == "coulomb-v1" and (self.tool_contact_absorption != 0 or self.tool_stickiness != 0):
+            raise ValueError("coulomb-v1 requires zero tool contact absorption and stickiness")
         if self.precision not in {"f32", "f64"}:
             raise ValueError("precision must be f32 or f64")
         if not isinstance(self.p2g_mode, str) or self.p2g_mode not in P2G_MODES:

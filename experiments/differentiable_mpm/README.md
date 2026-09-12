@@ -2,9 +2,15 @@
 
 An isolated experimental version of TaichiDough, with reverse-mode trajectory derivatives and gradient-based joint parameter fitting. **This task edits only this experiment directory.** It contains exact-byte reference snapshots and reads existing data and meshes without changing them.
 
-**Frozen baseline:** the simulator snapshot has SHA-256 `6653543ac16c8fcbdc111c73ebaa2c5e2d8c1cdc899e3750dce539b2730a2f07`, G2P affine factor `4 * inv_dx`, and the original truncating stencil. The production implementation uses the corrected affine factor `4 * inv_dx * inv_dx` and nonnegative B-spline weights on a padded floor grid, changed independently in another session. Those corrections are outside this experimental solver and its reference comparisons. Experimental fitted parameters therefore apply to the preserved pre-correction implementation, not automatically to the corrected production model.
+**Physics-version update:** configuration now defaults to `corrected-v1`, with `legacy-v1` available explicitly for reproducing old runs. Corrected physics uses the G2P affine factor `4 * inv_dx * inv_dx` with metric `dpos`, floor-based stencil indices, and a padded floor grid. Local qualification passes: 18 solver/transfer tests, both-version forward-reference comparisons, 14 synthetic/trajectory tests, 101 host-integration tests, and the small Vulkan/CPU forward/backward comparison. Full-episode corrected calibration and CUDA qualification remain unverified. See [VALIDATION.md](VALIDATION.md) for corrected-model evidence; the older numerical results below describe legacy physics. Do not reuse earlier fitted parameters as calibrated values for the corrected model.
+
+The original simulator snapshot remains byte-identical at SHA-256 `6653543ac16c8fcbdc111c73ebaa2c5e2d8c1cdc899e3750dce539b2730a2f07`. A separate corrected reference is pinned to `d33f0aec3952fa72282cd181757f678b2e2a48e5b51016c23d40fd05d6a3ac3e`. Corrected and legacy results must record their selected physics version and reference.
 
 The default strict reference policy stops if live sources differ. To deliberately run this preserved version after such a change, add **`--reference-policy frozen`** to `calibrate`, `check`, or `real_parity` commands. Frozen mode requires a byte-verified baseline copy for each changed source, preserves the original expected hashes, and records live-source differences. Sources without snapshots must still match. Snapshot corruption is always an error. No working source is overwritten. The six additional helper copies in `reference_snapshots.json` were recovered from Git only after their bytes matched the original manifest hashes; that supplemental file cannot replace expected hashes. Strict evaluation executes those verified helper copies, including their lazy imports.
+
+## Episode 18 table-aligned inputs
+
+The robust table estimate has been applied through a new rigid calibration, with regenerated particles and mass/volume metadata under `data/episode18_table_aligned_v1/`. The new configuration uses non-adhesive Coulomb tools. Input/domain checks passed; no simulation or fit has run on this geometry. The derived density is unusually high and needs a mass/volume sanity check. See [TABLE_ALIGNMENT.md](TABLE_ALIGNMENT.md) for files, limitations and the CUDA calibration command.
 
 ## Validation status
 
@@ -12,21 +18,28 @@ See [VALIDATION.md](VALIDATION.md) for measured results and limitations. Compone
 
 The synthetic example explicitly uses a 10 mm prediction visibility temperature with fixed 2 mm-generated targets. Current-source checks pass for all five coordinate gradients and two combined directions, with unchanged target hashes. All eight synthetic tests pass; four optimizer updates reduce training loss by 33.18% and also improve the unused excitation. The previous 2 mm predictor had poor optimization despite accurate local derivatives. That failure remains recorded, and the >1% short-fit assertion has not been weakened.
 
-The commands below explicitly select the preserved baseline. Use `--reference-policy strict` when checking that production sources still equal that baseline.
+Reference policy and physics version are independent. `--reference-policy frozen` permits verified helper snapshots when live sources differ; it does not select legacy physics. Use `--physics-version legacy-v1` explicitly when reproducing the historical numerical results. The updated defaults select corrected physics, whose qualification status is stated above.
 
 ## What is differentiated
 
 The state is particle position `x`, velocity `v`, affine velocity `C`, deformation `F`, and plastic-volume history `Jp`. The solver separates material update, P2G, grid response, G2P, and particle contact into forward/reverse stages. Polar rotation and principal-stretch projection use composite spectral adjoints that remain well-defined at repeated positive stretches.
 
-The forward physics follows `reference/taichi_viscoelastic_mpm_scene.py`:
+Material and contact laws are shared by both physics versions:
 
 - Fixed-corotated elasticity with E and Poisson ratio.
 - Additive `viscosity * (C + C.T)` stress.
 - Optional principal-stretch-clamp plasticity, optional Jp accumulation and hardening.
 - Recorded rigid SDF tools, floor response, and existing damping/order of operations.
-- Existing interpolation and G2P affine scaling, including the reference's `inv_dx * dpos` factor.
+- Quadratic B-spline interpolation. `corrected-v1` reconstructs the affine velocity gradient with `4 * inv_dx**2 * dpos`; `legacy-v1` retains `4 * inv_dx * dpos` and the truncating stencil.
 
-The experiment does not change the model to von Mises plasticity or Coulomb friction. `tool_retention` and `floor_retention` name the existing velocity multipliers more accurately: smaller values remove more remaining relative velocity. Absorption/stickiness remain fixed because their products with retention cannot be identified separately by this law.
+For a complete stencil sampling an affine velocity field with gradient A, corrected G2P reconstructs `C = A`; legacy G2P reconstructs `C = dx * A`. Since C also drives deformation and APIC momentum transfer, the correction changes more than viscosity. Multiplying an old viscosity estimate by a grid-dependent constant does not convert the full model or its calibrated parameters. Physical grid spacing remains `dx = 1/grid`; corrected allocation is `(grid+1)^3` with logical indices -1 through grid-1.
+
+The experiment does not change the plasticity model to von Mises. Tool contact has two explicit models:
+
+- `retention-v1` is the default and preserves existing results. `tool_retention` multiplies the complete remaining relative velocity, so a small value can make dough follow a separating tool while the SDF contact test remains active.
+- `coulomb-v1` is unilateral, non-adhesive velocity-level contact. Inward normal relative velocity is removed and supplies the Coulomb limit `mu * delta_v_n` for tangential slip. Separating relative velocity is returned unchanged, including its tangential component. Set `simulation.tool_contact_model` to `"coulomb-v1"` and `simulation.tool_friction_coefficient` to a fixed nonnegative coefficient. This mode requires zero `tool_contact_absorption` and `tool_stickiness`; `tool_retention` is not reinterpreted as friction and is inactive in this mode.
+
+The same response is used for the closest-tool grid contact and sequential particle projection. Angular collider velocity in the particle path is still evaluated at the projected position. The floor model is unchanged. `coulomb-v1` uses inward relative velocity after stress, gravity and grid forces as its normal-impulse proxy; it is not a full complementarity solve and can underestimate static friction when resting contact has no inward velocity in that step. The coefficient is fixed rather than differentiated in this first version.
 
 Parameters are differentiated through every replay step. Host checkpoints and a configurable device history bound memory. At segment boundaries, **all five state adjoints are carried backward**, rather than detached. Grid/material/contact intermediates are recomputed. By default, checkpoint endpoint and contact/yield-count disagreement rejects a backward evaluation.
 
@@ -43,6 +56,12 @@ The existing strict evaluator remains separate and unchanged. Its numerical loss
 Use the repository's existing Python environment. No new global dependencies are required; this implementation uses the installed Taichi 1.7.4, NumPy and SciPy, with the existing Torch input loader.
 
 Run commands below from the TaichiDough repository root. New outputs belong under `experiments/differentiable_mpm/runs/`. Existing run directories are never deleted or automatically overwritten. Choose a new directory for a new experiment; `--resume` is only for an exactly matching fit.
+
+## Multi-episode calibration
+
+The new `calibrate_dataset` command provides one shared-material fit over an explicit episode manifest, with equal-episode or declared weighted objectives and one numerical subprocess at a time. Tools use fixed retention1/absorption0/stickiness0 in the first setup; episode-specific floor inputs stay unchanged. See [MULTI_EPISODE.md](MULTI_EPISODE.md) for manifests, inventory, validation, fitting, exact resume and remote commands.
+
+The driver is implemented and locally verified: 276 host/regression tests pass, and four actual corrected CPU f64 multi-motion tests pass. A weighted two-motion synthetic fit reduces combined training loss by 38.01%, all five material AD/FD checks pass, and held-out motion data is excluded from selection. See `VALIDATION.md` for exact evidence and limitations. The local data is **not yet ready for an all-episode fit**: recordings have duplicate processed variants, and only Episode18 has the identified calibration/reconstruction inputs used by this workflow. Its observed floor inconsistency also remains unresolved. No real dataset fit has been launched.
 
 ## Commands
 
@@ -124,6 +143,19 @@ python3 -m experiments.differentiable_mpm.calibrate fit \
 ```
 
 That configuration changes the enabled plasticity model relative to the recent pure-viscoelastic runs; it is an explicit experiment, not an automatic reinterpretation of those results. Fitting inactive plastic limits is refused.
+
+For non-adhesive tool friction, create a new configuration rather than changing an existing run's identity. Its `simulation` object must explicitly contain:
+
+```json
+{
+  "tool_contact_model": "coulomb-v1",
+  "tool_friction_coefficient": 0.5,
+  "tool_contact_absorption": 0.0,
+  "tool_stickiness": 0.0
+}
+```
+
+Keep `tool_retention` out of `fit_parameters` for this model. The value `0.5` is only an initial friction candidate, not a calibrated coefficient. Changing the contact model requires a fresh calibration; retention-model parameters and objective histories are not comparable as if only a parameter changed.
 
 For a short integration run, add `--end-frame 2 --iterations 2 --no-evaluate`. For an existing matching fit, repeat its command with `--resume`; iterations are additional attempts. Source, fixed settings, observations, parameter transformations, backend, precision and optimizer settings must match. After code changes, create a fresh run.
 

@@ -370,6 +370,32 @@ class Stepper:
         return valid, distance, gradient
 
     @ti.func
+    def _tool_velocity_response(self, velocity, collider_v, normal):
+        """Apply the selected velocity-level tool contact law.
+
+        coulomb-v1 is unilateral: an inward relative normal velocity supplies the
+        friction limit, while separating motion is returned unchanged.
+        """
+        result = velocity
+        relative = velocity - collider_v
+        vn = relative.dot(normal)
+        if ti.static(self.config.tool_contact_model == "coulomb-v1"):
+            if vn < 0:
+                tangential = relative - normal * vn
+                tangential_speed = tangential.norm()
+                scale = ti.cast(0.0, self.dtype)
+                if tangential_speed > 0:
+                    scale = ti.max(0.0, 1.0 - self.config.tool_friction_coefficient * (-vn) / tangential_speed)
+                result = collider_v + tangential * scale
+        else:
+            if vn < 0:
+                relative -= normal * vn
+            relative *= self.parameters[5] * (1 - self.config.tool_contact_absorption)
+            relative *= 1 - self.config.tool_stickiness
+            result = collider_v + relative
+        return result
+
+    @ti.func
     def _tool_grid_response(self, pos, velocity):
         closest = ti.cast(1e6, self.dtype)
         selected = -1
@@ -388,13 +414,9 @@ class Stepper:
         if selected >= 0:
             ti.atomic_add(self.counts[1 + selected], 1)
             relative = velocity - collider_v
-            vn = relative.dot(normal)
-            if vn < 0:
-                relative -= normal * vn
+            if relative.dot(normal) < 0:
                 ti.atomic_add(self.counts[3 + selected], 1)
-            relative *= self.parameters[5] * (1 - self.config.tool_contact_absorption)
-            relative *= 1 - self.config.tool_stickiness
-            result = collider_v + relative
+            result = self._tool_velocity_response(velocity, collider_v, normal)
         return result
 
     @ti.kernel
@@ -480,13 +502,9 @@ class Stepper:
                 result_x += normal * penetration
                 collider_v = self.tool_velocity[tool] + self.tool_omega[tool].cross(result_x - center)
                 relative = result_v - collider_v
-                vn = relative.dot(normal)
-                if vn < 0:
-                    relative -= normal * vn
+                if relative.dot(normal) < 0:
                     ti.atomic_add(self.counts[7 + tool], 1)
-                relative *= self.parameters[5] * (1 - self.config.tool_contact_absorption)
-                relative *= 1 - self.config.tool_stickiness
-                result_v = collider_v + relative
+                result_v = self._tool_velocity_response(result_v, collider_v, normal)
         return result_x, result_v
 
     @ti.kernel

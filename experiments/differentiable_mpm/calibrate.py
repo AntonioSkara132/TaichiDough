@@ -16,11 +16,11 @@ from .data import prepare_experiment
 from .loss import ObservationLoss
 from .optimize import AdamOptions, ObjectiveValue, ProjectedAdam
 from .parameters import PhysicalParameterSpace
-from .reference_adapter import reference_policy, verify_reference
+from .reference_adapter import reference_identity, reference_policy, verify_reference
 from .results import EXPERIMENT_ROOT, RUN_ROOT, RunStore, json_value, source_identity
 from .runtime import init_runtime
 from .solver import Stepper
-from .state import PARAMETER_NAMES, P2G_MODES, InvalidStateError, validate_parameters
+from .state import PARAMETER_NAMES, P2G_MODES, PHYSICS_VERSIONS, InvalidStateError, validate_parameters
 
 
 DEFAULT_CONFIG = EXPERIMENT_ROOT / 'configs' / 'episode18_viscoelastic.json'
@@ -36,6 +36,8 @@ def parse_args(argv=None):
     parser.add_argument('--precision', choices=['f32', 'f64'])
     parser.add_argument('--p2g-mode', choices=P2G_MODES,
                         help='Override particle-to-grid transfer: atomic (default) or fixed-order serial; serial can be slower')
+    parser.add_argument('--physics-version', choices=PHYSICS_VERSIONS,
+                        help='Override solver physics: corrected-v1 (default) or legacy-v1 for old-run reproduction')
     parser.add_argument('--cpu-threads', type=int, default=1)
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--reference-policy', choices=['strict', 'frozen'], default='strict',
@@ -222,6 +224,7 @@ def run(args):
         config.simulation['precision'] = args.precision
     if args.p2g_mode is not None:
         config.simulation['p2g_mode'] = args.p2g_mode
+    config.simulation['physics_version'] = args.physics_version or config.simulation.get('physics_version', 'corrected-v1')
     if args.segment_length is not None:
         config.segment_length = args.segment_length
     frozen_source = None
@@ -229,24 +232,28 @@ def run(args):
         config.parameters, frozen_source = read_parameters(args.parameters)
     config.validate()
     reference_verification = verify_reference()
+    physics_reference = reference_identity(config.simulation['physics_version'])
     if reference_verification.get('originals_unchanged') is False:
-        print('WARNING: working sources differ; explicitly using the preserved pre-change physics. '
+        print('WARNING: working helper sources differ; using verified frozen helpers. Solver physics is selected separately. '
               + json.dumps(reference_verification.get('changed_originals', [])), flush=True)
     verify_input_paths(config)
     runtime = ({'initialization_verified': False, 'backend': config.backend}
                if args.no_runtime else init_runtime(config.backend, config.simulation.get('precision', 'f32'),
                                                     args.cpu_threads, args.debug, config.seed))
-    runtime = {**runtime, 'ignore_recompute_mismatch': args.ignore_recompute_mismatch}
+    runtime = {**runtime, 'ignore_recompute_mismatch': args.ignore_recompute_mismatch,
+               'physics_version': config.simulation['physics_version'], 'physics_reference': physics_reference}
     if args.ignore_recompute_mismatch:
         print('WARNING: finite replay mismatches will be logged and ignored; gradients may be approximate. '
               'Invalid states and nonfinite losses/gradients still reject an evaluation.', flush=True)
     split = args.split or ('validation' if args.action == 'evaluate' else 'training')
     prepared = prepare_experiment(config, split=split, end_frame=args.end_frame, build_sdf=True)
     memory = estimate_memory(prepared.simulation_config.n_particles, prepared.total_steps, config.segment_length,
-                             prepared.simulation_config.precision, prepared.simulation_config.grid, config.tool_sdf_resolution)
+                             prepared.simulation_config.precision, prepared.simulation_config.grid, config.tool_sdf_resolution,
+                             physics_version=prepared.simulation_config.physics_version)
     print(f'Prepared {prepared.simulation_config.n_particles} particles; replay0–{prepared.end_frame}; '
           f'{prepared.total_steps} steps; {len(prepared.observations)} observations; backend={config.backend}', flush=True)
     print('Memory estimate: ' + json.dumps(memory), flush=True)
+    print(f'Physics version: {prepared.simulation_config.physics_version}; reference={physics_reference["simulator_sha256"]}', flush=True)
     print(f'P2G mode: {prepared.simulation_config.p2g_mode} '
           '(transfer mode only; other reductions are unchanged)', flush=True)
     options_dict = dict(config.optimizer)
@@ -354,11 +361,11 @@ def run(args):
                     'selection_frames': list(prepared.scored_frames), 'selection_split': 'training',
                     'identity_sha256': store.identity_hash,
                     'ignore_recompute_mismatch': args.ignore_recompute_mismatch,
-                    'simulator_reference_sha256': next((row['expected_sha256']
-                        for row in reference_verification.get('files', [])
-                        if row['source'] == 'scripts/taichi_viscoelastic_mpm_scene.py'), None),
-                    'baseline_note': 'These parameters target the preserved pre-correction simulator; '
-                                     'the corrected production model requires separate qualification.'}
+                    'physics_version': prepared.simulation_config.physics_version,
+                    'physics_reference': physics_reference,
+                    'simulator_reference_sha256': physics_reference['simulator_sha256'],
+                    'baseline_note': f'These parameters target {prepared.simulation_config.physics_version}; '
+                                     'parameters fitted with another physics version require a new fit, not a constant rescaling.'}
         store.write_json('selected_parameters.json', selected)
         result = {'status': optimization.status, 'optimization': asdict(optimization),
                   'best_parameters': optimization.best_parameters, 'evaluations': {}}

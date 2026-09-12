@@ -12,7 +12,8 @@ from experiments.differentiable_mpm.state import (
 )
 
 
-def fixture(plastic=False, floor=False, sdf=False, p2g_mode="atomic", physics_version="corrected-v1"):
+def fixture(plastic=False, floor=False, sdf=False, p2g_mode="atomic", physics_version="corrected-v1",
+            tool_contact_model="retention-v1"):
     config = SimulationConfig(n_particles=4, grid=12, precision="f64", dt=2e-4,
                               particle_mass=0.001, particle_volume=1e-6,
                               gravity=-2.0, plasticity="stretch-clamp" if plastic else "none",
@@ -20,8 +21,10 @@ def fixture(plastic=False, floor=False, sdf=False, p2g_mode="atomic", physics_ve
                               floor_y=0.028 if floor else 0.0,
                               floor_plastic_damping_band=0.01 if floor else 0.0,
                               plastic_affine_damping=0.87 if floor else 1.0,
-                              tool_collision="sdf" if sdf else "none",
-                              tool_contact_padding=0.004, p2g_mode=p2g_mode, physics_version=physics_version)
+                              tool_collision="sdf" if sdf else "none", tool_contact_model=tool_contact_model,
+                              tool_friction_coefficient=0.45, tool_contact_absorption=0.0,
+                              tool_stickiness=0.0, tool_contact_padding=0.004,
+                              p2g_mode=p2g_mode, physics_version=physics_version)
     state = ParticleState.initial([[.417, .40, .405], [.441, .415, .409],
                                    [.456, .428, .432], [.431, .421, .445]], np.float64)
     state.v[:] = [[.1, -.2, .04], [-.05, -.1, .08], [.02, -.3, -.03], [.01, -.1, .07]]
@@ -313,6 +316,19 @@ class SolverGradientTests(unittest.TestCase):
         self.assertGreater(counts["grid_tool0"] + counts["grid_tool1"], 0)
         self.assertGreater(counts["particle_tool0"], 0)
         self.assertGreater(counts["particle_tool1"], 0)
+
+    def test_coulomb_sdf_contact_state_and_material_gradients(self):
+        solver, state, params, control = self.make(sdf=True, tool_contact_model="coulomb-v1")
+        seed = terminal_seed(state)
+        gradients = self.check_parameter_gradients(
+            solver, state, params, control, seed,
+            names=("youngs_modulus", "poisson_ratio", "viscosity"),
+        )
+        self.check_state_gradients(solver, state, params, control, seed)
+        counts = solver.diagnostics()
+        self.assertGreater(counts["grid_tool0"] + counts["grid_tool1"], 0)
+        self.assertGreater(counts["particle_tool0"] + counts["particle_tool1"], 0)
+        self.assertEqual(gradients["tool_retention"], 0.0)
 
     def test_floor_zero_negative_grid_mass(self):
         config, state, params, control, sdf = fixture(floor=True)
