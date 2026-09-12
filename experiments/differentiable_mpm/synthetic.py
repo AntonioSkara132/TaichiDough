@@ -23,7 +23,7 @@ from .renderer import Camera
 from .results import RUN_ROOT, RunStore, canonical_hash, source_identity
 from .runtime import init_runtime
 from .solver import Stepper
-from .state import DEFAULT_PARAMETERS, ParticleState, SimulationConfig, ToolControl
+from .state import DEFAULT_PARAMETERS, PHYSICS_VERSIONS, ParticleState, SimulationConfig, ToolControl
 
 
 SYNTHETIC_VERSION = "prestrained-visible-patch-v1"
@@ -47,10 +47,13 @@ class SyntheticConfig:
     seed: int = 7
     observation_count: int = 4
     loss_version: str = LOSS_VERSION
+    physics_version: str = "corrected-v1"
     visibility_temperature_m: float = PREDICTION_TEMPERATURE_M
     target_visibility_temperature_m: float = TARGET_TEMPERATURE_M
 
     def __post_init__(self):
+        if self.physics_version not in PHYSICS_VERSIONS:
+            raise ValueError("physics_version must be corrected-v1 or legacy-v1")
         if (not np.isfinite([self.visibility_temperature_m, self.target_visibility_temperature_m]).all()
                 or min(self.visibility_temperature_m, self.target_visibility_temperature_m) <= 0):
             raise ValueError("Prediction and target visibility temperatures must be finite and positive")
@@ -130,7 +133,8 @@ def simulation_config(config):
     return SimulationConfig(n_particles=n, grid=config.grid, dt=config.dt,
                             particle_mass=800.0 * particle_volume, particle_volume=particle_volume,
                             gravity=0.0, floor_y=0.0, plasticity="stretch-clamp", use_jp=False,
-                            tool_collision="none", tool_contact_padding=0.0, precision=config.precision)
+                            tool_collision="none", tool_contact_padding=0.0, precision=config.precision,
+                            physics_version=config.physics_version)
 
 
 def parameter_space():
@@ -238,7 +242,8 @@ def build_problem(config):
                  "points_sha256": array_hash(record.observed_points)} for record in records]
 
     return SyntheticProblem(training_rollout, heldout_rollout, initial, heldout,
-                            {"training": summaries(observations), "heldout": summaries(heldout_observations),
+                            {"physics_version": config.physics_version,
+                             "training": summaries(observations), "heldout": summaries(heldout_observations),
                              "training_excitation": excitation_diagnostics(initial, config),
                              "heldout_excitation": excitation_diagnostics(heldout, config),
                              "particle_correspondence_used": False})
@@ -292,6 +297,7 @@ def run_calibration(config, iterations, output_dir, runtime, *, learning_rate=0.
         initial_coordinate_gradient = parameter_space().pullback(parameter_space().coordinates(), initial_evaluation.gradient)
         report = {
             "schema": SYNTHETIC_VERSION, "status": result.status,
+            "physics_version": config.physics_version,
             "runtime": {**runtime, "forward_verified": True, "backward_verified": True},
             "loss": synthetic_loss_config(config.loss_version, config.visibility_temperature_m).as_dict(), "optimizer": asdict(options),
             "target_loss": synthetic_loss_config(config.loss_version, config.target_visibility_temperature_m).as_dict(),
@@ -323,6 +329,8 @@ def parse_args(argv=None):
     parser.add_argument("--precision", choices=("f32", "f64"), required=True)
     parser.add_argument("--iterations", type=int, default=12)
     parser.add_argument("--loss-version", choices=SUPPORTED_LOSS_VERSIONS, default=LOSS_VERSION)
+    parser.add_argument("--physics-version", choices=PHYSICS_VERSIONS, default="corrected-v1",
+                        help="Forward physics for both targets and predictions; legacy-v1 preserves prior transfer behavior")
     parser.add_argument("--visibility-temperature-m", type=float, default=PREDICTION_TEMPERATURE_M,
                         help="Prediction-renderer depth-softmax temperature in meters")
     parser.add_argument("--target-visibility-temperature-m", type=float, default=TARGET_TEMPERATURE_M,
@@ -349,6 +357,7 @@ def main(argv=None):
                              particles_per_axis=args.particles_per_axis, grid=args.grid,
                              dt=args.dt, precision=args.precision, seed=args.seed,
                              observation_count=args.observation_count, loss_version=args.loss_version,
+                             physics_version=args.physics_version,
                              visibility_temperature_m=args.visibility_temperature_m,
                              target_visibility_temperature_m=args.target_visibility_temperature_m)
     output = args.output_dir.resolve()

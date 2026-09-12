@@ -17,6 +17,7 @@ DEFAULT_PARAMETERS = {
 }
 STATE_NAMES = ("x", "v", "C", "F", "Jp")
 P2G_MODES = ("atomic", "serial")
+PHYSICS_VERSIONS = ("corrected-v1", "legacy-v1")
 
 
 class InvalidStateError(RuntimeError):
@@ -87,6 +88,7 @@ class SimulationConfig:
     precision: str = "f32"
     min_singular_value: float = 1e-6
     p2g_mode: str = "atomic"
+    physics_version: str = "corrected-v1"
 
     def __post_init__(self):
         if self.n_particles < 1 or self.grid < 8:
@@ -99,6 +101,8 @@ class SimulationConfig:
             raise ValueError("precision must be f32 or f64")
         if not isinstance(self.p2g_mode, str) or self.p2g_mode not in P2G_MODES:
             raise ValueError("p2g_mode must be atomic or serial")
+        if not isinstance(self.physics_version, str) or self.physics_version not in PHYSICS_VERSIONS:
+            raise ValueError("physics_version must be corrected-v1 or legacy-v1")
         for f in fields(self):
             value = getattr(self, f.name)
             if isinstance(value, (int, float)) and not np.isfinite(value):
@@ -114,6 +118,10 @@ class SimulationConfig:
                 raise ValueError(f"{name} must be between zero and one")
         if min(self.tool_contact_padding, self.floor_plastic_damping_band) < 0:
             raise ValueError("Contact padding and floor damping band must be nonnegative")
+
+    @property
+    def allocated_grid(self) -> int:
+        return self.grid + (self.physics_version == "corrected-v1")
 
     @property
     def numpy_dtype(self) -> DTypeLike:

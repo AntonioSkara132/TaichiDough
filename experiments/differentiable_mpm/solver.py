@@ -1,7 +1,8 @@
 """Staged MLS-MPM with explicit spectral and generated kernel adjoints.
 
-The hard forward contact and constitutive equations match the frozen reference.
-Discrete contact/stencil/yield decisions are differentiated within the active branch.
+Constitutive/contact equations are shared by both physics versions. corrected-v1
+uses affine-consistent G2P and floor-based padded stencils; legacy-v1 retains the
+frozen reference transfer. Discrete decisions are differentiated within the active branch.
 """
 import numpy as np
 import taichi as ti
@@ -27,6 +28,10 @@ class Stepper:
         self.dt = config.dt
         self.dx = 1.0 / self.grid
         self.inv_dx = float(self.grid)
+        self.corrected_physics = config.physics_version == "corrected-v1"
+        self.allocated_grid = config.allocated_grid
+        self.grid_offset = -1 if self.corrected_physics else 0
+        self.g2p_affine_scale = 4 * self.inv_dx * (self.inv_dx if self.corrected_physics else 1.0)
         self.use_sdf = config.tool_collision == "sdf"
         self.use_plasticity = config.plasticity == "stretch-clamp"
         if self.use_sdf:
@@ -55,10 +60,11 @@ class Stepper:
         self.adv_v = ti.Vector.field(3, self.dtype, shape=self.n, needs_grad=True)
         self.new_C = ti.Matrix.field(3, 3, self.dtype, shape=self.n, needs_grad=True)
         self.yielded = ti.field(ti.i32, shape=self.n)
-        self.grid_m = ti.field(self.dtype, shape=(self.grid,) * 3, needs_grad=True)
-        self.grid_p = ti.Vector.field(3, self.dtype, shape=(self.grid,) * 3, needs_grad=True)
-        self.grid_u = ti.Vector.field(3, self.dtype, shape=(self.grid,) * 3, needs_grad=True)
-        self.grid_v = ti.Vector.field(3, self.dtype, shape=(self.grid,) * 3, needs_grad=True)
+        grid_shape, grid_offset = (self.allocated_grid,) * 3, (self.grid_offset,) * 3
+        self.grid_m = ti.field(self.dtype, shape=grid_shape, offset=grid_offset, needs_grad=True)
+        self.grid_p = ti.Vector.field(3, self.dtype, shape=grid_shape, offset=grid_offset, needs_grad=True)
+        self.grid_u = ti.Vector.field(3, self.dtype, shape=grid_shape, offset=grid_offset, needs_grad=True)
+        self.grid_v = ti.Vector.field(3, self.dtype, shape=grid_shape, offset=grid_offset, needs_grad=True)
         self.tool_center = ti.Vector.field(3, self.dtype, shape=2)
         self.tool_rotation = ti.Matrix.field(3, 3, self.dtype, shape=2)
         self.tool_velocity = ti.Vector.field(3, self.dtype, shape=2)
@@ -203,11 +209,18 @@ class Stepper:
         return not ti.math.isnan(value) and not ti.math.isinf(value)
 
     @ti.func
-    def _safe_stencil(self, pos):
+    def _stencil_base(self, pos):
         base = (pos * self.inv_dx - 0.5).cast(ti.i32)
-        return (base[0] >= 0 and base[0] + 2 < self.grid and
-                base[1] >= 0 and base[1] + 2 < self.grid and
-                base[2] >= 0 and base[2] + 2 < self.grid)
+        if ti.static(self.corrected_physics):
+            base = ti.floor(pos * self.inv_dx - 0.5).cast(ti.i32)
+        return base
+
+    @ti.func
+    def _safe_stencil(self, pos):
+        base = self._stencil_base(pos)
+        return (base[0] >= self.grid_offset and base[0] + 2 < self.grid and
+                base[1] >= self.grid_offset and base[1] + 2 < self.grid and
+                base[2] >= self.grid_offset and base[2] + 2 < self.grid)
 
     @ti.kernel
     def _reset_diagnostics(self):
@@ -323,7 +336,7 @@ class Stepper:
     def _p2g(self, slot: ti.i32):
         ti.loop_config(serialize=ti.static(self.config.p2g_mode == "serial"))
         for p in range(self.n):
-            base = (self.x[slot, p] * self.inv_dx - 0.5).cast(ti.i32)
+            base = self._stencil_base(self.x[slot, p])
             fx = self.x[slot, p] * self.inv_dx - base.cast(self.dtype)
             w = [0.5 * (1.5 - fx) ** 2, 0.75 - (fx - 1) ** 2, 0.5 * (fx - 0.5) ** 2]
             for i, j, k in ti.static(ti.ndrange(3, 3, 3)):
@@ -434,7 +447,7 @@ class Stepper:
     @ti.kernel
     def _g2p(self, slot: ti.i32):
         for p in range(self.n):
-            base = (self.x[slot, p] * self.inv_dx - 0.5).cast(ti.i32)
+            base = self._stencil_base(self.x[slot, p])
             fx = self.x[slot, p] * self.inv_dx - base.cast(self.dtype)
             w = [0.5 * (1.5 - fx) ** 2, 0.75 - (fx - 1) ** 2, 0.5 * (fx - 0.5) ** 2]
             velocity = ti.Vector.zero(self.dtype, 3)
@@ -445,8 +458,8 @@ class Stepper:
                 g_v = self.grid_v[base + offset]
                 weight = w[i][0] * w[j][1] * w[k][2]
                 velocity += weight * g_v
-                # The reference uses 4*inv_dx, not the usual 4*inv_dx**2.
-                affine += 4 * self.inv_dx * weight * g_v.outer_product(dpos)
+                # dpos is in metres: corrected-v1 uses 4/dx**2; legacy-v1 uses 4/dx.
+                affine += self.g2p_affine_scale * weight * g_v.outer_product(dpos)
             damped_velocity = velocity * self.config.velocity_damping
             self.adv_v[p] = damped_velocity
             self.adv_x[p] = self.x[slot, p] + self.dt * damped_velocity

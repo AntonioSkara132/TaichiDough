@@ -183,6 +183,34 @@ def verified_reference_path(source_name: str, repo_root: Path | None = None,
     raise ValueError(f"Unlisted reference source: {source_name}")
 
 
+def reference_identity(physics_version: str, repo_root: Path | None = None,
+                       experiment_root: Path | None = None) -> dict:
+    """Verify and identify the simulator selected independently of source policy."""
+    if physics_version not in {"legacy-v1", "corrected-v1"}:
+        raise ValueError(f"Unknown reference physics version: {physics_version}")
+    experiment = Path(experiment_root or EXPERIMENT_ROOT).resolve()
+    verification = verify_reference(repo_root, experiment)
+    source = "scripts/taichi_viscoelastic_mpm_scene.py"
+    if physics_version == "legacy-v1":
+        row = next(row for row in verification["files"] if row["source"] == source)
+        return {"physics_version": physics_version, "simulator_sha256": row["expected_sha256"],
+                "simulator_snapshot": row["snapshot"], "manifest_sha256": verification["manifest_sha256"]}
+    raw = (experiment / "reference_corrected_manifest.json").read_bytes()
+    record = json.loads(raw, object_pairs_hook=_unique_json_object)
+    expected = {
+        "schema_version": 1, "physics_version": "corrected-v1", "source": source,
+        "snapshot": "reference_corrected/taichi_viscoelastic_mpm_scene.py",
+        "sha256": "d33f0aec3952fa72282cd181757f678b2e2a48e5b51016c23d40fd05d6a3ac3e",
+    }
+    if record != expected:
+        raise ValueError("Corrected reference manifest differs from the recorded production identity")
+    snapshot = _relative_file(experiment, record["snapshot"])
+    if not snapshot.is_file() or hashlib.sha256(snapshot.read_bytes()).hexdigest() != record["sha256"]:
+        raise ValueError("Corrected snapshot differs from the recorded production reference")
+    return {"physics_version": physics_version, "simulator_sha256": record["sha256"],
+            "simulator_snapshot": record["snapshot"], "manifest_sha256": hashlib.sha256(raw).hexdigest()}
+
+
 def _load_module(name: str, path: Path) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
@@ -212,14 +240,17 @@ def _temporary_aliases(modules: Mapping[str, ModuleType]):
                 sys.modules[name] = module
 
 
-def get_reference_modules(repo_root: Path | None = None, experiment_root: Path | None = None) -> SimpleNamespace:
-    """Load verified baseline modules and bind their imports to the same baseline."""
+def get_reference_modules(repo_root: Path | None = None, experiment_root: Path | None = None,
+                          physics_version: str = "legacy-v1") -> SimpleNamespace:
+    """Load a selected verified simulator with the preserved helper imports."""
     root = Path(repo_root or REPOSITORY_ROOT).resolve()
     experiment = Path(experiment_root or EXPERIMENT_ROOT).resolve()
     verification = verify_reference(root, experiment)
     paths = {row["source"]: (_relative_file(experiment, row["snapshot"]) if "snapshot" in row
                              else _relative_file(root, row["source"])) for row in verification["files"]}
-    identity = json.dumps({"manifest": verification["manifest_sha256"],
+    selected = reference_identity(physics_version, root, experiment)
+    paths["scripts/taichi_viscoelastic_mpm_scene.py"] = _relative_file(experiment, selected["simulator_snapshot"])
+    identity = json.dumps({"selected_reference": selected, "manifest": verification["manifest_sha256"],
                            "supplement": verification["supplemental_snapshots_sha256"],
                            "paths": {name: str(path) for name, path in paths.items()}}, sort_keys=True)
     signature = hashlib.sha256(identity.encode()).hexdigest()
@@ -260,9 +291,10 @@ def get_reference_modules(repo_root: Path | None = None, experiment_root: Path |
         return modules
 
 
-def load_reference(repo_root: Path | None = None, experiment_root: Path | None = None) -> ModuleType:
-    """Return the baseline simulator with corrected runtime asset/output paths."""
-    return get_reference_modules(repo_root, experiment_root).simulator
+def load_reference(repo_root: Path | None = None, experiment_root: Path | None = None,
+                   physics_version: str = "legacy-v1") -> ModuleType:
+    """Return the selected simulator with repository asset and experiment output paths."""
+    return get_reference_modules(repo_root, experiment_root, physics_version).simulator
 
 
 def run_reference_evaluator(argv, import_report=None, repo_root=None, experiment_root=None):
@@ -354,7 +386,8 @@ class ReferenceStepper:
         if ti.lang.impl.get_runtime().prog is None:
             raise RuntimeError("Initialize Taichi explicitly before constructing ReferenceStepper")
         self.config = config
-        module = load_reference(repo_root)
+        self.reference_identity = reference_identity(config.physics_version, repo_root)
+        module = load_reference(repo_root, physics_version=config.physics_version)
         if config.tool_collision == "sdf" and sdf is None:
             raise ValueError("Reference SDF collision requires SDFData")
         collision = reference_sdf_fields(sdf) if sdf is not None else None

@@ -14,7 +14,7 @@ import unittest
 import numpy as np
 
 from experiments.differentiable_mpm.reference_adapter import (
-    REPOSITORY_ROOT, EXPERIMENT_ROOT, current_reference_policy, reference_policy,
+    REPOSITORY_ROOT, EXPERIMENT_ROOT, current_reference_policy, reference_policy, reference_identity,
 )
 from experiments.differentiable_mpm.state import (
     DEFAULT_PARAMETERS, ParticleState, SDFData, SimulationConfig, STATE_NAMES, ToolControl,
@@ -57,14 +57,14 @@ def box_sdf_fixture() -> SDFData:
     return SDFData(np.stack(distances), np.stack(gradients), minimums, spacings)
 
 
-def make_fixture(name, steps=12):
+def make_fixture(name, steps=12, physics_version="corrected-v1"):
     if name not in FIXTURES:
         raise ValueError(f"Unknown parity fixture: {name}")
     offsets = np.stack(np.meshgrid(*[[-0.003, 0.0, 0.003]] * 3, indexing="ij"), axis=-1).reshape(-1, 3)
     state = ParticleState.initial(offsets + [0.445, 0.35, 0.475])
     config = SimulationConfig(n_particles=len(state.x), grid=24, dt=1e-4,
                               particle_mass=1.8e-5, particle_volume=6e-8,
-                              floor_y=0.0, precision="f32")
+                              floor_y=0.0, precision="f32", physics_version=physics_version)
     parameters = dict(DEFAULT_PARAMETERS, youngs_modulus=12000.0, poisson_ratio=0.27,
                       plastic_min=0.94, plastic_max=1.06, tool_retention=0.23, floor_retention=0.37)
     state.v[:] = [0.12, -0.08, 0.045]
@@ -127,13 +127,14 @@ def make_fixture(name, steps=12):
     return config, parameters, state, controls, sdf
 
 
-def run_worker(kind, fixture, steps, output):
+def run_worker(kind, fixture, steps, output, physics_version="corrected-v1"):
     import taichi as ti
 
     output = Path(output)
     if output.exists():
         raise FileExistsError(f"Parity worker refuses to replace {output}")
-    config, parameters, initial, controls, sdf = make_fixture(fixture, steps)
+    config, parameters, initial, controls, sdf = make_fixture(fixture, steps, physics_version)
+    selected_reference = reference_identity(physics_version)
     ti.init(arch=ti.cpu, enable_fallback=False, default_fp=ti.f32, cpu_max_num_threads=1,
             random_seed=0, offline_cache=False, debug=True, fast_math=False)
     snapshots = [initial.copy()]
@@ -173,19 +174,20 @@ def run_worker(kind, fixture, steps, output):
         raise ValueError(f"Unknown worker: {kind}")
     arrays = {name: np.stack([getattr(state, name) for state in snapshots]) for name in STATE_NAMES}
     arrays["diagnostics"] = np.asarray(json.dumps({"kind": kind, "fixture": fixture, "contacts": contacts,
+                                                  "reference_identity": selected_reference,
                                                   "negative_grid_mass_nodes": negative_grid_mass_nodes,
                                                   "actual_arch": str(ti.lang.impl.current_cfg().arch)}))
     np.savez(output, **arrays)
 
 
-def worker_command(kind, fixture, steps, output):
+def worker_command(kind, fixture, steps, output, physics_version="corrected-v1"):
     return [sys.executable, "-m", "experiments.differentiable_mpm.tests.test_forward_parity",
-            "--reference-policy", current_reference_policy(),
+            "--reference-policy", current_reference_policy(), "--physics-version", physics_version,
             "--worker", kind, "--fixture", fixture, "--steps", str(steps), "--output", str(output)]
 
 
-def launch_worker(kind, fixture, steps, output):
-    command = worker_command(kind, fixture, steps, output)
+def launch_worker(kind, fixture, steps, output, physics_version="corrected-v1"):
+    command = worker_command(kind, fixture, steps, output, physics_version)
     result = subprocess.run(command, cwd=REPOSITORY_ROOT, capture_output=True, text=True, timeout=240)
     if result.returncode:
         raise AssertionError(f"{' '.join(command)} failed ({result.returncode})\n{result.stdout}\n{result.stderr}")
@@ -196,13 +198,23 @@ def launch_worker(kind, fixture, steps, output):
 
 
 class ForwardParityTests(unittest.TestCase):
-    def test_all_forward_states_match_frozen_reference(self):
+    def test_corrected_forward_states_match_corrected_reference(self):
+        self.check_forward_states("corrected-v1")
+
+    def test_legacy_forward_states_match_original_reference(self):
+        self.check_forward_states("legacy-v1")
+
+    def check_forward_states(self, physics_version):
         with tempfile.TemporaryDirectory(dir=scratch_root(), prefix="forward-parity-") as temporary:
             for fixture in FIXTURES:
                 with self.subTest(fixture=fixture):
                     output = Path(temporary)
-                    original, diagnostics = launch_worker("reference", fixture, 12, output / f"{fixture}-reference.npz")
-                    differentiated, _ = launch_worker("differentiable", fixture, 12, output / f"{fixture}-ad.npz")
+                    original, diagnostics = launch_worker("reference", fixture, 12, output / f"{fixture}-reference.npz",
+                                                          physics_version)
+                    differentiated, ad_diagnostics = launch_worker("differentiable", fixture, 12,
+                                                                   output / f"{fixture}-ad.npz", physics_version)
+                    self.assertEqual(diagnostics["reference_identity"], reference_identity(physics_version))
+                    self.assertEqual(ad_diagnostics["reference_identity"], diagnostics["reference_identity"])
                     for name in STATE_NAMES:
                         # Checking each state detects the first divergence rather than a final-image coincidence.
                         np.testing.assert_allclose(differentiated[name], original[name], rtol=RTOL, atol=ATOL[name],
@@ -215,8 +227,12 @@ class ForwardParityTests(unittest.TestCase):
                         self.assertGreater(sum(row[tool]["grid_nodes"]["applied_responses"]
                                                for row in records for tool in range(2)), 0)
                     elif fixture == "floor_zero":
-                        self.assertGreater(min(diagnostics["negative_grid_mass_nodes"]), 0,
-                                           "Fixture did not exercise the negative-grid-mass branch")
+                        for observed in (diagnostics, ad_diagnostics):
+                            if physics_version == "legacy-v1":
+                                self.assertGreater(min(observed["negative_grid_mass_nodes"]), 0,
+                                                   "Legacy fixture did not exercise negative grid mass")
+                            else:
+                                self.assertEqual(observed["negative_grid_mass_nodes"], [0] * 12)
                         self.assertTrue(np.all(original["x"][1:, :, 1] >= 0.0))
                     elif fixture == "floor":
                         self.assertTrue(np.all(original["x"][1:, :, 1] >= 0.25))
@@ -235,6 +251,7 @@ if __name__ == "__main__":
     if "--worker" in sys.argv:
         parser = argparse.ArgumentParser()
         parser.add_argument("--reference-policy", choices=("strict", "frozen"), default="strict")
+        parser.add_argument("--physics-version", choices=("corrected-v1", "legacy-v1"), default="corrected-v1")
         parser.add_argument("--worker", choices=("reference", "differentiable"), required=True)
         parser.add_argument("--fixture", choices=FIXTURES, required=True)
         parser.add_argument("--steps", type=int, default=12)
@@ -243,6 +260,6 @@ if __name__ == "__main__":
         if args.steps < 1:
             parser.error("--steps must be positive")
         with reference_policy(args.reference_policy):
-            run_worker(args.worker, args.fixture, args.steps, args.output)
+            run_worker(args.worker, args.fixture, args.steps, args.output, args.physics_version)
     else:
         unittest.main()

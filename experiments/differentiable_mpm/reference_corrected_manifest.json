@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "physics_version": "corrected-v1",
+  "source": "scripts/taichi_viscoelastic_mpm_scene.py",
+  "snapshot": "reference_corrected/taichi_viscoelastic_mpm_scene.py",
+  "sha256": "d33f0aec3952fa72282cd181757f678b2e2a48e5b51016c23d40fd05d6a3ac3e"
+}

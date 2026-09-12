@@ -27,7 +27,7 @@ class ParticleTargetLoss:
                                components={}, diagnostics={})
 
 
-def fixture(plastic=False):
+def fixture(plastic=False, physics_version="corrected-v1"):
     positions = np.array([[0.41 + 0.025 * i, 0.43 + 0.025 * j, 0.42 + 0.025 * k]
                           for i in range(2) for j in range(2) for k in range(2)])
     state = ParticleState.initial(positions, np.float64)
@@ -38,7 +38,7 @@ def fixture(plastic=False):
     cfg = SimulationConfig(n_particles=len(positions), grid=12, dt=0.0002,
                            particle_mass=0.001, particle_volume=1e-6, gravity=-1.0,
                            plasticity='stretch-clamp' if plastic else 'none',
-                           use_jp=plastic, jp_hardening=0.4, precision='f64')
+                           use_jp=plastic, jp_hardening=0.4, precision='f64', physics_version=physics_version)
     params = dict(DEFAULT_PARAMETERS, youngs_modulus=6000, viscosity=3.0,
                   plastic_min=0.94, plastic_max=1.07)
     controls = [ToolControl.stationary(i * cfg.dt) for i in range(8)]
@@ -54,8 +54,8 @@ class TrajectoryTests(unittest.TestCase):
     def setUpClass(cls):
         init_runtime('cpu', 'f64', cpu_threads=1)
 
-    def check_case(self, plastic):
-        cfg, state, params, controls, targets = fixture(plastic)
+    def check_case(self, plastic, physics_version="corrected-v1"):
+        cfg, state, params, controls, targets = fixture(plastic, physics_version)
         stepper = Stepper(cfg, params, capacity=9)
         def rollout(length):
             return CheckpointedRollout(stepper, state, controls, targets, ParticleTargetLoss(), length,
@@ -86,7 +86,7 @@ class TrajectoryTests(unittest.TestCase):
                 ad = full.gradient[name]
                 error = abs(ad - fd) / max(abs(ad), abs(fd), 1e-9)
                 best = min(best, error)
-                print(f'TRAJECTORY plastic={plastic} {name} h={h:g} AD={ad:.10g} FD={fd:.10g} relative={error:.4g}', flush=True)
+                print(f'TRAJECTORY physics={physics_version} plastic={plastic} {name} h={h:g} AD={ad:.10g} FD={fd:.10g} relative={error:.4g}', flush=True)
             errors[name] = best
             self.assertLess(best, 1e-3, f'{name} derivative discrepancy: {best}')
         self.assertTrue(all(abs(full.gradient[name]) > 1e-12 for name in names))
@@ -96,6 +96,53 @@ class TrajectoryTests(unittest.TestCase):
 
     def test_plastic_jp_full_trajectory(self):
         self.check_case(True)
+
+    def test_legacy_elastic_viscous_full_trajectory(self):
+        self.check_case(False, "legacy-v1")
+
+    def test_legacy_plastic_jp_full_trajectory(self):
+        self.check_case(True, "legacy-v1")
+
+    def test_corrected_visible_objective_segmented_ad(self):
+        from experiments.differentiable_mpm.synthetic import (
+            FIT_PARAMETERS, INITIAL_PARAMETERS, SyntheticConfig, build_problem,
+        )
+        config = SyntheticConfig(steps=12, segment_length=12, observation_count=3,
+                                 physics_version="corrected-v1")
+        problem = build_problem(config)
+        self.assertEqual(problem.target_summary["physics_version"], "corrected-v1")
+        training = problem.training
+        full = training.value_and_gradient(INITIAL_PARAMETERS)
+        segmented = CheckpointedRollout(training.stepper, training.initial_state,
+                                       training.controls, training.observations, training.loss, 4,
+                                       replay_rtol=0, replay_atol={n: 0 for n in training.initial_state.arrays()})
+        result = segmented.value_and_gradient(INITIAL_PARAMETERS)
+        self.assertTrue(np.isfinite(full.value))
+        self.assertAlmostEqual(full.value, result.value, places=12)
+        self.assertEqual(result.diagnostics['observation_gradient_injections'], [1, 1, 1])
+        np.testing.assert_allclose(list(full.gradient.values()), list(result.gradient.values()),
+                                   rtol=1e-10, atol=1e-11)
+        for name in training.initial_state.arrays():
+            np.testing.assert_allclose(getattr(full.initial_gradient, name),
+                                       getattr(result.initial_gradient, name), rtol=1e-10, atol=1e-11)
+        steps = {'youngs_modulus': 0.01, 'poisson_ratio': 1e-6, 'viscosity': 0.001,
+                 'plastic_min': 1e-6, 'plastic_max': 1e-6}
+        for name in FIT_PARAMETERS:
+            self.assertTrue(np.isfinite(full.gradient[name]))
+            self.assertGreater(abs(full.gradient[name]), 1e-12)
+            errors = []
+            for multiplier in (1, 0.3):
+                h = steps[name] * multiplier
+                plus, minus = dict(INITIAL_PARAMETERS), dict(INITIAL_PARAMETERS)
+                plus[name] += h
+                minus[name] -= h
+                fd = (segmented.value_and_gradient(plus, compute_grad=False).value -
+                      segmented.value_and_gradient(minus, compute_grad=False).value) / (2 * h)
+                ad = full.gradient[name]
+                error = abs(ad - fd) / max(abs(ad), abs(fd), 1e-9)
+                errors.append(error)
+                print(f'SYNTHETIC physics=corrected-v1 {name} h={h:g} AD={ad:.10g} FD={fd:.10g} relative={error:.4g}', flush=True)
+            self.assertLess(min(errors), 1e-3, f'{name} derivative discrepancy: {errors}')
 
 
 if __name__ == '__main__':

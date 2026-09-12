@@ -12,7 +12,7 @@ from experiments.differentiable_mpm.state import (
 )
 
 
-def fixture(plastic=False, floor=False, sdf=False, p2g_mode="atomic"):
+def fixture(plastic=False, floor=False, sdf=False, p2g_mode="atomic", physics_version="corrected-v1"):
     config = SimulationConfig(n_particles=4, grid=12, precision="f64", dt=2e-4,
                               particle_mass=0.001, particle_volume=1e-6,
                               gravity=-2.0, plasticity="stretch-clamp" if plastic else "none",
@@ -21,7 +21,7 @@ def fixture(plastic=False, floor=False, sdf=False, p2g_mode="atomic"):
                               floor_plastic_damping_band=0.01 if floor else 0.0,
                               plastic_affine_damping=0.87 if floor else 1.0,
                               tool_collision="sdf" if sdf else "none",
-                              tool_contact_padding=0.004, p2g_mode=p2g_mode)
+                              tool_contact_padding=0.004, p2g_mode=p2g_mode, physics_version=physics_version)
     state = ParticleState.initial([[.417, .40, .405], [.441, .415, .409],
                                    [.456, .428, .432], [.431, .421, .445]], np.float64)
     state.v[:] = [[.1, -.2, .04], [-.05, -.1, .08], [.02, -.3, -.03], [.01, -.1, .07]]
@@ -81,7 +81,8 @@ class NormalizationAdjointTests(unittest.TestCase):
                 offline_cache=False)
 
     def make(self):
-        return Stepper(SimulationConfig(n_particles=1, grid=8, precision="f32", gravity=0.0, floor_y=-1.0),
+        return Stepper(SimulationConfig(n_particles=1, grid=8, precision="f32", gravity=0.0, floor_y=-1.0,
+                                        physics_version="legacy-v1"),
                        capacity=2)
 
     def test_tiny_positive_and_nonpositive_mass(self):
@@ -165,7 +166,7 @@ class SerialP2GOrderTests(unittest.TestCase):
     def test_serial_particle_order_and_analytic_velocity_adjoint(self):
         n = 4096
         config = SimulationConfig(n_particles=n, grid=8, precision="f32", particle_mass=1.0,
-                                  p2g_mode="serial", gravity=0.0, floor_y=-1.0)
+                                  p2g_mode="serial", gravity=0.0, floor_y=-1.0, physics_version="legacy-v1")
         solver = Stepper(config, capacity=2)
         state = ParticleState.initial(np.full((n, 3), 3.5 / 8, np.float32))
         state.v[:, 0] = np.tile(np.array([2 ** 27, 8.0, -(2 ** 27), 8.0], np.float32), n // 4)
@@ -315,7 +316,7 @@ class SolverGradientTests(unittest.TestCase):
 
     def test_floor_zero_negative_grid_mass(self):
         config, state, params, control, sdf = fixture(floor=True)
-        config = replace(config, floor_y=0.0)
+        config = replace(config, floor_y=0.0, physics_version="legacy-v1")
         state.x[:, 1] = [0.0, 1e-5, 2e-5, 3e-5]
         solver = Stepper(config, params, capacity=8)
         seed = terminal_seed(state)
@@ -336,7 +337,7 @@ class SolverGradientTests(unittest.TestCase):
                                                             sdf=options.get("sdf", False))
                 self.assertEqual(config.p2g_mode, "atomic")
                 if options.get("floor"):
-                    config = replace(config, floor_y=0.0)
+                    config = replace(config, floor_y=0.0, physics_version="legacy-v1")
                     state.x[:, 1] = [0.0, 1e-5, 2e-5, 3e-5]
                 atomic = Stepper(config, params, capacity=6, sdf=sdf)
                 serial = Stepper(replace(config, p2g_mode="serial"), params, capacity=6, sdf=sdf)

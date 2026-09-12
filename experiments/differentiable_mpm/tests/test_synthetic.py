@@ -11,7 +11,7 @@ import numpy as np
 
 from experiments.differentiable_mpm.synthetic import (
     FIT_PARAMETERS, INITIAL_PARAMETERS, TRUTH, SyntheticConfig,
-    excitation_diagnostics, make_initial_state, parameter_space, parse_args,
+    declared_identity, excitation_diagnostics, make_initial_state, parameter_space, parse_args,
     simulation_config, synthetic_camera,
 )
 
@@ -74,6 +74,26 @@ class SyntheticDefinitionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 SyntheticConfig(**values)
 
+    def test_physics_version_is_explicit_in_configuration_and_identity(self):
+        required = ["--backend", "cpu", "--precision", "f64", "--output-dir", str(RUNS / "unused")]
+        self.assertEqual(parse_args(required).physics_version, "corrected-v1")
+        self.assertEqual(parse_args(required + ["--physics-version", "legacy-v1"]).physics_version, "legacy-v1")
+        self.assertEqual(SyntheticConfig().physics_version, "corrected-v1")
+        identities = []
+        for version in ("corrected-v1", "legacy-v1"):
+            config = SyntheticConfig(physics_version=version)
+            simulation = simulation_config(config)
+            self.assertEqual(simulation.physics_version, version)
+            self.assertEqual(simulation.allocated_grid, config.grid + (version == "corrected-v1"))
+            identity = declared_identity(config, {"backend": "cpu", "precision": "f64"})
+            self.assertEqual(identity["settings"]["physics_version"], version)
+            self.assertEqual(identity["simulation"]["physics_version"], version)
+            identities.append(identity)
+        self.assertNotEqual(identities[0], identities[1])
+        self.assertEqual(identities[0]["training_initial_state"], identities[1]["training_initial_state"])
+        with self.assertRaises(ValueError):
+            SyntheticConfig(physics_version="unknown")
+
     def test_timestep_schedule_and_invalid_settings(self):
         config = SyntheticConfig(steps=12, segment_length=4, observation_count=3)
         self.assertEqual(config.observation_steps, (4, 8, 12))
@@ -135,6 +155,10 @@ class SyntheticCalibrationTests(unittest.TestCase):
         manifest = json.loads((self.output / "run_manifest.json").read_text())
         self.assertEqual(manifest["identity"]["parameter_space"]["fit"], list(FIT_PARAMETERS))
         self.assertEqual(manifest["identity"]["simulation"]["dt"], 0.001)
+        self.assertEqual(manifest["identity"]["simulation"]["physics_version"], "corrected-v1")
+        self.assertEqual(manifest["identity"]["settings"]["physics_version"], "corrected-v1")
+        self.assertEqual(self.report["physics_version"], "corrected-v1")
+        self.assertEqual(self.report["targets"]["physics_version"], "corrected-v1")
 
 
 if __name__ == "__main__":
