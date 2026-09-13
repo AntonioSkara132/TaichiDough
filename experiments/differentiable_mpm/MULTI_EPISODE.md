@@ -4,7 +4,7 @@
 
 ## Scope and current readiness
 
-The first setup fits E, Poisson ratio, viscosity and the two principal-stretch limits. Tool retention is fixed at **1**, tool absorption and stickiness at **0**. This removes the existing retention damping; it is approximately frictionless tool contact, **not a new Coulomb-friction model**. Each episode keeps its own mass, reconstruction, camera, tool trajectories and floor parameters. The user's separate floor/contact investigations do not change these inputs automatically.
+The first setup fits E, Poisson ratio, viscosity and the two principal-stretch limits. Tool retention is fixed at **1**, tool absorption and stickiness at **0**. Dataset manifests may optionally set one fixed `floor_retention` and one fixed `tool_friction_coefficient` for every episode. If omitted, each episode keeps its configured values. These two optional values remain fixed and are not added to the shared fitted material vector. Each episode keeps its own mass, reconstruction, camera and tool trajectories.
 
 Implementation verification is in progress; see `VALIDATION.md` for completed checks. No full real dataset calibration has been launched.
 
@@ -50,6 +50,7 @@ A dataset manifest uses `taichidough/differentiable-dataset/v1` and declares:
 - `shared_parameters.initial`: exactly the five material values, including fixed material values if only a subset is fitted.
 - `shared_parameters.fit` and optional `bounds`.
 - Optional `tool_contact`, currently restricted to retention1/absorption0/stickiness0.
+- Optional dataset-wide fixed `floor_retention` in `[0,1]` and nonnegative `tool_friction_coefficient`. Omit either to preserve every episode config's value.
 - Ordered `episodes`, each with `id`, `config`, `membership` (`training` or `validation`), positive `weight` (default1), `scored_window`, and optional `path_overrides`.
 
 `scored_window` contains explicit `start_frame`, `end_frame` and `stride`. Episodes always replay from reconstruction frame0 to the scored endpoint; their state is never initialized from an observed intermediate deformation. Whole-episode membership is independent of the legacy config's within-episode training/validation windows. Scored frame indices reach the differentiable loss, export provenance and strict evaluator consistently.

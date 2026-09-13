@@ -70,6 +70,48 @@ class DatasetConfigTests(unittest.TestCase):
             self.assertEqual(episode.scored_window.indices(), [1, 3, 4])
             self.assertEqual({name: episode.config.parameters[name] for name in MATERIAL_NAMES}, self.initial)
 
+    def test_optional_global_floor_and_tool_friction_override_every_episode(self):
+        self.document["floor_retention"] = 0.35
+        self.document["tool_friction_coefficient"] = 0.8
+        self.write()
+        dataset = load_dataset(self.path)
+        self.assertEqual(dataset.floor_retention, 0.35)
+        self.assertEqual(dataset.tool_friction_coefficient, 0.8)
+        self.assertEqual(dataset.as_dict()["floor_retention"], 0.35)
+        self.assertEqual(dataset.as_dict()["tool_friction_coefficient"], 0.8)
+        for episode in dataset.episodes:
+            self.assertEqual(episode.config.parameters["floor_retention"], 0.35)
+            self.assertEqual(episode.config.parameters["tool_friction_coefficient"], 0.8)
+            self.assertEqual(episode.config.simulation["tool_friction_coefficient"], 0.8)
+            effective = episode.parameters_for(self.initial)
+            self.assertEqual(effective["floor_retention"], 0.35)
+            self.assertEqual(effective["tool_friction_coefficient"], 0.8)
+
+    def test_omitted_global_fixed_values_preserve_episode_values(self):
+        dataset = load_dataset(self.path)
+        self.assertIsNone(dataset.floor_retention)
+        self.assertIsNone(dataset.tool_friction_coefficient)
+        self.assertNotIn("floor_retention", dataset.as_dict())
+        self.assertNotIn("tool_friction_coefficient", dataset.as_dict())
+        for index, episode in enumerate(dataset.episodes):
+            self.assertEqual(episode.config.parameters["floor_retention"], 0.2 + 0.5 * index)
+            self.assertEqual(episode.config.parameters["tool_friction_coefficient"], 0.5)
+
+    def test_global_floor_and_tool_friction_validate_ranges_and_types(self):
+        cases = [
+            ("floor_retention", -0.01), ("floor_retention", 1.01),
+            ("floor_retention", True), ("floor_retention", "0.4"),
+            ("tool_friction_coefficient", -0.01),
+            ("tool_friction_coefficient", True),
+            ("tool_friction_coefficient", "0.5"),
+        ]
+        for name, value in cases:
+            document = deepcopy(self.document)
+            document[name] = value
+            self.write(document)
+            with self.subTest(name=name, value=value), self.assertRaises(ValueError):
+                load_dataset(self.path)
+
     def test_parameter_merge_never_uses_another_episodes_floor(self):
         dataset = load_dataset(self.path)
         shared = {**self.initial, "viscosity": 0.0}

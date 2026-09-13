@@ -2,7 +2,7 @@
 
 The existing `partial-visible-splats-v2` objective remains the default. The new objectives are selected by `loss.version` in a separate experiment JSON. Version 1 of the partial loss remains available for reproducing earlier experiments. The strict evaluator is separate and unchanged.
 
-**Verification status: all 77 tests in the five new suites passed; the final legacy trajectory regression is still running.** All six new modes passed CPU-f64 position/MPM gradient checks and short synthetic fitting. Three usable Episode18 examples passed input-only validation on the same source. The test-only optimizer tolerances and validation-before-runtime checks passed. No real-data simulation or calibration has been launched for this work.
+**Verification complete for the implemented test scope: 286 tests in 16 suites passed on 2026-09-13**, including all 77 tests in the five new suites and the existing loss/trajectory regressions. All six new modes passed CPU-f64 position/MPM gradient checks and short synthetic fitting. Three usable Episode18 examples passed input-only validation on the same source. No real-data simulation or calibration has been launched for this work; CUDA and real-data gradient qualification remain separate.
 
 ## Options and data requirements
 
@@ -207,7 +207,7 @@ Keep old runs and the original archive intact. No files were transferred to `/mn
 
 ## Verified synthetic checks
 
-All 77 tests in the five new suites passed in the final-source run, including the actual renderer and MPM tests. The broader regression run is recorded separately below when complete.
+All 77 tests in the five new suites passed in the final-source run, including the actual renderer and MPM tests. The same run also passed 209 existing regression tests, for 286 tests total.
 
 The MPM fixture uses eight particles, eight steps, CPU-f64 and serial P2G. Full-history and three-step-checkpoint parameter/state adjoints agree under the tests' tolerances; checkpoint state replay uses zero absolute and relative mismatch tolerances. Each observation's gradient is injected exactly once. All six modes pass Young's modulus and viscosity finite differences at two step sizes. The largest reported relative difference across those 24 comparisons is approximately `1.35e-5`.
 
@@ -237,7 +237,26 @@ python3 -m experiments.differentiable_mpm.check \
 
 Point tests cover exact tiny examples, zero-distance subgradients, assignment cardinality and memory checks, repeated nearest neighbors, deterministic sampling, tracking validity and mask derivatives. The trajectory suite uses small synthetic CPU-f64 serial-P2G MPM problems to compare full/checkpointed adjoints, multiple finite-difference steps, temporal reductions, and short optimizer runs. This is not a real-data calibration.
 
-`--quick` includes host target-loader and integration checks but excludes renderer/MPM compilation. The explicit frozen-reference policy uses the preserved simulator where needed; it does not change reference hashes or disable numerical validity checks. Exact test results and unresolved failures will replace the verification-in-progress notice after execution.
+`--quick` includes host target-loader, integration and validation-order checks but excludes renderer/MPM compilation. The explicit frozen-reference policy uses the preserved simulator where needed; it does not change reference hashes or disable numerical validity checks.
+
+### Final verification records
+
+- `runs/paper_loss_verification_20260913_v2/result.json`: all 16 suites passed, 286 test methods in total.
+- `runs/paper_loss_verification_20260913_v2/verification_summary.json`: counts, source identity, input-only checks, preservation and limitations.
+- `runs/paper_loss_verification_20260913_v2/run_manifest.json`: exact source hashes, dependency versions and executed test commands. Source/dependency identity was unchanged from test startup through the final check; its canonical SHA256 is `c43c85874fee1428f26bb457eb4c9cc0bbc8395dcfd5be27553768e38d476727`.
+- `runs/paper_loss_verification_20260913_v1/`: preserved initial attempt. Its one failure was the tiny raw-m² synthetic fit reaching the default absolute gradient stopping tolerance; loss/gradient assertions were not weakened, and production optimizer defaults were not changed.
+
+All three final-source input-only checks passed with `initialization_verified: false`:
+
+| Example | Prepared objective support | Result file |
+| --- | --- | --- |
+| DPSI PCD-CD | Frame 60; 570 voxelized target points and 24,000 simulation particles | `runs/paper_loss_input_validation_episode18_dpsi_pcd_cd_v1_20260913_v2/result.json` |
+| Sampled DPSI PCD-EMD | Frame 60; 512 target points and 1,024 simulation particles; 524,288 assignment pairs, estimated 16,875,520 bytes | `runs/paper_loss_input_validation_episode18_dpsi_pcd_emd_sampled_v1_20260913_v2/result.json` |
+| EMPM geometry-only | Frames 1–60; all 24,000 simulation particles | `runs/paper_loss_input_validation_episode18_empm_geometry_only_v1_20260913_v2/result.json` |
+
+These checks verified the planned 10,006-step replay horizon without executing any of those simulation steps. All seven example configurations preserve their base material, contact, density and windows; the four incomplete target templates were verified to refuse configuration loading. Production files, frozen references, the original partial-loss/renderer/solver/evaluator and optimizer implementations were unchanged relative to the existing checkout revision. The original portable archive also retains its verified SHA256.
+
+Separately, the ready Episode18 two-second dataset passed the current dataset CLI's input-only validation: `runs/episode18_two_second_dataset_input_validation_20260913_v1/result.json`. It uses frames 1–59 and the distinct 1200 kg/m³ configuration, not the unchanged physical settings of the loss-comparison examples. The [ten-prefix preparation report](data/ten_episode_prefix_20260913T172041/REPORT.md) explains why the other nine candidates remain blocked.
 
 ## Sources
 

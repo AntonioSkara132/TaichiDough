@@ -168,6 +168,21 @@ class DatasetCliTests(unittest.TestCase):
         result = self.json(output)
         self.assertTrue(result['no_runtime'])
 
+    def test_dataset_fixed_floor_and_tool_friction_reach_workers(self):
+        self.document["floor_retention"] = 0.35
+        self.document["tool_friction_coefficient"] = 0.8
+        self.write_dataset()
+        output = self.root / "fixed-contact"
+        with self.environment():
+            self.assertEqual(self.run_cli("validate", output, "--no-runtime"), 0)
+        dataset = self.datasets[-1]
+        self.assertEqual(dataset.floor_retention, 0.35)
+        self.assertEqual(dataset.tool_friction_coefficient, 0.8)
+        for episode in dataset.episodes:
+            self.assertEqual(episode.config.parameters["floor_retention"], 0.35)
+            self.assertEqual(episode.config.parameters["tool_friction_coefficient"], 0.8)
+            self.assertEqual(episode.config.simulation["tool_friction_coefficient"], 0.8)
+
     def test_path_overrides_reject_missing_empty_duplicate_and_unknown_ids(self):
         for flags in (['--path', 'episode=x'], ['--path', 'train_a.episode='],
                       ['--path', 'train_a.episode=x', '--path', 'train_a.episode=y'],

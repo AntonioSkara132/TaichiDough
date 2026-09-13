@@ -78,7 +78,7 @@ class DatasetEpisode:
     scored_window: FrameWindow
 
     def parameters_for(self, shared_values):
-        """Keep this episode's fixed floor parameter when inserting shared material."""
+        """Keep this episode's fixed contact parameters when inserting shared material."""
         values = {**self.config.parameters, **_material_values(shared_values), "tool_retention": 1.0}
         validate_parameters(values)
         return values
@@ -96,6 +96,8 @@ class DatasetConfig:
     shared_initial: dict[str, float]
     fit_parameters: tuple[str, ...]
     parameter_bounds: dict[str, list[float]]
+    floor_retention: float | None
+    tool_friction_coefficient: float | None
     config_path: Path
     source_document_sha256: str
 
@@ -106,11 +108,16 @@ class DatasetConfig:
                                       bounds=self.parameter_bounds)
 
     def as_dict(self):
-        return {"schema": SCHEMA, "name": self.name,
-                "shared_parameters": {"initial": dict(self.shared_initial), "fit": list(self.fit_parameters),
-                                      "bounds": {key: list(value) for key, value in self.parameter_bounds.items()}},
-                "tool_contact": dict(TOOL_CONTACT), "episodes": [episode.as_dict() for episode in self.episodes],
-                "config_path": str(self.config_path), "source_document_sha256": self.source_document_sha256}
+        result = {"schema": SCHEMA, "name": self.name,
+                  "shared_parameters": {"initial": dict(self.shared_initial), "fit": list(self.fit_parameters),
+                                        "bounds": {key: list(value) for key, value in self.parameter_bounds.items()}},
+                  "tool_contact": dict(TOOL_CONTACT), "episodes": [episode.as_dict() for episode in self.episodes],
+                  "config_path": str(self.config_path), "source_document_sha256": self.source_document_sha256}
+        if self.floor_retention is not None:
+            result["floor_retention"] = self.floor_retention
+        if self.tool_friction_coefficient is not None:
+            result["tool_friction_coefficient"] = self.tool_friction_coefficient
+        return result
 
     @property
     def fingerprint(self):
@@ -139,7 +146,8 @@ def load_dataset(path, *, path_overrides=None, backend=None, precision=None, p2g
     path = Path(path).expanduser().resolve()
     raw = path.read_bytes()
     document = json.loads(raw, object_pairs_hook=_unique_keys, parse_constant=_invalid_constant)
-    _object(document, "dataset", {"schema", "name", "shared_parameters", "tool_contact", "episodes"},
+    _object(document, "dataset", {"schema", "name", "shared_parameters", "tool_contact",
+                                  "floor_retention", "tool_friction_coefficient", "episodes"},
             {"schema", "name", "shared_parameters", "episodes"})
     if document["schema"] != SCHEMA:
         raise ValueError(f"Dataset manifest must use {SCHEMA}")
@@ -161,6 +169,17 @@ def load_dataset(path, *, path_overrides=None, backend=None, precision=None, p2g
     for name, expected in TOOL_CONTACT.items():
         if _number(contact.get(name, expected), f"tool_contact.{name}") != expected:
             raise ValueError("The first dataset setup requires retention=1, absorption=0 and stickiness=0")
+    floor_retention = None
+    if "floor_retention" in document:
+        floor_retention = _number(document["floor_retention"], "floor_retention")
+        if not 0 <= floor_retention <= 1:
+            raise ValueError("floor_retention must be in [0,1]")
+    tool_friction_coefficient = None
+    if "tool_friction_coefficient" in document:
+        tool_friction_coefficient = _number(document["tool_friction_coefficient"],
+                                            "tool_friction_coefficient")
+        if tool_friction_coefficient < 0:
+            raise ValueError("tool_friction_coefficient must be nonnegative")
     rows = document["episodes"]
     if not isinstance(rows, list) or not rows:
         raise ValueError("Dataset episodes must be a nonempty list")
@@ -206,7 +225,12 @@ def load_dataset(path, *, path_overrides=None, backend=None, precision=None, p2g
         overrides = {name: _resolved_path(value, path.parent, f"{episode_id}.{name}")
                      for name, value in overrides.items()}
         config = load_config(config_path, overrides)
-        config.parameters = {**config.parameters, **initial, "tool_retention": 1.0, "tool_stickiness": 0.0}
+        fixed = {"tool_retention": 1.0, "tool_stickiness": 0.0}
+        if floor_retention is not None:
+            fixed["floor_retention"] = floor_retention
+        if tool_friction_coefficient is not None:
+            fixed["tool_friction_coefficient"] = tool_friction_coefficient
+        config.parameters = {**config.parameters, **initial, **fixed}
         config.fit_parameters = list(fit)
         config.parameter_bounds = {name: list(values) for name, values in bounds.items()}
         config.simulation.update(tool_contact_absorption=0.0, tool_stickiness=0.0)
@@ -241,5 +265,6 @@ def load_dataset(path, *, path_overrides=None, backend=None, precision=None, p2g
         raise ValueError("Path overrides name unknown episodes: " + ", ".join(sorted(unknown_overrides)))
     if not any(episode.membership == "training" for episode in episodes):
         raise ValueError("Dataset requires at least one training episode")
-    return DatasetConfig(document["name"], tuple(episodes), initial, tuple(fit), bounds, path,
+    return DatasetConfig(document["name"], tuple(episodes), initial, tuple(fit), bounds,
+                         floor_retention, tool_friction_coefficient, path,
                          hashlib.sha256(raw).hexdigest())
