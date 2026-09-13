@@ -16,7 +16,7 @@ def executable(value: str) -> Path:
     candidate = shutil.which(value) if value and os.sep not in value else value
     if not candidate:
         raise ValueError("render-python must be a nonempty executable path")
-    path = Path(candidate).expanduser().resolve()
+    path = Path(os.path.abspath(Path(candidate).expanduser()))
     if not path.is_file() or not os.access(path, os.X_OK):
         raise ValueError(f"render-python is not executable: {path}")
     return path

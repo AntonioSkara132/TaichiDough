@@ -44,7 +44,7 @@ def executable(value: str, name: str) -> Path:
     candidate = shutil.which(value) if os.sep not in value else value
     if candidate is None:
         raise ValueError(f"{name} executable was not found: {value}")
-    path = Path(candidate).expanduser().resolve()
+    path = Path(os.path.abspath(Path(candidate).expanduser()))
     if not path.is_file() or not os.access(path, os.X_OK):
         raise ValueError(f"{name} is not an executable file: {path}")
     return path
@@ -106,7 +106,15 @@ def optimizer_parameters(run_dir: Path, dataset, choice: str) -> tuple[dict[str,
     space = PhysicalParameterSpace(settings.get("initial", {}), settings.get("fit", ()),
                                    settings.get("plasticity", "none"), bounds=settings.get("bounds"),
                                    scales=settings.get("scales"))
-    coordinates = state.get("best_u") if choice == "best" else state.get("coordinates")
+    if choice == "best":
+        best = state.get("best")
+        if not isinstance(best, dict):
+            raise ValueError("Optimizer checkpoint has no best accepted parameter record")
+        coordinates = best.get("coordinates")
+        objective_value = best.get("value")
+    else:
+        coordinates = state.get("coordinates")
+        objective_value = (state.get("current") or {}).get("value")
     if coordinates is None:
         raise ValueError(f"Optimizer checkpoint has no {choice} accepted parameter coordinates")
     selected = material({name: space.physical(coordinates)[name] for name in MATERIAL_NAMES})
@@ -115,7 +123,7 @@ def optimizer_parameters(run_dir: Path, dataset, choice: str) -> tuple[dict[str,
         "manifest_sha256": sha256(manifest_path), "optimizer_state_sha256": sha256(state_path),
         "saved_at": state_record.get("saved_at"), "iterations": state.get("iterations"),
         "accepted_updates": state.get("accepted_updates"), "evaluations": state.get("evaluations"),
-        "objective_value": (state.get("current") or {}).get("value") if choice == "current" else state.get("best_value"),
+        "objective_value": objective_value,
         "ignore_recompute_mismatch": recorded.get("ignore_recompute_mismatch"),
     }
 
@@ -221,7 +229,9 @@ def main(argv=None) -> int:
         raw["backend"] = args.backend
         raw["simulation"]["precision"] = args.precision
         raw["training"] = {"start_frame": 1, "end_frame": end_frame, "stride": 1}
-        raw["validation"] = {"start_frame": end_frame, "end_frame": end_frame, "stride": 1}
+        # The simulator scores only the training prefix, but config validation requires
+        # disjoint training and validation windows.
+        raw["validation"] = {"start_frame": end_frame + 1, "end_frame": end_frame + 1, "stride": 1}
 
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         output = (args.output_dir or ROOT / "runs" / f"forward_video_{episode.id}_{stamp}_{uuid.uuid4().hex[:6]}").expanduser().resolve()

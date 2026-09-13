@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 from types import SimpleNamespace
+import sys
 import tempfile
 import unittest
 
@@ -47,6 +48,12 @@ class InputTests(unittest.TestCase):
     def test_empty_executable_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "nonempty"):
             run.executable("", "simulation-python")
+
+    def test_executable_preserves_virtual_environment_symlink(self):
+        with tempfile.TemporaryDirectory() as directory:
+            link = Path(directory) / "python"
+            link.symlink_to(sys.executable)
+            self.assertEqual(run.executable(str(link), "render-python"), link.absolute())
 
     def test_material_requires_exact_finite_values(self):
         values = {name: INITIAL[name] for name in FIT}
@@ -103,9 +110,10 @@ class ParameterRecordTests(unittest.TestCase):
         }
         manifest = {"identity_sha256": "identity", "identity": identity}
         state = {
-            "space": space.settings(), "coordinates": current_coordinates, "best_u": best_coordinates,
+            "space": space.settings(), "coordinates": current_coordinates,
+            "best": {"coordinates": best_coordinates, "parameters": best_values, "value": 0.16},
             "iterations": 8, "accepted_updates": 8, "evaluations": 9,
-            "best_value": 0.16, "current": {"value": 0.17},
+            "current": {"value": 0.17},
         }
         (self.root / "run_manifest.json").write_text(json.dumps(manifest))
         (self.root / "optimizer_state.json").write_text(json.dumps({
