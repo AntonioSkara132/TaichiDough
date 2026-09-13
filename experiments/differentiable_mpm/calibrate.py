@@ -11,7 +11,7 @@ import uuid
 import numpy as np
 
 from .checkpoint import CheckpointedRollout, estimate_memory
-from .config import load_config, verify_input_paths
+from .config import canonical_hash, load_config, verify_input_paths
 from .data import prepare_experiment
 from .loss import ObservationLoss
 from .optimize import AdamOptions, ObjectiveValue, ProjectedAdam
@@ -20,7 +20,8 @@ from .reference_adapter import reference_identity, reference_policy, verify_refe
 from .results import EXPERIMENT_ROOT, RUN_ROOT, RunStore, json_value, source_identity
 from .runtime import init_runtime
 from .solver import Stepper
-from .state import PARAMETER_NAMES, P2G_MODES, PHYSICS_VERSIONS, InvalidStateError, validate_parameters
+from .state import (PARAMETER_NAMES, LEGACY_PARAMETER_NAMES, TUNABLE_TOOL_PARAMETERS,
+                    P2G_MODES, PHYSICS_VERSIONS, InvalidStateError, normalize_parameters)
 
 
 DEFAULT_CONFIG = EXPERIMENT_ROOT / 'configs' / 'episode18_viscoelastic.json'
@@ -78,10 +79,13 @@ def parse_args(argv=None):
     return args
 
 
-def read_parameters(path):
-    raw = Path(path).read_bytes()
+def read_parameters(path, simulation=None):
+    path = Path(path).resolve()
+    raw = path.read_bytes()
     record = json.loads(raw)
-    if set(record) == set(PARAMETER_NAMES):
+    if not isinstance(record, dict):
+        raise ValueError('Parameter file must contain an object')
+    if set(LEGACY_PARAMETER_NAMES) <= set(record) <= set(PARAMETER_NAMES):
         values = record
     elif 'best_parameters' in record:
         values = record['best_parameters']
@@ -89,9 +93,29 @@ def read_parameters(path):
         values = record['optimization']['best_parameters']
     else:
         raise ValueError('Parameter file needs complete physical values or a best_parameters record')
-    values = {k: float(v) for k, v in values.items()}
-    validate_parameters(values)
-    return values, {'path': str(Path(path).resolve()), 'sha256': hashlib.sha256(raw).hexdigest()}
+    if not isinstance(values, dict):
+        raise ValueError('Physical parameters must be an object')
+    source = {'path': str(path), 'sha256': hashlib.sha256(raw).hexdigest()}
+    defaults = dict(simulation or {})
+    if set(TUNABLE_TOOL_PARAMETERS) - set(values):
+        manifest_path = path.parent / 'run_manifest.json'
+        if manifest_path.exists():
+            manifest_raw = manifest_path.read_bytes()
+            manifest = json.loads(manifest_raw)
+            identity = manifest.get('identity')
+            digest = canonical_hash(identity)
+            if not isinstance(identity, dict) or digest != manifest.get('identity_sha256'):
+                raise ValueError('Old parameter contact settings have an invalid run manifest identity')
+            if record.get('identity_sha256', digest) != digest:
+                raise ValueError('Selected parameters and run manifest identities differ')
+            saved = identity.get('prepared', {}).get('simulation', {})
+            if not isinstance(saved, dict):
+                raise ValueError('Saved simulation contact settings must be an object')
+            defaults.update({name: saved[name] for name in TUNABLE_TOOL_PARAMETERS if name in saved})
+            source['contact_defaults_source'] = {
+                'path': str(manifest_path), 'sha256': hashlib.sha256(manifest_raw).hexdigest()}
+    values = normalize_parameters(values, defaults)
+    return values, source
 
 
 def evaluation_record(result):
@@ -229,7 +253,7 @@ def run(args):
         config.segment_length = args.segment_length
     frozen_source = None
     if args.parameters is not None:
-        config.parameters, frozen_source = read_parameters(args.parameters)
+        config.parameters, frozen_source = read_parameters(args.parameters, config.simulation)
     config.validate()
     reference_verification = verify_reference()
     physics_reference = reference_identity(config.simulation['physics_version'])

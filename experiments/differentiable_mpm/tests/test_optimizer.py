@@ -36,10 +36,10 @@ class ParameterTests(unittest.TestCase):
         self.assertEqual(space.settings(), json.loads(json.dumps(space.serialize(), allow_nan=False)))
 
     def test_all_coordinate_derivatives(self):
-        initial = dict(DEFAULT_PARAMETERS, viscosity=13.0)
+        initial = dict(DEFAULT_PARAMETERS, viscosity=13.0, tool_stickiness=0.2)
         space = PhysicalParameterSpace(initial, PARAMETER_NAMES, "stretch-clamp")
         u = space.coordinates()
-        physical_gradient = dict(zip(PARAMETER_NAMES, [2e-5, -0.7, 0.05, 2.0, -4.0, 0.9, -0.4]))
+        physical_gradient = dict(zip(PARAMETER_NAMES, [2e-5, -0.7, 0.05, 2.0, -4.0, 0.9, -0.4, 0.6, -0.8]))
         expected = space.pullback(u, physical_gradient)
         finite_difference = np.zeros_like(u)
         h = 1e-5

@@ -1,0 +1,25 @@
+{
+  "pages": 7,
+  "paper_size": "US Letter, 612 x 792 pt",
+  "references": 25,
+  "undefined_citations_or_references": false,
+  "overfull_boxes": false,
+  "all_pages_visually_inspected": true,
+  "tex_shell_escape": false,
+  "experimental_results_invented": false,
+  "template_source": "https://ras.papercept.net/conferences/support/files/ieeeconf.zip",
+  "pdf_sha256": "a8366599ca14fd5ecc1537f669c0d5c1e404fb5a02d9edf6083b0ddb458ab889",
+  "source_sha256": {
+    "DRAFTING_NOTES.md": "67a499de3e0d100263d9b7b3f5cfb0f2acfe8b14a697b52678c0eafa760e3190",
+    "README.md": "114002bbd0d9446018a774ef0bcc712e0da21fa3c872e248ed42b2abf27a6314",
+    "abstract.tex": "2cae6e9f4a701ce6ca6760b24cd04050349bf7690116ed122adcaa122a16b2cb",
+    "build.py": "359a8a5a263d398dfaf6fabb7ed9f01b29a584c51dfdcf18bca633fc015c4fe7",
+    "ieeeconf.cls": "4befef671c2a996889d325f5170d3387bf42aac9a37dcaa93724ad49816e4ec2",
+    "introduction.tex": "d76f00b0e84c93c5091d58fccb51fb12912cc418bf3bbd0c12e745e1aae86bc1",
+    "method.tex": "33a4a1e30c6196cd17d6244dda49efaeacb0662ead0740eebea7d3ee70f5b1c9",
+    "references.bib": "bacf6355d7e2f28b3e6471a9e7fd48e89576e0016f461c6a68a9c7428321053b",
+    "related_work.tex": "9c698965b3df5dbcb04f5bc002fcd61d186cc573308631416a7081c838e1a4aa",
+    "root.bbl": "b319bf5bccefc8a744f23cfc113801dfb8df70c61b6cabb9b4a7036068c95c2e",
+    "root.tex": "1569232d1657445f28879d05b8f03189821f3eb52e0e0c5d54008e05112927bf"
+  }
+}

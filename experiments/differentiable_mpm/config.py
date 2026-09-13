@@ -10,7 +10,8 @@ from typing import Any, Mapping
 
 import numpy as np
 
-from .state import DEFAULT_PARAMETERS, PARAMETER_NAMES, SimulationConfig, validate_parameters
+from .state import (DEFAULT_PARAMETERS, PARAMETER_NAMES, TUNABLE_TOOL_PARAMETERS,
+                    SimulationConfig, validate_parameters, normalize_parameters, validate_tool_parameters)
 
 
 EXPERIMENT_ROOT = Path(__file__).resolve().parent
@@ -125,8 +126,12 @@ class ExperimentConfig:
             value = self.simulation.get(name, 48 if name == "grid" else None)
             if isinstance(value, bool) or not isinstance(value, int):
                 raise ValueError(f"{name} must be an integer")
-        SimulationConfig(**self.simulation)
-        validate_parameters(self.parameters)
+        self.parameters = normalize_parameters(self.parameters, self.simulation)
+        # Keep exported fixed-setting mirrors consistent with the physical values.
+        self.simulation = {**self.simulation,
+                           **{name: self.parameters[name] for name in TUNABLE_TOOL_PARAMETERS}}
+        simulation_config = SimulationConfig(**self.simulation)
+        validate_tool_parameters(self.parameters, simulation_config, self.fit_parameters)
         if not self.fit_parameters or len(set(self.fit_parameters)) != len(self.fit_parameters):
             raise ValueError("fit_parameters must contain distinct parameter names")
         if set(self.fit_parameters) - set(PARAMETER_NAMES):
@@ -208,7 +213,9 @@ def load_config(path: str | Path, path_overrides: Mapping[str, str | Path] | Non
             value[name] = FrameWindow(**value[name])
     if "observation" in value:
         value["observation"] = ObservationSettings(**value["observation"])
-    value["parameters"] = {**DEFAULT_PARAMETERS, **value.get("parameters", {})}
+    simulation_contact = {name: value.get("simulation", {}).get(name, DEFAULT_PARAMETERS[name])
+                          for name in TUNABLE_TOOL_PARAMETERS}
+    value["parameters"] = {**DEFAULT_PARAMETERS, **simulation_contact, **value.get("parameters", {})}
     config = ExperimentConfig(**value, config_path=path, source_document_sha256=hashlib.sha256(raw).hexdigest(),
                               path_overrides={k: str(v) for k, v in overrides.items()})
     return config.validate()

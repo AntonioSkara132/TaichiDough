@@ -4,7 +4,7 @@ import math
 
 import numpy as np
 
-from .state import PARAMETER_NAMES, validate_parameters
+from .state import PARAMETER_NAMES, validate_parameters, normalize_parameters
 
 
 DEFAULT_BOUNDS = {
@@ -15,6 +15,8 @@ DEFAULT_BOUNDS = {
     "plastic_max": (1.0, 1.5),
     "tool_retention": (0.0, 1.0),
     "floor_retention": (0.0, 1.0),
+    "tool_friction_coefficient": (0.0, 2.0),
+    "tool_stickiness": (0.0, 1.0),
 }
 DEFAULT_SCALES = {
     "poisson_ratio": 0.1,
@@ -23,6 +25,8 @@ DEFAULT_SCALES = {
     "plastic_max": 0.1,
     "tool_retention": 1.0,
     "floor_retention": 1.0,
+    "tool_friction_coefficient": 1.0,
+    "tool_stickiness": 1.0,
 }
 
 
@@ -39,8 +43,7 @@ class PhysicalParameterSpace:
     def __init__(self, initial: Mapping[str, float], fit: Sequence[str], plasticity: str,
                  bounds: Mapping[str, Sequence[float]] | None = None,
                  scales: Mapping[str, float] | None = None):
-        validate_parameters(initial)
-        self.initial = {name: float(initial[name]) for name in PARAMETER_NAMES}
+        self.initial = normalize_parameters(initial)
         if isinstance(fit, (str, bytes)):
             raise ValueError("fit must be a nonempty sequence of parameter names")
         self.fit = tuple(fit)
@@ -89,7 +92,7 @@ class PhysicalParameterSpace:
             valid = lower > 0
         elif name == "poisson_ratio":
             valid = -1 < lower < upper < 0.5
-        elif name == "viscosity":
+        elif name in {"viscosity", "tool_friction_coefficient"}:
             valid = lower >= 0
         elif name == "plastic_min":
             valid = 0 < lower < upper <= 1

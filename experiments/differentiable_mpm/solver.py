@@ -8,7 +8,8 @@ import numpy as np
 import taichi as ti
 
 from .state import (DEFAULT_PARAMETERS, PARAMETER_NAMES, STATE_NAMES, InvalidStateError,
-                    ParticleState, SimulationConfig, SDFData, ToolControl, validate_parameters)
+                    ParticleState, SimulationConfig, SDFData, ToolControl,
+                    normalize_parameters, validate_tool_parameters)
 from .spectral import clamp_forward, clamp_vjp, polar_forward, polar_vjp
 
 
@@ -82,7 +83,8 @@ class Stepper:
             self.sdf_normal.from_numpy(np.asarray(sdf.gradients, dtype=self.np_dtype))
             self.sdf_minimum.from_numpy(np.asarray(sdf.minimums, dtype=self.np_dtype))
             self.sdf_spacing.from_numpy(np.asarray(sdf.spacings, dtype=self.np_dtype))
-        self.set_parameters(DEFAULT_PARAMETERS if parameters is None else parameters)
+        self.set_parameters({name: DEFAULT_PARAMETERS[name] for name in PARAMETER_NAMES[:7]}
+                            if parameters is None else parameters)
         self._set_control(ToolControl.stationary())
 
     def _slot(self, slot, next_slot=False):
@@ -93,8 +95,8 @@ class Stepper:
         return slot
 
     def set_parameters(self, parameters):
-        values = {name: float(value) for name, value in parameters.items()}
-        validate_parameters(values)
+        values = normalize_parameters(parameters, self.config)
+        validate_tool_parameters(values, self.config)
         self.parameters.from_numpy(np.array([values[name] for name in PARAMETER_NAMES], dtype=self.np_dtype))
         self._parameter_values = values
 
@@ -379,19 +381,23 @@ class Stepper:
         result = velocity
         relative = velocity - collider_v
         vn = relative.dot(normal)
-        if ti.static(self.config.tool_contact_model == "coulomb-v1"):
+        if ti.static(self.config.tool_contact_model != "retention-v1"):
             if vn < 0:
                 tangential = relative - normal * vn
                 tangential_speed = tangential.norm()
                 scale = ti.cast(0.0, self.dtype)
                 if tangential_speed > 0:
-                    scale = ti.max(0.0, 1.0 - self.config.tool_friction_coefficient * (-vn) / tangential_speed)
+                    scale = ti.max(0.0, 1.0 - self.parameters[7] * (-vn) / tangential_speed)
                 result = collider_v + tangential * scale
+            if ti.static(self.config.tool_contact_model == "coulomb-adhesive-v1"):
+                # Velocity matching acts only inside the existing contact region,
+                # including withdrawal. No persistent bond or pull-off force.
+                result -= self.parameters[8] * (result - collider_v)
         else:
             if vn < 0:
                 relative -= normal * vn
             relative *= self.parameters[5] * (1 - self.config.tool_contact_absorption)
-            relative *= 1 - self.config.tool_stickiness
+            relative *= 1 - self.parameters[8]
             result = collider_v + relative
         return result
 

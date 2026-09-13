@@ -206,7 +206,7 @@ def load_dataset(path, *, path_overrides=None, backend=None, precision=None, p2g
         overrides = {name: _resolved_path(value, path.parent, f"{episode_id}.{name}")
                      for name, value in overrides.items()}
         config = load_config(config_path, overrides)
-        config.parameters = {**config.parameters, **initial, "tool_retention": 1.0}
+        config.parameters = {**config.parameters, **initial, "tool_retention": 1.0, "tool_stickiness": 0.0}
         config.fit_parameters = list(fit)
         config.parameter_bounds = {name: list(values) for name, values in bounds.items()}
         config.simulation.update(tool_contact_absorption=0.0, tool_stickiness=0.0)

@@ -1,0 +1,145 @@
+\begin{thebibliography}{10}
+
+\bibitem{review2020}
+V.~E. Arriola-Rios, P.~Guler, F.~Ficuciello, D.~Kragic, B.~Siciliano, and J.~L.
+  Wyatt, ``{Modeling of Deformable Objects for Robotic Manipulation: A Tutorial
+  and Review},'' {\em Frontiers in Robotics and AI}, vol.~7, 2020.
+\newblock Art. no. 82.
+
+\bibitem{yazar2023}
+G.~Yazar, ``{Wheat Flour Quality Assessment by Fundamental Non-Linear
+  Rheological Methods: A Critical Review},'' {\em Foods}, vol.~12, no.~18,
+  2023.
+\newblock Art. no. 3353.
+
+\bibitem{robocraft2022}
+H.~Shi, H.~Xu, Z.~Huang, Y.~Li, and J.~Wu, ``{RoboCraft: Learning to See,
+  Simulate, and Shape Elasto-Plastic Objects with Graph Networks},'' in {\em
+  Robotics: Science and Systems XVIII}, 2022.
+
+\bibitem{robocook2023}
+H.~Shi, H.~Xu, S.~Clarke, Y.~Li, and J.~Wu, ``{RoboCook: Long-Horizon
+  Elasto-Plastic Object Manipulation with Diverse Tools},'' in {\em Proceedings
+  of the 7th Conference on Robot Learning}, vol.~229, pp.~642--660, 2023.
+
+\bibitem{dpsi2025}
+X.~Yang, Z.~Ji, and Y.-K. Lai, ``{Differentiable physics-based system
+  identification for robotic manipulation of elastoplastic materials},'' {\em
+  The International Journal of Robotics Research}, vol.~44, no.~13,
+  pp.~2126--2155, 2025.
+
+\bibitem{empm2026}
+Y.~Chen, Y.~Hu, L.~Sun, T.~Kusnur, L.~Herlant, and C.~Jiang, ``{EMPM: Embodied
+  MPM for Modeling and Simulation of Deformable Objects},'' {\em IEEE Robotics
+  and Automation Letters}, vol.~11, no.~4, pp.~4179--4186, 2026.
+
+\bibitem{diffcal2023}
+K.~Arnavaz, M.~K. Nielsen, P.~G. Kry, M.~Macklin, and K.~Erleben,
+  ``{Differentiable Depth for Real2Sim Calibration of Soft Body Simulations},''
+  {\em Computer Graphics Forum}, vol.~42, no.~1, pp.~277--289, 2023.
+
+\bibitem{discrepancy2014}
+J.~Brynjarsdóttir and A.~O'Hagan, ``{Learning about physical parameters: the
+  importance of model discrepancy},'' {\em Inverse Problems}, vol.~30, no.~11,
+  2014.
+\newblock Art. no. 114007.
+
+\bibitem{fabbri2015}
+A.~Fabbri and C.~Cevoli, ``{Estimation of semolina dough rheological parameters
+  by inversion of a finite elements model},'' {\em Journal of Agricultural
+  Engineering}, vol.~46, no.~3, pp.~95--99, 2015.
+
+\bibitem{cocuzza2018}
+S.~Cocuzza and X.-T. Yan, ``{First engineering framework for the out-of-plane
+  robotic shaping of thin rheological objects},'' {\em Robotics and
+  Computer-Integrated Manufacturing}, vol.~53, pp.~108--121, 2018.
+
+\bibitem{adhesion2014}
+D.~Ghorbel and B.~Launay, ``{An investigation into the nature of wheat flour
+  dough adhesive behaviour},'' {\em Food Research International}, vol.~64,
+  pp.~305--313, 2014.
+
+\bibitem{doughnet2024}
+D.~Bauer, Z.~Xu, and S.~Song, ``{DoughNet: A Visual Predictive Model for
+  Topological Manipulation of Deformable Objects},'' in {\em Computer Vision
+  – ECCV 2024}, pp.~92--108, 2024.
+
+\bibitem{diffcloud2022}
+P.~Sundaresan, R.~Antonova, and J.~Bohg, ``{DiffCloud: Real-to-Sim from Point
+  Clouds with Differentiable Simulation and Rendering of Deformable Objects},''
+  in {\em IEEE/RSJ International Conference on Intelligent Robots and Systems
+  (IROS)}, pp.~10828--10835, 2022.
+
+\bibitem{wang2015}
+B.~Wang, L.~Wu, K.~Yin, U.~Ascher, L.~Liu, and H.~Huang, ``{Deformation Capture
+  and Modeling of Soft Objects},'' {\em ACM Transactions on Graphics}, vol.~34,
+  no.~4, 2015.
+\newblock Art. no. 94.
+
+\bibitem{hahn2019}
+D.~Hahn, P.~Banzet, J.~M. Bern, and S.~Coros, ``{Real2Sim: Visco-elastic
+  parameter estimation from dynamic motion},'' {\em ACM Transactions on
+  Graphics}, vol.~38, no.~6, 2019.
+\newblock Art. no. 236.
+
+\bibitem{pacnerf2023}
+X.~Li, Y.-L. Qiao, P.~Y. Chen, K.~M. Jatavallabhula, M.~Lin, C.~Jiang, and
+  C.~Gan, ``{PAC-NeRF: Physics Augmented Continuum Neural Radiance Fields for
+  Geometry-Agnostic System Identification},'' in {\em International Conference
+  on Learning Representations (ICLR)}, 2023.
+
+\bibitem{gic2024}
+J.~Cai, Y.~Yang, W.~Yuan, Y.~He, Z.~Dong, L.~Bo, H.~Cheng, and Q.~Chen, ``{GIC:
+  Gaussian-Informed Continuum for Physical Property Identification and
+  Simulation},'' in {\em Advances in Neural Information Processing Systems},
+  vol.~37, pp.~75035--75063, 2024.
+
+\bibitem{phystwin2025}
+H.~Jiang, H.-Y. Hsu, K.~Zhang, H.-N. Yu, S.~Wang, and Y.~Li, ``{PhysTwin:
+  Physics-Informed Reconstruction and Simulation of Deformable Objects from
+  Videos},'' in {\em Proceedings of the IEEE/CVF International Conference on
+  Computer Vision (ICCV)}, pp.~7219--7230, 2025.
+
+\bibitem{mls2018}
+Y.~Hu, Y.~Fang, Z.~Ge, Z.~Qu, Y.~Zhu, A.~Pradhana, and C.~Jiang, ``{A Moving
+  Least Squares Material Point Method with Displacement Discontinuity and
+  Two-Way Rigid Body Coupling},'' {\em ACM Transactions on Graphics}, vol.~37,
+  no.~4, 2018.
+\newblock Art. no. 150.
+
+\bibitem{apic2015}
+C.~Jiang, C.~Schroeder, A.~Selle, J.~Teran, and A.~Stomakhin, ``{The Affine
+  Particle-In-Cell Method},'' {\em ACM Transactions on Graphics}, vol.~34,
+  no.~4, 2015.
+\newblock Art. no. 51.
+
+\bibitem{snow2013}
+A.~Stomakhin, C.~Schroeder, L.~Chai, J.~Teran, and A.~Selle, ``{A Material
+  Point Method for Snow Simulation},'' {\em ACM Transactions on Graphics},
+  vol.~32, no.~4, 2013.
+\newblock Art. no. 102.
+
+\bibitem{chainqueen2019}
+Y.~Hu, J.~Liu, A.~Spielberg, J.~B. Tenenbaum, W.~T. Freeman, J.~Wu, D.~Rus, and
+  W.~Matusik, ``{ChainQueen: A Real-Time Differentiable Physical Simulator for
+  Soft Robotics},'' in {\em IEEE International Conference on Robotics and
+  Automation (ICRA)}, pp.~6265--6271, 2019.
+
+\bibitem{difftaichi2020}
+Y.~Hu, L.~Anderson, T.-M. Li, Q.~Sun, N.~Carr, J.~Ragan-Kelley, and F.~Durand,
+  ``{DiffTaichi: Differentiable Programming for Physical Simulation},'' in {\em
+  International Conference on Learning Representations (ICLR)}, 2020.
+
+\bibitem{plasticinelab2021}
+Z.~Huang, Y.~Hu, T.~Du, S.~Zhou, H.~Su, J.~B. Tenenbaum, and C.~Gan,
+  ``{PlasticineLab: A Soft-Body Manipulation Benchmark with Differentiable
+  Physics},'' in {\em International Conference on Learning Representations
+  (ICLR)}, 2021.
+
+\bibitem{raue2009}
+A.~Raue, C.~Kreutz, T.~Maiwald, J.~Bachmann, M.~Schilling, U.~Klingmüller, and
+  J.~Timmer, ``{Structural and practical identifiability analysis of partially
+  observed dynamical models by exploiting the profile likelihood},'' {\em
+  Bioinformatics}, vol.~25, no.~15, pp.~1923--1929, 2009.
+
+\end{thebibliography}

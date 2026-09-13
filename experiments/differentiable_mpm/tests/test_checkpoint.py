@@ -31,9 +31,9 @@ class LinearStepper:
         self.states = [None] * capacity
         self.grads = [None] * capacity
         self.A = 0.96 * np.eye(25) + 0.035 * np.roll(np.eye(25), 1, axis=1)
-        self.B = np.sin(np.arange(25)[:, None] + 1.37 * np.arange(7)[None]) * 1e-3
-        self.param_grad = np.zeros(7)
-        self.p = np.zeros(7)
+        self.B = np.sin(np.arange(25)[:, None] + 1.37 * np.arange(len(PARAMETER_NAMES))[None]) * 1e-3
+        self.param_grad = np.zeros(len(PARAMETER_NAMES))
+        self.p = np.zeros(len(PARAMETER_NAMES))
         self.drift = drift
         self.reverse_started = False
 

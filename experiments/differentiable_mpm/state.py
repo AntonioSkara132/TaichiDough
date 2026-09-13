@@ -8,17 +8,20 @@ from numpy.typing import DTypeLike
 
 PARAMETER_NAMES = (
     "youngs_modulus", "poisson_ratio", "viscosity", "plastic_min", "plastic_max",
-    "tool_retention", "floor_retention",
+    "tool_retention", "floor_retention", "tool_friction_coefficient", "tool_stickiness",
 )
+LEGACY_PARAMETER_NAMES = PARAMETER_NAMES[:7]
+TUNABLE_TOOL_PARAMETERS = PARAMETER_NAMES[7:]
 DEFAULT_PARAMETERS = {
     "youngs_modulus": 130579.320726, "poisson_ratio": 0.3, "viscosity": 0.0,
     "plastic_min": 0.9, "plastic_max": 1.1,
     "tool_retention": 0.2, "floor_retention": 0.4,
+    "tool_friction_coefficient": 0.5, "tool_stickiness": 0.0,
 }
 STATE_NAMES = ("x", "v", "C", "F", "Jp")
 P2G_MODES = ("atomic", "serial")
 PHYSICS_VERSIONS = ("corrected-v1", "legacy-v1")
-TOOL_CONTACT_MODELS = ("retention-v1", "coulomb-v1")
+TOOL_CONTACT_MODELS = ("retention-v1", "coulomb-v1", "coulomb-adhesive-v1")
 
 
 class InvalidStateError(RuntimeError):
@@ -101,13 +104,15 @@ class SimulationConfig:
         if self.tool_collision not in {"none", "sdf"}:
             raise ValueError("The experiment supports recorded SDF tools or no tools")
         if not isinstance(self.tool_contact_model, str) or self.tool_contact_model not in TOOL_CONTACT_MODELS:
-            raise ValueError("tool_contact_model must be retention-v1 or coulomb-v1")
+            raise ValueError(f"tool_contact_model must be one of {TOOL_CONTACT_MODELS}")
         if (isinstance(self.tool_friction_coefficient, (bool, np.bool_)) or
                 not isinstance(self.tool_friction_coefficient, (int, float)) or
                 not np.isfinite(self.tool_friction_coefficient) or self.tool_friction_coefficient < 0):
             raise ValueError("tool_friction_coefficient must be finite and nonnegative")
         if self.tool_contact_model == "coulomb-v1" and (self.tool_contact_absorption != 0 or self.tool_stickiness != 0):
             raise ValueError("coulomb-v1 requires zero tool contact absorption and stickiness")
+        if self.tool_contact_model == "coulomb-adhesive-v1" and self.tool_contact_absorption != 0:
+            raise ValueError("coulomb-adhesive-v1 requires zero tool contact absorption")
         if self.precision not in {"f32", "f64"}:
             raise ValueError("precision must be f32 or f64")
         if not isinstance(self.p2g_mode, str) or self.p2g_mode not in P2G_MODES:
@@ -186,8 +191,10 @@ class SDFData:
 
 
 def validate_parameters(values: Mapping[str, float]):
-    if set(values) != set(PARAMETER_NAMES):
-        raise ValueError(f"Physical parameters must be exactly {PARAMETER_NAMES}")
+    missing = set(LEGACY_PARAMETER_NAMES) - set(values)
+    unknown = set(values) - set(PARAMETER_NAMES)
+    if missing or unknown:
+        raise ValueError(f"Invalid physical parameters: missing={sorted(missing)}, unknown={sorted(unknown)}")
     if not all(np.isfinite(v) for v in values.values()):
         raise ValueError("Nonfinite material/contact parameters")
     if values["youngs_modulus"] <= 0 or not -1 < values["poisson_ratio"] < 0.5:
@@ -196,3 +203,49 @@ def validate_parameters(values: Mapping[str, float]):
         raise ValueError("Invalid viscosity or stretch limits")
     if not all(0 <= values[n] <= 1 for n in ("tool_retention", "floor_retention")):
         raise ValueError("Retention multipliers must be in [0,1]")
+    if "tool_friction_coefficient" in values and (isinstance(values["tool_friction_coefficient"], (bool, np.bool_)) or
+                                                 values["tool_friction_coefficient"] < 0):
+        raise ValueError("tool_friction_coefficient must be finite and nonnegative")
+    if "tool_stickiness" in values and (isinstance(values["tool_stickiness"], (bool, np.bool_)) or
+                                      not 0 <= values["tool_stickiness"] <= 1):
+        raise ValueError("tool_stickiness must be in [0,1]")
+
+
+def normalize_parameters(values: Mapping[str, float], simulation=None):
+    """Extend old seven-value records using their fixed simulation contact settings.
+
+    Explicit physical contact values take precedence. Callers loading old files
+    must supply their simulation settings rather than replace recorded friction
+    with a new default.
+    """
+    validate_parameters(values)
+    defaults = {}
+    for name in TUNABLE_TOOL_PARAMETERS:
+        if isinstance(simulation, Mapping):
+            defaults[name] = simulation.get(name, DEFAULT_PARAMETERS[name])
+        else:
+            defaults[name] = getattr(simulation, name, DEFAULT_PARAMETERS[name])
+    result = {**defaults, **values}
+    validate_parameters(result)
+    return {name: float(result[name]) for name in PARAMETER_NAMES}
+
+
+def validate_tool_parameters(values, config, fit=()):
+    """Reject unsupported contact fits instead of returning identically zero gradients."""
+    model = config.tool_contact_model
+    fitted = set(fit)
+    if model == "coulomb-v1" and values["tool_stickiness"] != 0:
+        raise ValueError("Nonzero tool_stickiness requires retention-v1 or coulomb-adhesive-v1")
+    if fitted.intersection(TUNABLE_TOOL_PARAMETERS) and config.tool_collision != "sdf":
+        raise ValueError("Fitting tool contact parameters requires tool_collision='sdf'")
+    if model == "retention-v1" and "tool_friction_coefficient" in fitted:
+        raise ValueError("tool_friction_coefficient is inactive in retention-v1")
+    if model == "coulomb-v1" and "tool_stickiness" in fitted:
+        raise ValueError("Fitting tool_stickiness with Coulomb friction requires coulomb-adhesive-v1")
+    if model != "retention-v1" and "tool_retention" in fitted:
+        raise ValueError("tool_retention is inactive in Coulomb contact models")
+    if model == "retention-v1" and "tool_stickiness" in fitted:
+        if "tool_retention" in fitted:
+            raise ValueError("Fit either tool_retention or tool_stickiness, not their redundant product")
+        if values["tool_retention"] == 0 or config.tool_contact_absorption == 1:
+            raise ValueError("Fixed retention/absorption makes tool_stickiness inactive")

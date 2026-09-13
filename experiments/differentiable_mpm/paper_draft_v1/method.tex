@@ -1,0 +1,236 @@
+\section{Method}
+\label{sec:method}
+
+\subsection{Problem definition and separation of parameter families}
+
+For episode $e$, the inputs comprise timestamped depth-derived dough points, calibrated camera geometry, prescribed marker poses for two rigid tools, and a recorded object mass. Let $s_e^n$ denote the simulator state and $a_e^n$ the interpolated tool controls at substep $n$. The discrete forward model is
+\begin{equation}
+ s_e^{n+1}=\Phi_h(s_e^n,a_e^n;\theta,\psi_e),
+ \qquad \hat o_{e,t}=\mathcal R(s_e^{n(t)};\psi_e),
+ \label{eq:forward}
+\end{equation}
+where $h$ is grid spacing, $\mathcal R$ is the observation operator, and $n(t)$ associates a measurement with its saved simulation state. The shared fitted parameters are
+\begin{equation}
+ \theta=(E,\nu,\eta,\sigma_{\min},\sigma_{\max}).
+ \label{eq:theta}
+\end{equation}
+They specify elastic stiffness, Poisson's ratio, the additive viscous coefficient, and lower and upper principal-stretch limits. The fixed episode data $\psi_e$ contain the initial reconstruction, mass, camera calibration, tool geometry and registration, and contact settings. These quantities are not adjusted to reduce the material objective. This separation makes the resulting parameter estimates conditional on explicit geometric and contact assumptions.
+
+\subsection{Table alignment, camera geometry, and tool registration}
+
+A robust plane estimate defines the table in the original scene coordinates as $n^\trans x+d=0$, with $\|n\|=1$ and $n$ oriented toward the object. A rigid transform with rotation $Qn=e_y$ and translation $t_y=d$ yields
+\begin{equation}
+ x_S=Qx+t, \qquad (x_S)_y=n^\trans x+d.
+ \label{eq:table}
+\end{equation}
+The remaining translation centers the scene within the simulation domain without changing metric scale. Camera extrinsics, observed points, and complete tool trajectories receive the same transform. The table is then $y=0$. We take its normal as physical up and set gravity to $[0,-9.81,0]^\trans\,\mathrm{m\,s^{-2}}$; this treats the original tilt as a coordinate-calibration error, rather than a physically inclined table.
+
+Writing $T_{AB}$ for a transform from frame $B$ to frame $A$, the tool pose is
+\begin{equation}
+ T_{SB}(t)=T_{SM}\,T_{MK}(t)\,T_{KB},
+ \label{eq:toolpose}
+\end{equation}
+where $M$ is the recorded motion frame, $K$ the tool marker, and $B$ the tool's local geometric frame. Mesh units and visual-origin conventions are resolved once when constructing that local geometry. Each constant $T_{KB}$ is estimated separately from color-selected partial tool clouds using visibility-aware robust registration over multiple frames, with fixed camera calibration and recorded marker motion. Multiple initializations and held-out registration frames assess ambiguity. A low point-distance residual alone does not uniquely constrain a partially visible flat tool. The selected transforms are fixed during material fitting.
+
+Tool translations are interpolated linearly and orientations by shortest-path spherical interpolation. The collision-point velocity includes translation and rotation:
+\begin{equation}
+ v_{\mathrm{tool}}(x)=v_c+\omega\times(x-c).
+ \label{eq:toolvelocity}
+\end{equation}
+Transform composition, metric scale, complete motion bounds, and initial interpolation support are checked before simulation. Raw recordings remain unchanged; derived geometry and configuration files retain content hashes.
+
+\subsection{Initial hidden volume and mass assignment}
+
+A single view does not observe the underside or interior. We initialize an approximate solid by voxelizing retained visible points, constructing visible top-height columns, and filling those columns down to the table. Points below a configured table-clearance threshold are removed before reconstruction. A small footprint dilation closes local holes. These operations impose an initial table-contact prior, not an observation of hidden material. They can be inappropriate for overhangs or an initially lifted object.
+
+For occupied-voxel count $N_v$, voxel width $a$, particle count $N_p$, and recorded total mass $m$, the assignment is
+\begin{equation}
+ \begin{aligned}
+ V&=N_v a^3, & \rho&=\frac{m}{V},\\
+ V_p&=\frac{V}{N_p}, & m_p&=\frac{m}{N_p}.
+ \end{aligned}
+ \label{eq:mass}
+\end{equation}
+Particles are sampled from this reconstructed volume with a fixed random seed and initialized at rest. \emph{Downward filling is applied only to the initial reconstruction.} During replay, particle positions are determined by dynamics and contact; neither simulated states nor later observations are refilled to the floor. An unexplained simulated floor gap must therefore be diagnosed, not removed by geometric completion.
+
+The current Episode~18 input preparation uses $3\,\mathrm{mm}$ voxels, a $3\,\mathrm{mm}$ observation clearance, and $24{,}000$ particles. Its $4{,}216$ occupied voxels yield $113.832\,\mathrm{mL}$. Preserving the recorded $250\,\mathrm{g}$ mass implies approximately $2{,}196\,\mathrm{kg\,m^{-3}}$. This unusually high density requires checking the recorded mass and hidden-volume assumption before fitted coefficients can be interpreted as physical measurements.
+
+\subsection{Constitutive approximation and corrected MLS-MPM transfer}
+
+Each particle stores position $x_p$, velocity $v_p$, affine velocity matrix $C_p$, and deformation state $F_p$. At each substep, the trial deformation and principal-stretch projection are
+\begin{align}
+ F_p^*&=(I+\Delta t\,C_p^n)F_p^n
+       =U_p\diag(\sigma_p)W_p^\trans, \\
+ \bar F_p&=U_p\diag\!\left(
+       \clip(\sigma_p,\sigma_{\min},\sigma_{\max})\right)W_p^\trans.
+ \label{eq:plastic}
+\end{align}
+Here $U_p$ and $W_p$ are the left and right singular-vector matrices. The stored next deformation state is $F_p^{n+1}=\bar F_p$. Projection occurs before stress evaluation. The active model has no plastic-volume hardening. This is a Stomakhin-style principal-stretch approximation~\cite{snow2013}, not a von Mises or J2 return mapping.
+
+With $R_p=\operatorname{polar}(\bar F_p)$, $J_p=\det\bar F_p$, and
+\begin{equation}
+ \mu=\frac{E}{2(1+\nu)},\qquad
+ \lambda=\frac{E\nu}{(1+\nu)(1-2\nu)},
+\end{equation}
+the quantity entering the momentum transfer is
+\begin{equation}
+ \begin{split}
+ \tau_p={}&2\mu(\bar F_p-R_p)\bar F_p^\trans
+       +\lambda J_p(J_p-1)I\\
+       &+\eta(C_p^n+(C_p^n)^\trans).
+ \end{split}
+ \label{eq:stress}
+\end{equation}
+The elastic part is the first Piola stress multiplied by $\bar F_p^\trans$, a Kirchhoff-type quantity; $\tau_p$ is not itself first Piola stress. The final term is the implemented additive rate-dependent approximation. It does not introduce a general relaxation spectrum or establish a complete dough rheology model.
+
+For quadratic B-spline weights $w_{ip}$ and metric offsets $d_{ip}=x_i-x_p^n$, particle-to-grid transfer is
+\begin{align}
+ A_p&=m_pC_p^n-\Delta t\,V_p\frac{4}{h^2}\tau_p,\\
+ m_i&=\sum_p w_{ip}m_p,\\
+ p_i&=\sum_p w_{ip}\left(m_pv_p^n+A_pd_{ip}\right).
+ \label{eq:p2g}
+\end{align}
+Grid velocity is normalized by positive accumulated mass, updated with gravity, and modified by boundary and tool contact. Denoting the resulting velocity by $\tilde v_i$, grid-to-particle transfer and advection are
+\begin{align}
+ v_p^{\mathrm{adv}}&=\sum_i w_{ip}\tilde v_i,\\
+ C_p^{n+1}&=\frac{4}{h^2}\sum_i w_{ip}\tilde v_i d_{ip}^\trans,\\
+ x_p^{\mathrm{adv}}&=x_p^n+\Delta t\,v_p^{\mathrm{adv}}.
+ \label{eq:g2p}
+\end{align}
+Particle contact then produces the final position and velocity. The $4/h^2$ affine factor is required with metric offsets. Floor-adjacent stencils use floor-based indexing and padded grid support; that numerical padding does not move the physical table.
+
+\subsection{Non-adhesive tool contact and floor response}
+
+Rigid-tool contact uses voxelized signed-distance fields (SDFs), with normals from their spatial gradients. For an outward unit normal $n$, relative velocity $u=v-v_{\mathrm{tool}}$, normal component $b=u^\trans n$, and tangent $u_t=u-bn$, the active velocity-level rule is
+\begin{equation}
+ u'=\begin{cases}
+ u, & b\geq0,\\
+ \max\!\left(0,1-\dfrac{\mu_f(-b)}{\|u_t\|}\right)u_t,
+   & b<0,\ \|u_t\|>0,\\
+ 0, & b<0,\ \|u_t\|=0.
+ \end{cases}
+ \label{eq:contact}
+\end{equation}
+The world velocity is $v'=v_{\mathrm{tool}}+u'$. Separating motion is unchanged, and tangential reduction occurs only during inward motion. The fixed $\mu_f=0.5$ is not fitted with material parameters. Absorption and stickiness are disabled.
+
+This is a discrete Coulomb-like impulse projection using inward velocity as a normal-impulse proxy, not a pressure-based contact solve. Resting friction can be weak when inward speed is small. Grid contact selects a nearest qualifying tool, while post-advection particle contact checks the two tools sequentially and projects penetrating particles outside the SDF by the configured padding plus a small numerical offset. Angular tool velocity is evaluated at the projected contact location. The floor uses a different rule: position is constrained to $y\geq0$, inward normal velocity is removed, and tangential retention is fixed at $0.4$. That retention factor is not a Coulomb coefficient.
+
+\subsection{Differentiable partial-view observation model}
+
+Particle positions are transformed into calibrated optical coordinates $q_p=(x_p^c,y_p^c,z_p)$ and projected to image coordinates $(u_p,v_p)$. For pixel $k$, a compact footprint with radius $r$ is
+\begin{equation}
+ f_{pk}=(1-\delta u_{pk}^2)^2(1-\delta v_{pk}^2)^2,
+ \quad |\delta u_{pk}|,|\delta v_{pk}|<1,
+\end{equation}
+with zero weight outside its support. The normalized offsets divide projected pixel-center differences by $r$. Depth-dependent weights are
+\begin{equation}
+ a_{pk}=f_{pk}\exp\!\left[-\frac{z_p-z_{\mathrm{front},k}}{T}\right],
+\end{equation}
+where $z_{\mathrm{front},k}$ stabilizes the exponential numerically and cancels from the normalized ratios. Predicted depth and coverage are
+\begin{equation}
+ \begin{aligned}
+ \hat D_k&=\frac{\sum_p a_{pk}z_p}{\sum_p a_{pk}},\\
+ c_k&=1-\exp\!\left[-\gamma
+          \frac{\sum_p a_{pk}f_{pk}}{\sum_p a_{pk}}\right].
+ \end{aligned}
+ \label{eq:render}
+\end{equation}
+Pixels without support have zero coverage and are marked invalid for depth. Coverage is based on a normalized mean footprint, not accumulated volumetric opacity. The current settings are $r=2$ pixels, $T=5\,\mathrm{mm}$, and $\gamma=8$, using $160\times120$ images. Projection clipping and footprint membership remain piecewise operations. The dough renderer does not explicitly model occlusion by tools, so tool-obscured measurements remain a limitation.
+
+\subsection{Depth-change, coverage, and visible-point objective}
+
+Let $M_t^o$ and $M_t^s$ denote valid observed and predicted depth masks. The depth-change comparison uses
+\begin{equation}
+ \begin{aligned}
+ S_t&=M_t^o\cap M_0^o\cap M_0^s,\\
+ r_{tk}&=\frac{(\hat D_{tk}-\hat D_{0k})-(D_{tk}-D_{0k})}{s_d}.
+ \end{aligned}
+ \label{eq:depthchange}
+\end{equation}
+Crucially, $S_t$ does not require current predicted support. On pixels with current support, define
+\begin{equation}
+ \ell_{tk}=c_{tk}\rho_H(r_{tk})+(1-c_{tk})\rho_H(r_{\mathrm{miss}}),
+\end{equation}
+where $\rho_H(r)=r^2/2$ for $|r|\leq1$ and $|r|-1/2$ otherwise. On pixels without current support, define $\ell_{tk}=\rho_H(r_{\mathrm{miss}})$ directly. Thus, losing the predicted object does not remove its observed pixels from the depth penalty. With $s_d=10\,\mathrm{mm}$ and $r_{\mathrm{miss}}=4$, the missing-prediction penalty is $3.5$. The first two components are
+\begin{equation}
+ L_{d,t}=\frac{1}{|S_t|}\sum_{k\in S_t}\ell_{tk},\qquad
+ L_{c,t}=\frac{1}{|M_t^o|}\sum_{k\in M_t^o}(1-c_{tk}).
+ \label{eq:depthcoverage}
+\end{equation}
+These terms supervise observed object regions without declaring unknown pixels to be empty space.
+
+A third term compares observed optical points $y_j$ with predicted particles classified as visible. A particle is visible when its depth is within $2T$ of the front depth at its projected-center pixel. Defining $p^*(j)$ as its nearest visible predicted neighbor and using $s_p=10\,\mathrm{mm}$,
+\begin{equation}
+ L_{p,t}=\frac{1}{M_t}\sum_{j=1}^{M_t}
+ \rho_H\!\left(\frac{\|q_{p^*(j)}-y_j\|}{s_p}\right).
+ \label{eq:pointloss}
+\end{equation}
+At most $1{,}024$ observed points are selected by deterministic index subsampling. This is a directed observation-to-visible-prediction loss, not symmetric Chamfer distance. Visibility and nearest-neighbor choices are fixed during the local backward calculation, while particle coordinates are differentiated.
+
+Configured component weights $(1,0.5,0.5)$ are normalized to give
+\begin{equation}
+ L_t=0.5L_{d,t}+0.25L_{c,t}+0.25L_{p,t}.
+ \label{eq:frameloss}
+\end{equation}
+For $K_e$ scored observations in episode $e$, shared-material identification minimizes
+\begin{equation}
+ \begin{gathered}
+ L(\theta)=\sum_{e\in\mathcal E_{\mathrm{train}}}\alpha_e L_e(\theta),\\
+ L_e=\frac{1}{K_e}\sum_t L_{e,t},\qquad
+ \alpha_e=\frac{w_e}{\sum_j w_j}.
+ \end{gathered}
+ \label{eq:datasetloss}
+\end{equation}
+This averages each episode once over time and then applies fixed positive episode weights. Longer recordings do not automatically dominate an equal-episode-weight objective. Empty or insufficient required observation support rejects an evaluation instead of silently dropping a frame or episode.
+
+\subsection{Checkpointed differentiation and bounded optimization}
+
+Reverse-mode differentiation propagates the observation gradients through the complete discrete rollout. Full particle states are checkpointed at segment boundaries and recomputed during the backward pass. Adjoint values for position, velocity, affine velocity, deformation, and any enabled plastic-volume state are carried across boundaries; observation gradients are injected once at their corresponding saved states. Segment length controls recomputation storage, not gradient truncation.
+
+Custom vector--Jacobian products differentiate the composite polar and principal-stretch projection maps, including repeated singular values away from projection thresholds, rather than differentiating the internals of an iterative SVD. Grid normalization has a dedicated adjoint to avoid unstable intermediate divisions for very small positive masses. Contact switches, visibility selection, nearest neighbors, and clamp thresholds make the overall objective piecewise differentiable. Chosen threshold sensitivities are numerical conventions at points without an ordinary derivative.
+
+Recomputed states, losses, and contact diagnostics are checked against the forward pass. Strict consistency checking is the default. An explicit optional override permits finite mismatches, as can occur with parallel floating-point accumulation, and labels the resulting gradients approximate. Invalid states, nonfinite quantities, and invalid observation support remain errors. This distinction is necessary when interpreting GPU optimization results.
+
+Projected Adam operates in scaled coordinates
+\begin{equation}
+ \begin{aligned}
+ z_E&=\log\frac{E}{E_{\mathrm{ref}}}, & z_\nu&=\frac{\nu}{0.1},\\
+ z_\eta&=\frac{\eta}{100\,\mathrm{Pa\,s}},\\
+ z_-&=\frac{1-\sigma_{\min}}{0.1}, & z_+&=\frac{\sigma_{\max}-1}{0.1},
+ \end{aligned}
+\end{equation}
+where $E_{\mathrm{ref}}$ is a fixed coordinate reference. Bounds and initial values are given in Table~\ref{tab:settings}. Each proposed update is projected into the admissible interval and evaluated by a new rollout. Backtracking reduces the step until a valid candidate satisfies sufficient decrease. Rejected proposals leave parameters and optimizer moments unchanged. The defaults use learning rate $0.05$, Adam moments $(0.9,0.999)$, and at most eight backtracks with factor $0.5$.
+
+For multiple episodes, a host-side optimizer evaluates one episode subprocess at a time and aggregates physical-parameter gradients using the weights in~\eqref{eq:datasetloss}. Every candidate, including backtracking candidates, evaluates every training episode. A failed episode invalidates the candidate; its weight is not redistributed. Shared fitting assumes the recordings plausibly share material condition, rather than treating different batches or preparations as automatically equivalent.
+
+\begin{table}[t]
+\centering
+\caption{Current experimental configuration, not fitted results.}
+\label{tab:settings}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Quantity & Initial / fixed value & Fitted bounds\\
+\midrule
+$E$ & $130.579\,\mathrm{kPa}$ & $10$--$300\,\mathrm{kPa}$\\
+$\nu$ & $0.30$ & $0.15$--$0.45$\\
+$\eta$ & $0\,\mathrm{Pa\,s}$ & $0$--$100\,\mathrm{Pa\,s}$\\
+$\sigma_{\min}$ & $0.90$ & $0.70$--$0.999$\\
+$\sigma_{\max}$ & $1.10$ & $1.001$--$1.30$\\
+\midrule
+Grid spacing $h$ & $1/48\,\mathrm{m}$ & Fixed\\
+Time step & $0.2\,\mathrm{ms}$ & Fixed\\
+Tool padding & $h/8$ & Fixed\\
+Tool friction $\mu_f$ & $0.5$ & Fixed\\
+Floor retention & $0.4$ & Fixed\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Evaluation scope and interpretation}
+
+The evaluation separates numerical derivative checks, agreement on fitted recordings, and prediction under frozen parameters. Small synthetic finite-difference tests assess the implemented adjoint, but do not validate a physical dough model. A real-data study should compare initialization against calibration, endpoint against time-resolved loss, restricted against joint parameter sets, and single- against multi-episode fitting. Multiple initializations and numerical-resolution checks are needed to determine whether different low-loss coefficients imply similar predictions. A gradient-versus-derivative-free comparison should account for forward and backward computational cost, not only iteration count.
+
+For an independent episode test, shared material parameters and global camera, table, and tool calibrations must be fixed using separate training or calibration data. The new episode is initialized only from its first dough observation; recorded tool trajectories remain legitimate prescribed inputs. Future dough observations are used only for evaluation. Geometric errors, coverage, contact behavior, and recovery should be reported alongside the fitting objective. Later frames from a fitted episode test temporal continuation, not independent action transfer.
+
+The prepared Episode~18 experiment fits frames 1--60 and scores frames 61--97 from a rollout beginning at frame~0. These later frames are held out from \emph{material optimization only}: geometric preprocessing and registration use data across Episode~18. They do not constitute an independent end-to-end test. Input validation has passed for the registered-tool configuration, but its real CUDA gradients, material fit, and predictive accuracy remain unestablished. The density discrepancy and the floor gap observed in an earlier replay with different tool transforms also require investigation. These limitations define what must be checked before claiming that fitted coefficients predict unseen dough behavior or represent independently measured material properties.
