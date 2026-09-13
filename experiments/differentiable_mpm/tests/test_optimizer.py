@@ -104,8 +104,9 @@ class OptimizerTests(unittest.TestCase):
     def test_joint_analytic_optimization_uses_supplied_gradients(self):
         initial = dict(DEFAULT_PARAMETERS, viscosity=25)
         targets = dict(initial, youngs_modulus=90000, poisson_ratio=0.34, viscosity=5.0,
-                       plastic_min=0.84, plastic_max=1.18, tool_retention=0.45, floor_retention=0.55)
-        normalizers = dict(zip(PARAMETER_NAMES, [1e5, 0.1, 100, 0.1, 0.1, 1, 1]))
+                       plastic_min=0.84, plastic_max=1.18, tool_retention=0.45, floor_retention=0.55,
+                       tool_friction_coefficient=0.7, tool_stickiness=0.25)
+        normalizers = dict(zip(PARAMETER_NAMES, [1e5, 0.1, 100, 0.1, 0.1, 1, 1, 1, 1]))
         evaluations = []
 
         def objective(parameters):

@@ -331,6 +331,8 @@ def run_reference_evaluator(argv, import_report=None, repo_root=None, experiment
 def reference_arguments(config: SimulationConfig, parameters: Mapping[str, float]) -> SimpleNamespace:
     """Map every forward-physics setting to the frozen build_sim argument names."""
     validate_parameters(parameters)
+    if config.tool_contact_model == "coulomb-adhesive-v1":
+        raise ValueError("The preserved simulator does not implement coulomb-adhesive-v1")
     if config.precision != "f32":
         raise ValueError("The preserved simulator is float32; reference parity requires precision=f32")
     values = asdict(config)

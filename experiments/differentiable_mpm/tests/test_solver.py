@@ -242,7 +242,7 @@ class SolverGradientTests(unittest.TestCase):
         self.assertLessEqual(min(errors), absolute + relative * scale,
                              f"{context}: AD={actual:.12g}, FD={candidates}, errors={errors}")
 
-    def check_parameter_gradients(self, solver, state, params, control, seed, steps=1, names=PARAMETER_NAMES):
+    def check_parameter_gradients(self, solver, state, params, control, seed, steps=1, names=PARAMETER_NAMES[:7]):
         _, _, gradients = self.gradients(solver, state, params, control, seed, steps)
         for name in names:
             scale = max(abs(params[name]), 0.1)

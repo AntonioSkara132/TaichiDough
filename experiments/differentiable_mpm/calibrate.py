@@ -102,13 +102,18 @@ def read_parameters(path, simulation=None):
         if manifest_path.exists():
             manifest_raw = manifest_path.read_bytes()
             manifest = json.loads(manifest_raw)
+            if not isinstance(manifest, dict):
+                raise ValueError('Run manifest must contain an object')
             identity = manifest.get('identity')
             digest = canonical_hash(identity)
             if not isinstance(identity, dict) or digest != manifest.get('identity_sha256'):
                 raise ValueError('Old parameter contact settings have an invalid run manifest identity')
             if record.get('identity_sha256', digest) != digest:
                 raise ValueError('Selected parameters and run manifest identities differ')
-            saved = identity.get('prepared', {}).get('simulation', {})
+            prepared = identity.get('prepared', {})
+            if not isinstance(prepared, dict):
+                raise ValueError('Saved prepared inputs must be an object')
+            saved = prepared.get('simulation', {})
             if not isinstance(saved, dict):
                 raise ValueError('Saved simulation contact settings must be an object')
             defaults.update({name: saved[name] for name in TUNABLE_TOOL_PARAMETERS if name in saved})

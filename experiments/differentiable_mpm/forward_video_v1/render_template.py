@@ -2,13 +2,12 @@
 from pathlib import Path
 import hashlib
 import json
-import subprocess
 import time
 
 import numpy as np
-from scipy.ndimage import gaussian_filter
 from scipy.spatial.transform import Rotation
-from skimage.measure import marching_cubes
+import render_support
+from render_support import density_boundary, encode_video, video_tools
 import pyvista as pv
 from PIL import Image, ImageDraw, ImageFont
 
@@ -79,6 +78,8 @@ VOXEL = 0.0015
 SIGMA = 0.8
 LEVEL = 0.20
 COLORS = ['#2a78d6', '#eb6834', '#1baf7a']
+FFMPEG = None
+FFPROBE = None
 
 
 def sha(path):
@@ -104,26 +105,14 @@ def stl(path):
 
 
 def boundary(points, particle_volume):
-    # Globally anchored voxel centers; zero outside finite particle support.
-    origin = np.floor(points.min(axis=0) / VOXEL) * VOXEL - 4 * VOXEL
-    size = np.ceil((points.max(axis=0) - origin) / VOXEL).astype(int) + 5
-    if np.prod(size) > 30_000_000:
-        raise ValueError('Particle extent exceeds documented rendering grid budget')
-    ids = np.floor((points - origin) / VOXEL).astype(int)
-    density = np.zeros(tuple(size), dtype=np.float32)
-    np.add.at(density, tuple(ids.T), particle_volume / VOXEL ** 3)
-    density = gaussian_filter(density, SIGMA, mode='constant', cval=0, truncate=3)
-    if float(density.max()) <= LEVEL:
-        raise ValueError('No density isosurface at requested display threshold')
-    vertices, faces, _, _ = marching_cubes(density, level=LEVEL, spacing=(VOXEL,) * 3)
-    vertices += origin + VOXEL / 2
-    return vertices[faces], {'vertices': len(vertices), 'triangles': len(faces),
-        'density_max': float(density.max()), 'boundary_min_m': vertices.min(axis=0).tolist(),
-        'boundary_max_m': vertices.max(axis=0).tolist()}
+    return density_boundary(points, particle_volume, VOXEL, SIGMA, LEVEL)
 
 
 def main():
     start = time.perf_counter()
+    tools = video_tools(FFMPEG, FFPROBE)
+    renderer_hash = sha(Path(__file__))
+    support_hash = sha(Path(render_support.__file__))
     result = json.loads((SIM / 'simulation_result.json').read_text())
     prepared = json.loads((SIM / 'prepared_inputs.json').read_text())
     config = json.loads((SIM / 'forward_demo_config.json').read_text())
@@ -195,13 +184,7 @@ def main():
             f.write(f"file 'frames/frame_{number:05d}.png'\nduration {duration:.9f}\n")
         f.write(f"file 'frames/frame_{len(times)-1:05d}.png'\n")
     video = OUTPUT / 'requested_material_perspective.mp4'
-    command = ['ffmpeg','-nostdin','-n','-f','concat','-safe','0','-i',str(concat),
-               '-vf','fps=30','-c:v','libx264','-pix_fmt','yuv420p','-crf','19','-movflags','+faststart',str(video)]
-    with (OUTPUT/'ffmpeg.log').open('x') as f:
-        subprocess.run(command, stdout=f, stderr=subprocess.STDOUT, check=True)
-    probe = json.loads(subprocess.check_output(['ffprobe','-v','error','-count_frames','-select_streams','v:0',
-        '-show_entries','stream=codec_name,width,height,r_frame_rate,nb_read_frames,duration:format=duration','-of','json',str(video)],text=True))
-    assert int(probe['streams'][0]['nb_read_frames']) >= len(indices)
+    command, probe = encode_video(concat, video, *tools, minimum_frames=len(indices))
     after = {p:sha(p) for p in before}
     assert before == after, 'Simulation inputs changed during rendering'
     snapshot_before = json.loads((ROOT/'snapshot_hashes_before.json').read_text())
@@ -210,7 +193,8 @@ def main():
     save_json(OUTPUT/'render_manifest.json', {'simulation_status':result['status'], 'completed_steps':result['completed_steps'],
         'last_simulation_time_s':result['sim_time_s'], 'last_saved_source_frame':result['last_saved_source_frame'],
         'sampled_snapshots':len(indices), 'render_engine':'VTK/PyVista opaque depth-tested offscreen rendering',
-        'pyvista_version':pv.__version__, 'renderer_sha256':sha(Path(__file__)), 'forward_driver_sha256':sha(ROOT/'forward.py'),
+        'pyvista_version':pv.__version__, 'renderer_sha256':renderer_hash, 'render_support_sha256':support_hash,
+        'forward_driver_sha256':sha(ROOT/'forward.py'),
         'timing':'Recorded timestamps determine frame holds, converted to 30 fps; final sample held for median interval.',
         'voxel_m':VOXEL,'gaussian_sigma_voxels':SIGMA,'density_level':LEVEL,'particle_volume_m3':particle_volume,
         'boundary_note':'Rendering-only density isosurface can extend roughly 1–3 mm beyond particle centers; it is not a new simulated state or closed observed volume.',

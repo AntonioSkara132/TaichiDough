@@ -101,6 +101,7 @@ def main():
     save(output/'requested_config.json', config)
     shutil.copyfile(HERE/'forward_template.py', output/'forward.py')
     shutil.copyfile(HERE/'render_template.py', output/'render_perspective.py')
+    shutil.copyfile(HERE/'render_support.py', output/'render_support.py')
     simulation = isolated/'runs/forward'
     forward = [args.simulation_python, output/'forward.py', '--config', output/'requested_config.json',
                '--output-dir', simulation, '--backend', args.backend]
@@ -108,12 +109,20 @@ def main():
     save(output/'launcher_manifest.json', {'archive':str(bundle), 'archive_sha256':ARCHIVE_SHA256,
         'requested_parameters':requested,'tool_friction':args.tool_friction,'backend':args.backend,
         'simulation_command':list(map(str,forward)), 'render_command':list(map(str,render)),
-        'templates_sha256':{p.name:sha(p) for p in (HERE/'forward_template.py',HERE/'render_template.py')},
+        'templates_sha256':{p.name:sha(p) for p in (HERE/'forward_template.py',HERE/'render_template.py',HERE/'render_support.py')},
         'simulation_requested':not args.prepare_only, 'calibration_requested':False})
     print('Output: '+str(output), flush=True)
     if args.prepare_only:
         print('Prepared only. Commands are recorded in launcher_manifest.json; simulation was not run.', flush=True)
         return 0
+    dependency_check = [args.render_python, '-c',
+        'import sys; sys.path.insert(0, ' + repr(str(output)) + '); '
+        'import numpy, scipy, skimage, pyvista; from PIL import Image; '
+        'from render_support import video_tools; print("Render dependencies OK:", video_tools())']
+    if execute(dependency_check, output/'render_dependencies.log'):
+        raise RuntimeError('Rendering dependency check failed before simulation. '
+                           'Choose --render-python with the required packages and installed FFmpeg/ffprobe. '
+                           'See render_dependencies.log; no simulation was started.')
     code = execute(forward, output/'forward_stdout.log')
     result_path = simulation/'simulation_result.json'
     if not result_path.is_file():

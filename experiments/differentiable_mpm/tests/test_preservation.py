@@ -433,7 +433,9 @@ class PreservationTests(unittest.TestCase):
                                   jp_hardening=2.0, tool_collision="sdf",
                                   plastic_velocity_damping=0.91, plastic_affine_damping=0.87,
                                   tool_contact_absorption=0.13, tool_stickiness=0.21)
-        args = adapter.reference_arguments(config, DEFAULT_PARAMETERS)
+        legacy = {name: value for name, value in DEFAULT_PARAMETERS.items()
+                  if name not in {"tool_friction_coefficient", "tool_stickiness"}}
+        args = adapter.reference_arguments(config, legacy)
         self.assertFalse(args.pure_viscoelastic)
         self.assertTrue(args.replay_episode)
         self.assertFalse(args.ros_control)

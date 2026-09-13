@@ -62,7 +62,9 @@ class CoulombContactTests(unittest.TestCase):
             tool_contact_model="coulomb-v1", tool_friction_coefficient=coefficient,
             tool_contact_absorption=0.0, tool_stickiness=0.0,
         )
-        return Stepper(config, DEFAULT_PARAMETERS, capacity=2, sdf=plane_sdf() if sdf else None)
+        legacy = {name: value for name, value in DEFAULT_PARAMETERS.items()
+                  if name not in {"tool_friction_coefficient", "tool_stickiness"}}
+        return Stepper(config, legacy, capacity=2, sdf=plane_sdf() if sdf else None)
 
     def response(self, coefficient, velocity, collider=(0, 0, 0), normal=(1, 0, 0)):
         solver = self.solver(coefficient)

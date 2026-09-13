@@ -67,6 +67,9 @@ def make_fixture(name, steps=12, physics_version="corrected-v1"):
                               floor_y=0.0, precision="f32", physics_version=physics_version)
     parameters = dict(DEFAULT_PARAMETERS, youngs_modulus=12000.0, poisson_ratio=0.27,
                       plastic_min=0.94, plastic_max=1.06, tool_retention=0.23, floor_retention=0.37)
+    # Exercise legacy fixed contact settings, including nonzero SDF stickiness.
+    parameters.pop("tool_friction_coefficient")
+    parameters.pop("tool_stickiness")
     state.v[:] = [0.12, -0.08, 0.045]
     state.v += offsets * [0.4, -0.6, 0.2]
     state.C[:] = [[-0.8, 0.4, 0.1], [-0.2, 0.55, 0.25], [0.15, -0.1, 0.3]]
