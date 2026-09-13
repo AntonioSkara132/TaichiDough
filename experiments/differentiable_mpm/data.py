@@ -216,19 +216,85 @@ class PreparedExperiment:
     def end_frame(self):
         return self.frames[-1].source_frame
 
+    @property
+    def objective_frames(self):
+        return tuple(int(observation.frame_index) for observation in self.observations)
+
     def summary(self):
-        return {"name": self.config.name, "split": self.split, "particle_count": self.simulation_config.n_particles,
+        result = {"name": self.config.name, "split": self.split, "particle_count": self.simulation_config.n_particles,
                 "total_steps": self.total_steps, "replay_source_frames": [0, self.end_frame],
                 "scored_frames": list(self.scored_frames), "observation_count": len(self.observations),
                 "parameters": dict(self.parameters), "fit_parameters": list(self.config.fit_parameters),
                 "mass": self.mass_properties, "training_camera": {"width": self.camera.width, "height": self.camera.height},
                 "sdf_built": self.sdf is not None, "fingerprint": self.fingerprint, "provenance": self.provenance}
+        if "objective_frames" in self.provenance:
+            result.update(objective_frames=list(self.objective_frames), loss_version=self.loss_config.version,
+                          observation_reduction=self.provenance["observation_reduction"])
+        return result
+
+
+def prepare_paper_observations(config, loss_config, *, sequence, calibration, point_filter,
+                               camera, frames, scored_frames, records, helpers, initial_positions):
+    """Prepare objective targets without changing export frames or simulated state."""
+    from .loss_options import loss_temporal_reduction
+    from .loss_targets import load_loss_targets
+    from .point_set_loss import PointSetLoss, PointSetObservation
+
+    endpoint = frames[-1].source_frame
+    objective_frames = (endpoint,) if loss_config.version.startswith("dpsi-") else tuple(scored_frames)
+    targets = load_loss_targets(
+        config, loss_config, frame_indices=objective_frames,
+        sequence_fingerprint=sequence.fingerprint, calibration_sha256=records["calibration"]["sha256"],
+        initial_particles_sha256=records["initial_particles"]["sha256"],
+        n_particles=config.simulation["n_particles"], camera=camera,
+        frame_times={i: float(time) for i, time in enumerate(sequence.times)})
+    objective_loss = PointSetLoss(camera, loss_config, initial_positions,
+                                  precision=config.simulation.get("precision", "f32"))
+    observations, hashes, filter_counts, preflight = [], {}, {}, {}
+    for index in objective_frames:
+        payload = dict(targets.by_frame[index])
+        if loss_config.target_source == "recorded_cloud" and loss_config.geometric_weight == 0:
+            payload.update(points_scene=np.empty((0, 3), dtype=np.float64),
+                           target_representation="partial_observed")
+        elif loss_config.target_source == "recorded_cloud":
+            points = sequence.points[index]
+            points = points[np.isfinite(points[:, :3]).all(axis=1)]
+            if not len(points):
+                raise ValueError(f"Observation {index} has no finite points")
+            points = helpers.topview.apply_calibration(
+                helpers.topview.filter_xyz(points, config.observation.trim_quantile), calibration)
+            points, counts = helpers.dynamics.filter_scene_points(points, point_filter)
+            points = np.ascontiguousarray(points[:, :3], dtype=np.float64)
+            if len(points) < loss_config.min_target_points or not np.isfinite(points).all():
+                raise ValueError(f"Observation {index} has insufficient finite target points after filtering")
+            payload.update(points_scene=points, target_representation="partial_observed")
+            payload.setdefault("metadata", {}).update(
+                source_kind="observed", target_source="recorded_cloud",
+                observation_coverage="partial single-view cloud; hidden geometry is not observed")
+            filter_counts[str(index)] = counts
+        frame = frames[index]
+        observation = PointSetObservation(frame_index=index, step=frame.completed_substeps,
+                                          timestamp=frame.target_time_s, **payload)
+        preflight[str(index)] = objective_loss.prepare_observation(observation)
+        observations.append(observation)
+        hashes[str(index)] = {
+            name: array_fingerprint(np.asarray(getattr(observation, name)))
+            for name in ("points_scene", "track_particle_ids", "track_positions_scene", "track_valid",
+                         "foreground_mask", "known_mask") if getattr(observation, name) is not None}
+        hashes[str(index)]["metadata"] = canonical_hash(observation.metadata)
+        hashes[str(index)]["target_representation"] = observation.target_representation
+    objective = {"objective_frames": list(objective_frames),
+                 "observation_reduction": loss_temporal_reduction(loss_config),
+                 "loss_targets": targets.provenance, "objective_input_checks": preflight,
+                 "target_coordinates": "scene", "target_units": "m"}
+    return observations, hashes, filter_counts, objective
 
 
 def prepare_experiment(config: ExperimentConfig, split="training", end_frame=None, build_sdf=True,
                        *, scored_window: FrameWindow | None = None) -> PreparedExperiment:
     """Verify inputs and replay from state zero, optionally scoring an explicit window."""
-    from .loss import LossConfig, Observation
+    from .loss import Observation
+    from .loss_options import is_paper_loss, parse_loss_config
 
     if scored_window is not None and not isinstance(scored_window, FrameWindow):
         raise ValueError("scored_window must be a FrameWindow or None")
@@ -296,34 +362,41 @@ def prepare_experiment(config: ExperimentConfig, split="training", end_frame=Non
     settings = config.observation
     training_camera = scaled_camera(calibration, settings.width, settings.height)
     camera = camera_from_calibration(calibration, settings.width, settings.height)
-    loss_config = LossConfig(**config.loss)
-    processed = {}
-    filter_counts = {}
-    for index in (0, *scored_frames):
-        points = sequence.points[index]
-        points = points[np.isfinite(points[:, :3]).all(axis=1)]
-        if not len(points):
-            raise ValueError(f"Observation {index} has no finite points")
-        points = topview.apply_calibration(topview.filter_xyz(points, settings.trim_quantile), calibration)
-        points, counts = dynamics.filter_scene_points(points, point_filter)
-        depth, nearest, *_ = topview.rasterize_depth(points, settings.width, settings.height,
-                                                    training_camera, settings.splat_radius)
-        valid = nearest >= 0
-        if int(valid.sum()) < loss_config.min_observed_pixels:
-            raise ValueError(f"Observation {index} has only {int(valid.sum())} valid pixels after filtering")
-        processed[index] = (depth, valid, visible_optical_points(depth, valid, training_camera))
-        filter_counts[str(index)] = counts
-    depth0, valid0, _ = processed[0]
-    observations = []
-    for index in scored_frames:
-        depth, valid, optical = processed[index]
-        frame = frames[index]
-        observations.append(Observation(frame_index=index, step=frame.completed_substeps,
-                                        observed_depth=depth, observed_valid=valid,
-                                        observed_initial_depth=depth0, observed_initial_valid=valid0,
-                                        observed_points=optical, timestamp=frame.target_time_s))
-    observation_hashes = {str(i): {"depth": array_fingerprint(processed[i][0]), "valid": array_fingerprint(processed[i][1]),
-                                 "points": array_fingerprint(processed[i][2])} for i in (0, *scored_frames)}
+    loss_config = parse_loss_config(config.loss)
+    objective_metadata = {}
+    if is_paper_loss(loss_config):
+        observations, observation_hashes, filter_counts, objective_metadata = prepare_paper_observations(
+            config, loss_config, sequence=sequence, calibration=calibration, point_filter=point_filter,
+            camera=camera, frames=frames, scored_frames=scored_frames, records=records,
+            helpers=helpers, initial_positions=state.x)
+    else:
+        processed = {}
+        filter_counts = {}
+        for index in (0, *scored_frames):
+            points = sequence.points[index]
+            points = points[np.isfinite(points[:, :3]).all(axis=1)]
+            if not len(points):
+                raise ValueError(f"Observation {index} has no finite points")
+            points = topview.apply_calibration(topview.filter_xyz(points, settings.trim_quantile), calibration)
+            points, counts = dynamics.filter_scene_points(points, point_filter)
+            depth, nearest, *_ = topview.rasterize_depth(points, settings.width, settings.height,
+                                                        training_camera, settings.splat_radius)
+            valid = nearest >= 0
+            if int(valid.sum()) < loss_config.min_observed_pixels:
+                raise ValueError(f"Observation {index} has only {int(valid.sum())} valid pixels after filtering")
+            processed[index] = (depth, valid, visible_optical_points(depth, valid, training_camera))
+            filter_counts[str(index)] = counts
+        depth0, valid0, _ = processed[0]
+        observations = []
+        for index in scored_frames:
+            depth, valid, optical = processed[index]
+            frame = frames[index]
+            observations.append(Observation(frame_index=index, step=frame.completed_substeps,
+                                            observed_depth=depth, observed_valid=valid,
+                                            observed_initial_depth=depth0, observed_initial_valid=valid0,
+                                            observed_points=optical, timestamp=frame.target_time_s))
+        observation_hashes = {str(i): {"depth": array_fingerprint(processed[i][0]), "valid": array_fingerprint(processed[i][1]),
+                                     "points": array_fingerprint(processed[i][2])} for i in (0, *scored_frames)}
     frozen = json.loads((EXPERIMENT_ROOT / "reference_manifest.json").read_text())
     provenance = {"schema": "taichidough/differentiable-prepared-inputs/v1", "configuration": config.as_dict(),
                   "input_files": records, "source_manifest": source, "sequence_fingerprint": sequence.fingerprint,
@@ -336,6 +409,7 @@ def prepare_experiment(config: ExperimentConfig, split="training", end_frame=Non
                   "observation_filter_counts": filter_counts,
                   "control_arrays": {"poses": array_fingerprint(controls.poses), "velocities": array_fingerprint(controls.velocities)},
                   "reference_sources": frozen["files"]}
+    provenance.update(objective_metadata)
     if scored_window is not None:
         provenance["scored_window_override"] = asdict(scored_window)
     return PreparedExperiment(config, sim_config, state, dict(config.parameters), sdf, controls,

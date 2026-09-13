@@ -8,7 +8,7 @@ import re
 from typing import Mapping
 
 from .config import ExperimentConfig, FrameWindow, canonical_hash, load_config
-from .loss import LossConfig
+from .loss_options import parse_loss_config
 from .optimize import AdamOptions
 from .parameters import PhysicalParameterSpace
 from .state import SimulationConfig, validate_parameters
@@ -124,7 +124,7 @@ def _common_settings(config):
         if name in {"n_particles", "grid", "dt", "particle_mass", "particle_volume"} or name.startswith("floor_"):
             numerical.pop(name)
     return {"simulation": numerical, "backend": config.backend,
-            "observation": asdict(config.observation), "loss": LossConfig(**config.loss).as_dict(),
+            "observation": asdict(config.observation), "loss": parse_loss_config(config.loss).as_dict(),
             "strict_loss": config.strict_loss, "optimizer": asdict(AdamOptions(**config.optimizer))}
 
 

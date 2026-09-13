@@ -51,6 +51,10 @@ Version 2 blends each fixed-support depth residual with its missing-depth penalt
 
 The existing strict evaluator remains separate and unchanged. Its numerical loss values are **not interchangeable** with the differentiable training loss.
 
+### Selectable DPSI and EMPM losses
+
+`loss.version` also selects DPSI endpoint Chamfer/assignment objectives, an EMPM offline point-and-track objective, or an explicitly EMPM-inspired segmentation objective. See [LOSS_OPTIONS.md](LOSS_OPTIONS.md) for equations, required target files, partial-observation limitations, optimizer scaling, verification results, and new Episode18 examples. The partial v2 loss remains the default. Full tracking, volume and segmentation modes require verified additional observations; missing data does not trigger an automatic geometry-only fallback.
+
 ## Installation and location
 
 Use the repository's existing Python environment. No new global dependencies are required; this implementation uses the installed Taichi 1.7.4, NumPy and SciPy, with the existing Torch input loader.
@@ -61,7 +65,7 @@ Run commands below from the TaichiDough repository root. New outputs belong unde
 
 The new `calibrate_dataset` command provides one shared-material fit over an explicit episode manifest, with equal-episode or declared weighted objectives and one numerical subprocess at a time. Tools use fixed retention1/absorption0/stickiness0 in the first setup; episode-specific floor inputs stay unchanged. See [MULTI_EPISODE.md](MULTI_EPISODE.md) for manifests, inventory, validation, fitting, exact resume and remote commands.
 
-The driver is implemented and locally verified: 276 host/regression tests pass, and four actual corrected CPU f64 multi-motion tests pass. A weighted two-motion synthetic fit reduces combined training loss by 38.01%, all five material AD/FD checks pass, and held-out motion data is excluded from selection. See `VALIDATION.md` for exact evidence and limitations. The local data is **not yet ready for an all-episode fit**: recordings have duplicate processed variants, and only Episode18 has the identified calibration/reconstruction inputs used by this workflow. Its observed floor inconsistency also remains unresolved. No real dataset fit has been launched.
+The driver is implemented and locally verified: 276 host/regression tests pass, and four actual corrected CPU f64 multi-motion tests pass. A weighted two-motion synthetic fit reduces combined training loss by 38.01%, all five material AD/FD checks pass, and held-out motion data is excluded from selection. See `VALIDATION.md` for exact evidence and limitations. The local data is **not yet ready for a ten-episode fit**. The [two-second preparation report](data/ten_episode_prefix_20260913T172041/REPORT.md) contains ten input candidates and an explicitly single-episode ready manifest for Episode18; the other nine fail tool-registration checks. That preparation uses a separate 1200 kg/m³ density assumption and calculated per-episode masses. Existing 250 g configurations are unchanged. Episode18's observed floor inconsistency remains unresolved. No real dataset fit has been launched.
 
 ## Commands
 

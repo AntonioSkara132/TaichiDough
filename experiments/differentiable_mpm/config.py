@@ -19,7 +19,9 @@ REPOSITORY_ROOT = EXPERIMENT_ROOT.parents[1]
 SCHEMA = "taichidough/differentiable-mpm-experiment/v1"
 REQUIRED_PATHS = ("episode", "calibration", "initial_particles", "reconstruction_metadata", "tool_geometry")
 SDF_PATHS = ("collision_manifest", "ur_collision_mesh", "kinova_collision_mesh")
-OPTIONAL_PATHS = ("source_manifest",)
+LOSS_TARGET_PATHS = ("loss_point_targets", "loss_point_targets_metadata",
+                     "loss_tracks", "loss_tracks_metadata", "loss_masks", "loss_masks_metadata")
+OPTIONAL_PATHS = ("source_manifest", *LOSS_TARGET_PATHS)
 
 
 def canonical_hash(value: Any) -> str:
@@ -114,6 +116,17 @@ class ExperimentConfig:
                 raise ValueError(f"SHA-256 refers to an unknown file input {name}")
             if not isinstance(expected, str) or len(expected) != 64 or any(c not in "0123456789abcdef" for c in expected):
                 raise ValueError(f"Invalid expected SHA-256 for {name}")
+        for name in LOSS_TARGET_PATHS:
+            if name in self.paths and name not in self.expected_sha256:
+                raise ValueError(f"Optional loss input {name} requires an expected SHA-256")
+        from .loss_options import is_paper_loss, parse_loss_config
+        from .loss_targets import required_target_paths
+        loss_config = parse_loss_config(self.loss)
+        if not is_paper_loss(loss_config) and set(self.paths) & set(LOSS_TARGET_PATHS):
+            raise ValueError("Supplemental loss targets require an explicit paper loss mode")
+        missing_targets = set(required_target_paths(loss_config)) - self.paths.keys()
+        if missing_targets:
+            raise ValueError("Missing loss target inputs: " + ", ".join(sorted(missing_targets)))
         if self.expected_sequence_fingerprint is not None:
             h = self.expected_sequence_fingerprint
             if not isinstance(h, str) or len(h) != 64 or any(c not in "0123456789abcdef" for c in h):

@@ -17,11 +17,14 @@ STANDARD_TESTS = (
     'test_dataset_config', 'test_dataset_inventory', 'test_episode_worker',
     'test_multi_episode', 'test_calibrate_dataset', 'test_multi_trajectory',
     'test_table_alignment', 'test_table_frame',
+    'test_point_set_loss', 'test_loss_targets', 'test_loss_options_integration',
+    'test_paper_loss_trajectory', 'test_runtime_target_validation',
 )
 QUICK_TESTS = STANDARD_TESTS[:7] + (
     'test_dataset_config', 'test_dataset_inventory', 'test_episode_worker',
     'test_multi_episode', 'test_calibrate_dataset',
     'test_table_alignment', 'test_table_frame',
+    'test_loss_targets', 'test_loss_options_integration', 'test_runtime_target_validation',
 )
 
 

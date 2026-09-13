@@ -45,7 +45,7 @@ def estimate_memory(n_particles, total_steps, segment_length=64, precision="f32"
 
 
 class CheckpointedRollout:
-    """A fixed-control replay with a mean of losses at the supplied observation states.
+    """A fixed-control replay with a declared reduction of observation losses.
 
     The loss object returns a record with value, gradient, components and diagnostics
     from value_and_grad_positions(x, observation, compute_grad=...). Observation
@@ -60,7 +60,10 @@ class CheckpointedRollout:
     def __init__(self, stepper, initial_state: ParticleState, controls: Sequence,
                  observations: Sequence, loss, segment_length=64, *, replay_rtol=1e-5,
                  replay_atol=None, loss_replay_rtol=2e-5, progress: Callable | None = None,
-                 ignore_recompute_mismatch: bool = False):
+                 ignore_recompute_mismatch: bool = False, observation_reduction: str = "mean"):
+        if not isinstance(observation_reduction, str) or observation_reduction not in {"mean", "sum"}:
+            raise ValueError("observation_reduction must be mean or sum")
+        self.observation_reduction = observation_reduction
         if not isinstance(ignore_recompute_mismatch, bool):
             raise ValueError("ignore_recompute_mismatch must be a boolean")
         initial_state.validate()
@@ -85,7 +88,7 @@ class CheckpointedRollout:
         frame_ids = [o.frame_index for o in self.observations]
         if len(frame_ids) != len(set(frame_ids)):
             raise ValueError("Duplicate observation frame indices")
-        self.weight = 1.0 / len(self.observations)
+        self.weight = 1.0 / len(self.observations) if observation_reduction == "mean" else 1.0
         self.replay_rtol = replay_rtol
         self.replay_atol = replay_atol or {"x": 1e-6, "v": 1e-5, "C": 1e-4, "F": 1e-5, "Jp": 1e-5}
         if set(self.replay_atol) != set(STATE_NAMES):
@@ -255,6 +258,9 @@ class CheckpointedRollout:
             "branch_counts_total": {name: sum(signature.get(name, 0) for signature in signatures)
                                     for name in sorted({key for signature in signatures for key in signature})},
         }
+        if self.observation_reduction != "mean":
+            diagnostics["observation_reduction"] = self.observation_reduction
+            diagnostics["observation_weight"] = self.weight
         if not compute_grad:
             return RolloutEvaluation(loss_total, None, None, frame_records, diagnostics)
 

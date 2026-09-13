@@ -14,6 +14,7 @@ from .checkpoint import CheckpointedRollout, estimate_memory
 from .config import canonical_hash, load_config, verify_input_paths
 from .data import prepare_experiment
 from .loss import ObservationLoss
+from .loss_options import is_paper_loss, loss_temporal_reduction, make_observation_loss, parse_loss_config
 from .optimize import AdamOptions, ObjectiveValue, ProjectedAdam
 from .parameters import PhysicalParameterSpace
 from .reference_adapter import reference_identity, reference_policy, verify_reference
@@ -175,11 +176,17 @@ def make_rollout(prepared, stepper=None, progress=progress_printer, *, ignore_re
         stepper = Stepper(prepared.simulation_config, prepared.parameters, capacity=length + 1, sdf=prepared.sdf)
     elif asdict(stepper.config) != asdict(prepared.simulation_config) or stepper.capacity < length + 1:
         raise ValueError('Existing stepper does not match the fixed replay configuration')
-    loss = ObservationLoss(prepared.camera, prepared.loss_config, prepared.initial_state.x,
-                           precision=prepared.simulation_config.precision)
+    options = {}
+    if is_paper_loss(prepared.loss_config):
+        loss = make_observation_loss(prepared.camera, prepared.loss_config, prepared.initial_state.x,
+                                     precision=prepared.simulation_config.precision)
+        options['observation_reduction'] = loss_temporal_reduction(prepared.loss_config)
+    else:
+        loss = ObservationLoss(prepared.camera, prepared.loss_config, prepared.initial_state.x,
+                               precision=prepared.simulation_config.precision)
     rollout = CheckpointedRollout(stepper, prepared.initial_state, prepared.controls,
                                   prepared.observations, loss, length, progress=progress,
-                                  ignore_recompute_mismatch=ignore_recompute_mismatch)
+                                  ignore_recompute_mismatch=ignore_recompute_mismatch, **options)
     return stepper, rollout
 
 
@@ -266,6 +273,11 @@ def run(args):
         print('WARNING: working helper sources differ; using verified frozen helpers. Solver physics is selected separately. '
               + json.dumps(reference_verification.get('changed_originals', [])), flush=True)
     verify_input_paths(config)
+    split = args.split or ('validation' if args.action == 'evaluate' else 'training')
+    prepared = None
+    if is_paper_loss(parse_loss_config(config.loss)):
+        # Supplemental target contents and assignment budgets must pass before runtime initialization.
+        prepared = prepare_experiment(config, split=split, end_frame=args.end_frame, build_sdf=True)
     runtime = ({'initialization_verified': False, 'backend': config.backend}
                if args.no_runtime else init_runtime(config.backend, config.simulation.get('precision', 'f32'),
                                                     args.cpu_threads, args.debug, config.seed))
@@ -274,8 +286,8 @@ def run(args):
     if args.ignore_recompute_mismatch:
         print('WARNING: finite replay mismatches will be logged and ignored; gradients may be approximate. '
               'Invalid states and nonfinite losses/gradients still reject an evaluation.', flush=True)
-    split = args.split or ('validation' if args.action == 'evaluate' else 'training')
-    prepared = prepare_experiment(config, split=split, end_frame=args.end_frame, build_sdf=True)
+    if prepared is None:
+        prepared = prepare_experiment(config, split=split, end_frame=args.end_frame, build_sdf=True)
     memory = estimate_memory(prepared.simulation_config.n_particles, prepared.total_steps, config.segment_length,
                              prepared.simulation_config.precision, prepared.simulation_config.grid, config.tool_sdf_resolution,
                              physics_version=prepared.simulation_config.physics_version)
@@ -395,6 +407,11 @@ def run(args):
                     'simulator_reference_sha256': physics_reference['simulator_sha256'],
                     'baseline_note': f'These parameters target {prepared.simulation_config.physics_version}; '
                                      'parameters fitted with another physics version require a new fit, not a constant rescaling.'}
+        if 'objective_frames' in prepared.provenance:
+            selected.update(selection_frames=list(prepared.provenance['objective_frames']),
+                            evaluation_frames=list(prepared.scored_frames),
+                            loss=prepared.provenance['loss'],
+                            observation_reduction=prepared.provenance['observation_reduction'])
         store.write_json('selected_parameters.json', selected)
         result = {'status': optimization.status, 'optimization': asdict(optimization),
                   'best_parameters': optimization.best_parameters, 'evaluations': {}}

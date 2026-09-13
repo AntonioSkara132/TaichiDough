@@ -17,6 +17,7 @@ import numpy as np
 
 from .config import REPOSITORY_ROOT
 from .dataset_config import MATERIAL_NAMES
+from .loss_options import is_paper_loss, loss_temporal_reduction, parse_loss_config
 from .optimize import ObjectiveValue
 from .results import RUN_ROOT, canonical_hash, json_value, source_identity
 from .state import InvalidStateError
@@ -85,13 +86,20 @@ class DatasetObjective:
     """Evaluate every training episode at the same candidate; never skip failures.
 
     evaluator(episode, shared_parameters, compute_grad) returns the existing
-    evaluation_record mapping. Its loss and gradient are already episode means.
+    evaluation_record mapping. Loss and gradient already use the episode's
+    declared temporal reduction; no further frame-count scaling is applied.
     """
 
     def __init__(self, dataset, evaluator, event=None):
         self.dataset = dataset
         self.episodes = tuple(ep for ep in dataset.episodes if ep.membership == "training")
         self.weights = normalized_weights(self.episodes)
+        losses = [parse_loss_config(getattr(ep.config, "loss", {})) for ep in self.episodes]
+        if any(loss.as_dict() != losses[0].as_dict() for loss in losses[1:]):
+            raise ValueError("Training episodes require a common loss definition and reduction")
+        self.paper_loss = is_paper_loss(losses[0])
+        self.loss_version = losses[0].version
+        self.observation_reduction = loss_temporal_reduction(losses[0])
         self.evaluator = evaluator
         self.event = event or (lambda record: None)
         self.calls = 0
@@ -126,6 +134,8 @@ class DatasetObjective:
                 diagnostics = record.get("diagnostics", {})
                 if not isinstance(diagnostics, Mapping):
                     raise EpisodeExecutionError("Episode diagnostics must be a mapping")
+                if self.paper_loss and diagnostics.get("observation_reduction", "mean") != self.observation_reduction:
+                    raise EpisodeExecutionError(f"{ep.id} returned an unexpected observation reduction")
                 gradient = {}
                 if compute_grad:
                     supplied = record.get("gradient")
@@ -170,6 +180,10 @@ class DatasetObjective:
                        "replay_consistency_checked": compute_grad, "replay_consistent": replay_consistent,
                        "recompute_mismatch_counts": mismatch_counts,
                        "recompute_mismatch_count": sum(mismatch_counts.values())}
+        if self.paper_loss:
+            diagnostics.update(objective_version="weighted-episode-objectives-v1",
+                               loss_version=self.loss_version,
+                               episode_observation_reduction=self.observation_reduction)
         result = ObjectiveValue(value, gradient, diagnostics)
         self.event({"event": "dataset_objective_finished", "call": self.calls, "value": value,
                     "gradient": gradient, "replay_consistent": replay_consistent,

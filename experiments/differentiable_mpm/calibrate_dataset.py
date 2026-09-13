@@ -13,6 +13,7 @@ import numpy as np
 
 from .dataset_config import MATERIAL_NAMES, load_dataset
 from .dataset_inventory import inventory_draft, scan_dataset
+from .loss_options import is_paper_loss, loss_temporal_reduction, parse_loss_config
 from .multi_episode import (DatasetObjective, EpisodeExecutionError, EpisodeProcessEvaluator,
                             read_json, stable_runtime)
 from .optimize import AdamOptions, ProjectedAdam
@@ -20,6 +21,19 @@ from .results import RUN_ROOT, RunStore, canonical_hash, source_identity
 from .state import P2G_MODES, PHYSICS_VERSIONS
 
 SELECTION_SCHEMA = "taichidough/dataset-material-selection/v1"
+
+
+def episode_selection_record(episode, parameters):
+    record = {"membership": episode.membership, "weight": episode.weight,
+              "scored_frames": list(episode.scored_window.indices()),
+              "effective_parameters": episode.parameters_for(parameters)}
+    loss_config = parse_loss_config(episode.config.loss)
+    if is_paper_loss(loss_config):
+        objective_frames = ([episode.scored_window.end_frame] if loss_config.version.startswith("dpsi-")
+                            else list(episode.scored_window.indices()))
+        record.update(objective_frames=objective_frames, loss=loss_config.as_dict(),
+                      observation_reduction=loss_temporal_reduction(loss_config))
+    return record
 
 
 def parse_args(argv=None):
@@ -330,9 +344,7 @@ def run(args):
                                              "evaluations": optimizer.evaluations})
             raise
         selected = {name: optimization.best_parameters[name] for name in MATERIAL_NAMES}
-        selections = {ep.id: {"membership": ep.membership, "weight": ep.weight,
-                               "scored_frames": list(ep.scored_window.indices()),
-                               "effective_parameters": ep.parameters_for(selected)} for ep in dataset.episodes}
+        selections = {ep.id: episode_selection_record(ep, selected) for ep in dataset.episodes}
         has_holdout = any(ep.membership == "validation" for ep in dataset.episodes)
         selection = {"schema": SELECTION_SCHEMA, "shared_material_parameters": selected,
                      "fitted_parameters": list(dataset.fit_parameters), "training_value": optimization.best_value,

@@ -8,6 +8,7 @@ from time import perf_counter
 from .calibrate import evaluation_record, export_and_evaluate, make_rollout, stored_progress
 from .checkpoint import estimate_memory
 from .data import prepare_experiment
+from .loss_options import is_paper_loss, parse_loss_config
 from .reference_adapter import reference_identity, reference_policy, verify_reference
 from .results import RunStore, canonical_hash, source_identity
 from .runtime import init_runtime
@@ -95,6 +96,11 @@ def _evaluate(request, store, response):
     physics = config.simulation.get("physics_version", "corrected-v1")
     verify_reference()
     physics_reference = reference_identity(physics)
+    prepared = None
+    if is_paper_loss(parse_loss_config(getattr(config, "loss", {}))):
+        # Validate paper targets before allocating a numerical runtime; reuse all prepared inputs.
+        prepared = prepare_experiment(config, split=episode.membership,
+                                      build_sdf=True, scored_window=episode.scored_window)
     runtime = ({"initialization_verified": False, "backend": config.backend,
                 "precision": config.simulation.get("precision", "f32")}
                if request.get("no_runtime", False) else
@@ -103,8 +109,9 @@ def _evaluate(request, store, response):
     runtime = {**runtime, "physics_version": physics, "physics_reference": physics_reference,
                "ignore_recompute_mismatch": request["ignore_recompute_mismatch"]}
     response["runtime"] = runtime
-    prepared = prepare_experiment(config, split=episode.membership,
-                                  build_sdf=True, scored_window=episode.scored_window)
+    if prepared is None:
+        prepared = prepare_experiment(config, split=episode.membership,
+                                      build_sdf=True, scored_window=episode.scored_window)
     response["prepared_fingerprint"] = prepared.fingerprint
     expected = request["expected_prepared_fingerprint"]
     if expected is not None and prepared.fingerprint != expected:

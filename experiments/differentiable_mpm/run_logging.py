@@ -217,12 +217,17 @@ class RunLogger:
             if values:
                 support[key] = [min(values), max(values)]
         diagnostics = result.diagnostics
+        reduction = diagnostics.get("observation_reduction", "mean")
+        totals = {key: sum(float(frame["components"][key]) for frame in frames if key in frame.get("components", {}))
+                  for key in component_names} if reduction == "sum" else means
+        description = "sums" if reduction == "sum" else "means"
         message = (f"Rollout loss={number(result.value)} forward={number(diagnostics.get('forward_seconds'))}s "
-                   f"backward={number(diagnostics.get('backward_seconds'))}s; raw component means: {named_values(means)}")
+                   f"backward={number(diagnostics.get('backward_seconds'))}s; raw component {description}: {named_values(totals)}")
         if support:
             message += "\nSupport ranges: " + json.dumps(support, sort_keys=True)
+        extra = {"component_sums": totals, "observation_reduction": reduction} if reduction == "sum" else {}
         self.emit("rollout_completed", message, value=result.value, component_means=means,
-                  support_ranges=support, diagnostics=diagnostics)
+                  support_ranges=support, diagnostics=diagnostics, **extra)
 
     def optimizer_event(self, event):
         kind = event["type"]
