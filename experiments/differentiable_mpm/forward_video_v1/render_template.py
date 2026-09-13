@@ -7,7 +7,7 @@ import time
 import numpy as np
 from scipy.spatial.transform import Rotation
 import render_support
-from render_support import density_boundary, encode_video, video_tools
+from render_support import camera_zoom, density_boundary, encode_video, video_tools
 import pyvista as pv
 from PIL import Image, ImageDraw, ImageFont
 
@@ -47,6 +47,7 @@ def perspective_image(triangles, meshes, record, points, lower, upper, floor, st
     position = target + direction*distance
     plot.camera_position = [position, target, [0,1,0]]
     plot.camera.view_angle = 34
+    plot.camera.zoom(CAMERA_ZOOM)
     plot.camera.clipping_range = (.001,10)
     plot.enable_anti_aliasing('ssaa')
     rgb = plot.screenshot(return_img=True)
@@ -68,7 +69,9 @@ def perspective_image(triangles, meshes, record, points, lower, upper, floor, st
         draw.rectangle((x,707,x+18,725),fill=color)
         text(x+28,705,label,18)
     text(32,740,'Density boundary: 1.5 mm voxels, Gaussian width 1.2 mm, level 0.20. No particle motion or floor filling added.',13)
-    text(32,764,'Depth-tested opaque meshes | fixed perspective camera | Y is physical up | SDF padding is not drawn.',13)
+    camera_note = (f'Camera zoom {CAMERA_ZOOM:g}x: particles/tools may leave view; saved states unchanged.'
+                   if CAMERA_ZOOM > 1 else 'Full-scene camera framing; saved states unchanged.')
+    text(32,764,camera_note+' | Y is up | SDF padding not drawn.',13)
     return image
 
 ROOT = Path(__file__).resolve().parent
@@ -80,6 +83,7 @@ LEVEL = 0.20
 COLORS = ['#2a78d6', '#eb6834', '#1baf7a']
 FFMPEG = None
 FFPROBE = None
+CAMERA_ZOOM = 1.0
 
 
 def sha(path):
@@ -110,6 +114,7 @@ def boundary(points, particle_volume):
 
 def main():
     start = time.perf_counter()
+    camera_zoom(CAMERA_ZOOM)
     tools = video_tools(FFMPEG, FFPROBE)
     renderer_hash = sha(Path(__file__))
     support_hash = sha(Path(render_support.__file__))
@@ -200,11 +205,18 @@ def main():
         'boundary_note':'Rendering-only density isosurface can extend roughly 1–3 mm beyond particle centers; it is not a new simulated state or closed observed volume.',
         'last_particle_height_m':heights[-1], 'parameters':config['parameters'],'simulation_settings':config['simulation'],
         'runtime':result['runtime'], 'raw_inputs_unchanged':before==after, 'snapshot_103_files_unchanged':snapshot_before==snapshot_after,
-        'fixed_scene_bounds_m':{'min':lower.tolist(),'max':upper.tolist()},'frames':frame_details,
+        'fixed_scene_bounds_m':{'min':lower.tolist(),'max':upper.tolist()},
+        'camera_zoom':CAMERA_ZOOM, 'camera_vertical_view_angle_deg':34/CAMERA_ZOOM,
+        'camera_note':'Zoom changes framing only; particles and tools may leave view above zoom 1.',
+        'frames':frame_details,
         'ffmpeg_command':command,'ffprobe':probe,'video_sha256':sha(video),
         'stills_sha256':{p.name:sha(p) for p in OUTPUT.glob('*.png')},'elapsed_s':time.perf_counter()-start})
     print('Finished perspective: '+str(video),flush=True)
 
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--camera-zoom', type=camera_zoom, default=1.0)
+    CAMERA_ZOOM = parser.parse_args().camera_zoom
     main()

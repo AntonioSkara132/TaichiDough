@@ -70,6 +70,21 @@ class DensityTests(unittest.TestCase):
                 support.density_boundary(points, 1e-8)
 
 
+class CameraTests(unittest.TestCase):
+    def test_zoom_validation(self):
+        import argparse
+        self.assertEqual(support.camera_zoom('1.8'), 1.8)
+        for value in ('nan', 'inf', '0', '-1', '5', 'invalid'):
+            with self.assertRaises(argparse.ArgumentTypeError):
+                support.camera_zoom(value)
+
+    def test_zoom_rejects_encoding_only(self):
+        completed = subprocess.run([sys.executable, str(SUPPORT.with_name('recover.py')),
+            '--run-dir', '.', '--encode-only', '--camera-zoom', '1.8'], capture_output=True, text=True)
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn('cannot change existing images', completed.stderr)
+
+
 class EncodingTests(unittest.TestCase):
     def setUp(self):
         scratch = os.environ.get('CLAUDE_JOB_DIR')

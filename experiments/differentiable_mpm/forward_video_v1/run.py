@@ -12,6 +12,8 @@ import sys
 import tarfile
 import uuid
 
+from render_support import camera_zoom
+
 HERE = Path(__file__).resolve().parent
 EXPERIMENT = HERE.parent
 ARCHIVE_SHA256 = '740658218a57a15f62ac2184c45d4a286ad8e31524b6687e48e6bf124f2621d0'
@@ -54,6 +56,8 @@ def main():
     parser.add_argument('--tool-friction', type=float, default=.3)
     parser.add_argument('--floor-retention', type=float, default=.4)
     parser.add_argument('--backend', choices=['vulkan','cuda','cpu'], default='vulkan')
+    parser.add_argument('--camera-zoom', type=camera_zoom, default=1.0,
+                        help='Display-only zoom; try 1.8 for a closer view (objects may leave view)')
     parser.add_argument('--episode', type=Path, default=EXPERIMENT.parents[2]/'data/deformpath_training/DeformPath3/snimanje_23_10/episode18_kugla', help='Local directory of the verified Episode18 recording')
     parser.add_argument('--bundle', type=Path, default=EXPERIMENT/'bundles/episode18_registered_tools_v1.tar.gz')
     parser.add_argument('--output-dir', type=Path, help='Fresh directory inside the experiment; default runs/episode18_forward_video_TIMESTAMP_ID')
@@ -105,7 +109,7 @@ def main():
     simulation = isolated/'runs/forward'
     forward = [args.simulation_python, output/'forward.py', '--config', output/'requested_config.json',
                '--output-dir', simulation, '--backend', args.backend]
-    render = [args.render_python, output/'render_perspective.py']
+    render = [args.render_python, output/'render_perspective.py', '--camera-zoom', str(args.camera_zoom)]
     save(output/'launcher_manifest.json', {'archive':str(bundle), 'archive_sha256':ARCHIVE_SHA256,
         'requested_parameters':requested,'tool_friction':args.tool_friction,'backend':args.backend,
         'simulation_command':list(map(str,forward)), 'render_command':list(map(str,render)),

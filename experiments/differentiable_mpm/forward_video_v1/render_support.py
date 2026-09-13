@@ -79,6 +79,19 @@ def density_boundary(points, particle_volume, voxel=.0015, sigma=.8, level=.20,
     }
 
 
+def camera_zoom(value):
+    """Validate a display-only zoom, leaving full-scene framing available at one."""
+    import argparse
+    import math
+    try:
+        zoom = float(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError('Camera zoom must be a number in [0.25, 4]') from exc
+    if not math.isfinite(zoom) or not .25 <= zoom <= 4:
+        raise argparse.ArgumentTypeError('Camera zoom must be finite and in [0.25, 4]')
+    return zoom
+
+
 def executable(name, explicit=None):
     """Resolve an encoder without changing installation or filesystem permissions."""
     selected = str(explicit or os.environ.get(name.upper()) or shutil.which(name) or '')
