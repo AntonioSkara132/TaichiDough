@@ -26,11 +26,12 @@ from .state import (PARAMETER_NAMES, LEGACY_PARAMETER_NAMES, TUNABLE_TOOL_PARAME
 
 
 DEFAULT_CONFIG = EXPERIMENT_ROOT / 'configs' / 'episode18_viscoelastic.json'
+SENSITIVITY_CONFIG = EXPERIMENT_ROOT / 'configs' / 'episode18_corrected_sensitivity.json'
 
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['validate', 'gradient', 'fit', 'replay', 'evaluate'])
+    parser.add_argument('action', choices=['validate', 'gradient', 'fit', 'replay', 'evaluate', 'sensitivity'])
     parser.add_argument('--config', type=Path, default=DEFAULT_CONFIG)
     parser.add_argument('--path', action='append', default=[], metavar='NAME=PATH',
                         help='Explicit input path override; content hashes are still checked')
@@ -62,6 +63,10 @@ def parse_args(argv=None):
     parser.add_argument('--no-evaluate', action='store_true', help='Skip final independent training/held-out evaluation')
     parser.add_argument('--no-runtime', action='store_true', help='Validate inputs only; no backend qualification')
     parser.add_argument('--finite-difference', action='store_true', help='Check gradient against coordinate perturbations')
+    parser.add_argument('--sensitivity-step', type=float, default=1e-3,
+                        help='Latent-coordinate finite-difference step for sensitivity analysis')
+    parser.add_argument('--strict-perturbations', action='store_true',
+                        help='Also export and strictly evaluate every sensitivity sample')
     args = parser.parse_args(argv)
     if args.iterations < 0:
         parser.error('--iterations must be nonnegative')
@@ -71,6 +76,10 @@ def parse_args(argv=None):
         parser.error('--no-runtime is only meaningful for validate')
     if args.finite_difference and args.action != 'gradient':
         parser.error('--finite-difference is only meaningful for gradient')
+    if not np.isfinite(args.sensitivity_step) or args.sensitivity_step <= 0:
+        parser.error('--sensitivity-step must be finite and positive')
+    if args.strict_perturbations and args.action != 'sensitivity':
+        parser.error('--strict-perturbations is only meaningful for sensitivity')
     if args.parameters is not None and args.action == 'fit':
         parser.error('Set the initial fit parameters in the experiment config, not --parameters')
     if args.action == 'evaluate' and args.parameters is None:
@@ -221,6 +230,180 @@ def finite_difference_report(rollout, space, parameters, physical_gradient):
             'note': 'Piecewise contact/visibility can switch under perturbation; inspect all step sizes.'}
 
 
+SENSITIVITY_PARAMETERS = (
+    'youngs_modulus', 'viscosity', 'poisson_ratio', 'floor_retention', 'tool_friction_coefficient',
+)
+SENSITIVITY_COMPONENTS = (
+    ('depth_change', 'depth_change'),
+    ('visible_point_distance', 'observed_to_visible_distance'),
+    ('coverage', 'positive_coverage'),
+)
+
+
+def sensitivity_residuals(evaluation):
+    """Flatten the differentiable per-frame loss components in a stable row order."""
+    rows = []
+    values = []
+    seen = set()
+    for frame in evaluation.frames:
+        identity = (int(frame['frame_index']), int(frame['step']))
+        if identity in seen:
+            raise InvalidStateError(f'Duplicate sensitivity observation {identity}')
+        seen.add(identity)
+        components = frame.get('components')
+        if not isinstance(components, dict):
+            raise InvalidStateError(f'Sensitivity observation {identity} has no component values')
+        for label, source_key in SENSITIVITY_COMPONENTS:
+            value = components.get(source_key)
+            if value is None or not np.isfinite(value):
+                raise InvalidStateError(f'Sensitivity observation {identity} has nonfinite {source_key}')
+            rows.append({'frame_index': identity[0], 'step': identity[1], 'metric': label,
+                         'source_component': source_key})
+            values.append(float(value))
+    if not rows:
+        raise InvalidStateError('Sensitivity analysis requires at least one scored observation')
+    return rows, np.asarray(values, dtype=np.float64)
+
+
+def sensitivity_weights(prepared, row_order):
+    """Return the observation-loss weights expanded to the sensitivity row ordering."""
+    loss = prepared.loss_config
+    weights_by_source = {
+        'depth_change': float(loss.depth_weight),
+        'observed_to_visible_distance': float(loss.distance_weight),
+        'positive_coverage': float(loss.coverage_weight),
+    }
+    total = sum(weights_by_source.values())
+    if not np.isfinite(total) or total <= 0:
+        raise ValueError('Sensitivity loss weights must be finite and sum to a positive value')
+    observation_count = len({(row['frame_index'], row['step']) for row in row_order})
+    if observation_count < 1:
+        raise ValueError('Sensitivity row order has no observations')
+    return np.asarray([weights_by_source[row['source_component']] / total / observation_count
+                       for row in row_order], dtype=np.float64)
+
+
+def sensitivity_identifiability(jacobian, weights):
+    """Compute local weighted Gauss-Newton diagnostics for a complete Jacobian."""
+    weighted = jacobian * np.sqrt(weights)[:, None]
+    norms = np.linalg.norm(jacobian, axis=0)
+    weighted_norms = np.linalg.norm(weighted, axis=0)
+    denominator = np.outer(weighted_norms, weighted_norms)
+    cosine = np.full((jacobian.shape[1], jacobian.shape[1]), np.nan, dtype=np.float64)
+    valid = denominator > 0
+    cosine[valid] = (weighted.T @ weighted)[valid] / denominator[valid]
+    gram = weighted.T @ weighted
+    eigenvalues, eigenvectors = np.linalg.eigh(gram)
+    order = np.argsort(eigenvalues)[::-1]
+    eigenvalues = eigenvalues[order]
+    eigenvectors = eigenvectors[:, order]
+    scale = float(eigenvalues[0]) if len(eigenvalues) else 0.0
+    threshold = max(jacobian.shape) * np.finfo(np.float64).eps * scale
+    rank = int(np.count_nonzero(eigenvalues > threshold))
+    positive = eigenvalues[eigenvalues > threshold]
+    condition = None if rank < jacobian.shape[1] or not len(positive) else float(positive[0] / positive[-1])
+    return {
+        'weighting': 'normalized differentiable component weights divided by observation count',
+        'weights': weights.tolist(),
+        'raw_column_l2_norms': norms.tolist(),
+        'weighted_column_l2_norms': weighted_norms.tolist(),
+        'weighted_column_cosines': cosine.tolist(),
+        'gauss_newton': gram.tolist(),
+        'eigenvalues_descending': eigenvalues.tolist(),
+        'eigenvectors_columns': eigenvectors.tolist(),
+        'rank_threshold': threshold,
+        'numerical_rank': rank,
+        'condition_number': condition,
+        'interpretation': 'Local finite-difference identifiability information, not a parameter covariance estimate.',
+    }
+
+
+def _sensitivity_sample(rollout, space, coordinates):
+    physical = space.physical(coordinates)
+    evaluation = rollout.value_and_gradient(physical, compute_grad=False)
+    rows, values = sensitivity_residuals(evaluation)
+    return {'coordinates': coordinates.tolist(), 'physical_parameters': physical,
+            'evaluation': evaluation_record(evaluation), 'row_order': rows}, values
+
+
+def sensitivity_report(rollout, space, parameters, prepared, step):
+    """Calculate a complete residual Jacobian with projected latent-coordinate stencils."""
+    if tuple(space.fit) != SENSITIVITY_PARAMETERS:
+        raise ValueError('Sensitivity analysis requires fitted parameters in this exact order: '
+                         + ', '.join(SENSITIVITY_PARAMETERS))
+    u0 = space.coordinates()
+    if any(not np.isclose(space.physical(u0)[name], parameters[name], rtol=1e-12, atol=1e-12)
+           for name in parameters):
+        raise ValueError('Sensitivity parameter space does not describe the baseline parameters')
+    baseline, baseline_values = _sensitivity_sample(rollout, space, u0)
+    row_order = baseline['row_order']
+    samples = {'baseline': baseline}
+    columns = []
+    perturbations = []
+    failures = []
+    for index, name in enumerate(space.fit):
+        plus_room = float(space.upper[index] - u0[index])
+        minus_room = float(u0[index] - space.lower[index])
+        try:
+            if plus_room >= step and minus_room >= step:
+                plus, minus = u0.copy(), u0.copy()
+                plus[index] += step
+                minus[index] -= step
+                plus, plus_values = _sensitivity_sample(rollout, space, space.project(plus))
+                minus, minus_values = _sensitivity_sample(rollout, space, space.project(minus))
+                if plus['row_order'] != row_order or minus['row_order'] != row_order:
+                    raise InvalidStateError('Perturbation observation rows differ from the baseline')
+                denominator = plus['coordinates'][index] - minus['coordinates'][index]
+                column = (plus_values - minus_values) / denominator
+                scheme = 'central'
+                sample_records = {'plus': plus, 'minus': minus}
+                actual_step = step
+            else:
+                direction = 1.0 if plus_room >= minus_room else -1.0
+                room = plus_room if direction > 0 else minus_room
+                actual_step = min(step, room / 2.0)
+                if actual_step <= 0:
+                    raise InvalidStateError(f'No feasible finite-difference stencil for {name}')
+                first, second = u0.copy(), u0.copy()
+                first[index] += direction * actual_step
+                second[index] += direction * 2.0 * actual_step
+                first, first_values = _sensitivity_sample(rollout, space, space.project(first))
+                second, second_values = _sensitivity_sample(rollout, space, space.project(second))
+                if first['row_order'] != row_order or second['row_order'] != row_order:
+                    raise InvalidStateError('Perturbation observation rows differ from the baseline')
+                if direction > 0:
+                    column = (-3.0 * baseline_values + 4.0 * first_values - second_values) / (2.0 * actual_step)
+                    scheme = 'forward_second_order'
+                else:
+                    column = (3.0 * baseline_values - 4.0 * first_values + second_values) / (2.0 * actual_step)
+                    scheme = 'backward_second_order'
+                sample_records = {'first': first, 'second': second}
+            columns.append(column)
+            perturbations.append({'parameter': name, 'scheme': scheme, 'requested_latent_step': step,
+                                  'actual_latent_step': actual_step, 'samples': sample_records})
+        except Exception as error:
+            failures.append({'parameter': name, 'error_type': type(error).__name__, 'error': str(error)})
+    result = {
+        'schema': 'taichidough/central-finite-difference-sensitivity/v1',
+        'parameter_order': list(space.fit),
+        'metric_order': [label for label, _ in SENSITIVITY_COMPONENTS],
+        'row_order': row_order,
+        'baseline': baseline,
+        'parameter_space': space.settings(),
+        'requested_latent_step': step,
+        'perturbations': perturbations,
+        'failures': failures,
+    }
+    if failures:
+        result['status'] = 'sensitivity_incomplete'
+        return result
+    jacobian = np.column_stack(columns)
+    weights = sensitivity_weights(prepared, row_order)
+    result.update(status='sensitivity_computed', jacobian=jacobian.tolist(),
+                  identifiability=sensitivity_identifiability(jacobian, weights))
+    return result
+
+
 def export_and_evaluate(prepared, stepper, parameters, store, runtime, *, strict=True):
     from .evaluate import export_replay, run_strict_evaluation
     _, rollout = make_rollout(prepared, stepper, progress=stored_progress(store),
@@ -253,7 +436,8 @@ def run(args):
         if name in overrides:
             raise ValueError(f'Duplicate path override: {name}')
         overrides[name] = value
-    config = load_config(args.config, overrides)
+    config_path = SENSITIVITY_CONFIG if args.action == 'sensitivity' and args.config == DEFAULT_CONFIG else args.config
+    config = load_config(config_path, overrides)
     if args.backend is not None:
         config.backend = args.backend
     if args.precision is not None:
@@ -314,6 +498,14 @@ def run(args):
                 'parameter_space': space.settings(), 'optimizer': asdict(options),
                 'frozen_parameter_source': frozen_source, 'finite_difference': args.finite_difference,
                 'reference_policy': args.reference_policy, 'reference_verification': reference_verification}
+    if args.action == 'sensitivity':
+        identity['sensitivity'] = {
+            'schema': 'central-finite-difference-sensitivity-v1',
+            'parameter_order': list(SENSITIVITY_PARAMETERS),
+            'components': list(SENSITIVITY_COMPONENTS),
+            'latent_step': args.sensitivity_step,
+            'strict_perturbations': args.strict_perturbations,
+        }
     if args.output_dir is None:
         stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')
         output = RUN_ROOT / (config.name + '_' + args.action + '_' + stamp + '_' + uuid.uuid4().hex[:6])
@@ -329,6 +521,32 @@ def run(args):
             return 0
         stepper, rollout = make_rollout(prepared, progress=stored_progress(store),
                                         ignore_recompute_mismatch=args.ignore_recompute_mismatch)
+        if args.action == 'sensitivity':
+            try:
+                result = sensitivity_report(rollout, space, prepared.parameters, prepared, args.sensitivity_step)
+            except Exception as error:
+                result = {'status': 'sensitivity_failed', 'error_type': type(error).__name__, 'error': str(error),
+                          'parameters': prepared.parameters, 'parameter_space': space.settings(), 'runtime': runtime}
+                store.write_json('result.json', result)
+                store.append_event({'event': 'sensitivity_failed', **result})
+                print(f'Sensitivity result: {store.path / "result.json"}', flush=True)
+                return 2
+            result['runtime'] = {**runtime, 'forward_verified': True, 'backward_verified': False}
+            result['prepared_provenance'] = prepared.provenance
+            if args.strict_perturbations and result['status'] == 'sensitivity_computed':
+                strict_results = {}
+                candidates = {'baseline': result['baseline']['physical_parameters']}
+                for perturbation in result['perturbations']:
+                    for label, sample in perturbation['samples'].items():
+                        candidates[f"{perturbation['parameter']}_{label}"] = sample['physical_parameters']
+                for label, candidate in candidates.items():
+                    strict_results[label] = export_and_evaluate(prepared, stepper, candidate, store, runtime, strict=True)
+                result['strict_perturbations'] = strict_results
+                if any(item.get('strict_evaluation', {}).get('valid') is not True for item in strict_results.values()):
+                    result['status'] = 'sensitivity_strict_verification_failed'
+            store.write_json('result.json', result)
+            print(f'Sensitivity result: {store.path / "result.json"}', flush=True)
+            return 0 if result['status'] == 'sensitivity_computed' else 2
         if args.action == 'gradient':
             try:
                 evaluation = rollout.value_and_gradient(prepared.parameters)

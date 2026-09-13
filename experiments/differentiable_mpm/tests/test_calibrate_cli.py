@@ -82,6 +82,7 @@ class CalibrateCliTests(unittest.TestCase):
             result = SimpleNamespace(
                 config=current, simulation_config=SimulationConfig(**current.simulation),
                 parameters=dict(current.parameters), sdf=None, observations=list(scored),
+                loss_config=SimpleNamespace(depth_weight=1.0, coverage_weight=.5, distance_weight=.5),
                 total_steps=end, end_frame=end, split=split, scored_frames=scored,
                 frames=tuple(SimpleNamespace(source_frame=i, completed_substeps=i) for i in range(end + 1)),
                 provenance={'mock_prepared': True, 'config': current.as_dict(), 'split': split,
@@ -586,6 +587,86 @@ class CalibrateCliTests(unittest.TestCase):
         self.assertEqual(result['optimization']['accepted_updates'], 0)
         self.assertEqual(result['optimization']['status'], 'stalled_invalid')
         self.assertNotEqual(code, 0)
+
+
+class SensitivityRollout:
+    """Forward-only residual fixture with known coordinate-space derivatives."""
+
+    def __init__(self):
+        self.calls = []
+
+    def value_and_gradient(self, parameters, compute_grad=True, **kwargs):
+        self.calls.append((dict(parameters), compute_grad))
+        e = np.log(parameters['youngs_modulus'] / 130579.320726)
+        v = parameters['viscosity'] / 100.0
+        nu = parameters['poisson_ratio'] / 0.1
+        floor = parameters['floor_retention']
+        friction = parameters['tool_friction_coefficient']
+        frames = []
+        for frame_index in (1, 2):
+            factor = float(frame_index)
+            frames.append({
+                'frame_index': frame_index,
+                'step': frame_index,
+                'value': factor,
+                'components': {
+                    'depth_change': factor * (2 * e + 3 * v),
+                    'observed_to_visible_distance': factor * (5 * nu - floor),
+                    'positive_coverage': factor * (7 * friction),
+                },
+                'diagnostics': {},
+            })
+        return SimpleNamespace(value=0.0, gradient=None, frames=frames,
+                               diagnostics={'mock_rollout': True}, initial_gradient=None)
+
+
+class SensitivityCliTests(unittest.TestCase):
+    setUp = CalibrateCliTests.setUp
+    parameters_file = CalibrateCliTests.parameters_file
+    environment = CalibrateCliTests.environment
+    run_cli = CalibrateCliTests.run_cli
+
+    def sensitivity_config(self):
+        config = deepcopy(self.config)
+        config.name = 'sensitivity_fixture'
+        config.simulation.update(tool_collision='sdf', tool_contact_model='coulomb-v1',
+                                 tool_friction_coefficient=.3)
+        config.paths.update({name: self.root / name for name in
+                             ('collision_manifest', 'ur_collision_mesh', 'kinova_collision_mesh')})
+        config.parameters.update(youngs_modulus=130579.320726, viscosity=0.0, poisson_ratio=.3,
+                                 floor_retention=.4, tool_friction_coefficient=.3, tool_retention=1.0)
+        config.fit_parameters = list(calibrate.SENSITIVITY_PARAMETERS)
+        config.parameter_bounds = {
+            'youngs_modulus': [10000.0, 300000.0], 'viscosity': [0.0, 100.0],
+            'poisson_ratio': [.15, .45], 'floor_retention': [0.0, 1.0],
+            'tool_friction_coefficient': [0.0, 2.0],
+        }
+        return config
+
+    def test_sensitivity_uses_forward_only_residual_jacobian(self):
+        output = self.root / 'sensitivity'
+        rollout = SensitivityRollout()
+        with self.environment(config=self.sensitivity_config(), rollout=rollout):
+            code = self.run_cli(['sensitivity', '--output-dir', str(output), '--sensitivity-step', '0.001'])
+        self.assertEqual(code, 0)
+        self.assertTrue(all(compute_grad is False for _, compute_grad in rollout.calls))
+        result = json.loads((output / 'result.json').read_text())
+        self.assertEqual(result['status'], 'sensitivity_computed')
+        self.assertEqual(result['parameter_order'], list(calibrate.SENSITIVITY_PARAMETERS))
+        self.assertEqual(len(result['row_order']), 6)
+        self.assertEqual(np.asarray(result['jacobian']).shape, (6, 5))
+        jacobian = np.asarray(result['jacobian'])
+        np.testing.assert_allclose(jacobian[0], [2.0, 3.0, 0.0, 0.0, 0.0], atol=1e-10)
+        np.testing.assert_allclose(jacobian[1], [0.0, 0.0, 5.0, -1.0, 0.0], atol=1e-10)
+        np.testing.assert_allclose(jacobian[2], [0.0, 0.0, 0.0, 0.0, 7.0], atol=1e-10)
+        self.assertEqual(result['perturbations'][1]['scheme'], 'forward_second_order')
+        self.assertIn('gauss_newton', result['identifiability'])
+
+    def test_sensitivity_rejects_retention_contact_for_friction_column(self):
+        config = self.sensitivity_config()
+        config.simulation['tool_contact_model'] = 'retention-v1'
+        with self.assertRaisesRegex(ValueError, 'tool_friction_coefficient'):
+            config.validate()
 
 
 if __name__ == '__main__':
