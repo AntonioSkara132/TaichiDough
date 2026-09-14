@@ -304,10 +304,106 @@ class OptimizerTests(unittest.TestCase):
         self.assertEqual(optimizer.evaluations, 1)
         self.assertFalse(optimizer.history[-1]["valid"])
 
+    def test_evaluation_observer_receives_complete_evaluations_only(self):
+        observed, checkpoints = [], []
+        optimizer = ProjectedAdam(
+            viscosity_space(), viscosity_quadratic(0.8), AdamOptions(learning_rate=0.01),
+            callback=lambda event, state: checkpoints.append(event),
+            evaluation_observer=observed.append,
+        )
+        optimizer.run(1)
+        self.assertEqual([event["type"] for event in observed],
+                         ["evaluation_started", "evaluation", "evaluation_started", "evaluation"])
+        self.assertTrue(all(event.get("valid") is True for event in observed if event["type"] == "evaluation"))
+        self.assertTrue(all("physical_gradient" in event and "coordinate_gradient" in event
+                            for event in observed if event["type"] == "evaluation"))
+        self.assertNotIn("evaluation", [event["type"] for event in checkpoints])
+
+    def test_physical_parameter_stability_stops_after_required_accepted_updates(self):
+        options = AdamOptions(
+            learning_rate=1e-5, gradient_tolerance=0,
+            parameter_stability_updates=3, parameter_stability_rtol=0,
+            parameter_stability_atol={"viscosity": 2e-5},
+        )
+        optimizer = ProjectedAdam(viscosity_space(), viscosity_quadratic(0.8), options)
+        result = optimizer.run(20)
+        self.assertEqual(result.status, "converged_parameters")
+        self.assertEqual(result.accepted_updates, 3)
+        self.assertEqual(result.evaluations, 4)
+        steps = [event for event in result.history if event["type"] == "step"]
+        self.assertEqual([event["parameter_stability"]["streak"] for event in steps], [1, 2, 3])
+        self.assertTrue(all(event["parameter_stability"]["all_within_tolerance"] for event in steps))
+
+    def test_stability_uses_physical_tolerances_and_rejected_attempt_preserves_streak(self):
+        options = AdamOptions(
+            learning_rate=1e-5, gradient_tolerance=0, max_backtracks=0,
+            parameter_stability_updates=3, parameter_stability_rtol=0,
+            parameter_stability_atol={"viscosity": 2e-5},
+        )
+        calls = [0]
+        def objective(parameters):
+            calls[0] += 1
+            if calls[0] >= 3:
+                return ObjectiveValue(100.0, {"viscosity": -1.0})
+            return viscosity_quadratic(0.8)(parameters)
+        optimizer = ProjectedAdam(viscosity_space(), objective, options)
+        first = optimizer.step()
+        self.assertTrue(first["accepted"])
+        self.assertEqual(optimizer.parameter_stability_streak, 1)
+        rejected = optimizer.step()
+        self.assertFalse(rejected["accepted"])
+        self.assertEqual(rejected["parameter_stability"]["streak"], 1)
+        self.assertEqual(optimizer.parameter_stability_streak, 1)
+
+        streak, details = optimizer._parameter_stability(
+            {"viscosity": 0.1}, {"viscosity": 0.10003}, 2, counted=True)
+        self.assertEqual(streak, 0)
+        self.assertFalse(details["within_tolerance"]["viscosity"])
+
+    def test_stability_state_validation_and_exact_resume(self):
+        options = AdamOptions(
+            learning_rate=1e-5, gradient_tolerance=0,
+            parameter_stability_updates=3, parameter_stability_rtol=0,
+            parameter_stability_atol={"viscosity": 2e-5},
+        )
+        objective = viscosity_quadratic(0.8)
+        uninterrupted = ProjectedAdam(viscosity_space(), objective, options)
+        uninterrupted.run(20)
+        partial = ProjectedAdam(viscosity_space(), objective, options)
+        partial.run(2)
+        saved = json.loads(json.dumps(partial.state_dict(), allow_nan=False))
+        resumed = ProjectedAdam(viscosity_space(), objective, options)
+        resumed.load_state_dict(saved)
+        result = resumed.run(20)
+        self.assertEqual(result.status, "converged_parameters")
+        np.testing.assert_array_equal(uninterrupted.u, resumed.u)
+        np.testing.assert_array_equal(uninterrupted.m, resumed.m)
+        np.testing.assert_array_equal(uninterrupted.v, resumed.v)
+        self.assertEqual(uninterrupted.current.value, resumed.current.value)
+        self.assertEqual(uninterrupted.best_value, resumed.best_value)
+        self.assertEqual(uninterrupted.parameter_stability_streak, resumed.parameter_stability_streak)
+        self.assertEqual(uninterrupted.accepted_updates, resumed.accepted_updates)
+        self.assertEqual(uninterrupted.evaluations, resumed.evaluations)
+        for mutate in (
+            lambda state: state.update(parameter_stability_streak=0),
+            lambda state: next(event for event in state["history"] if event["type"] == "step")
+                              ["parameter_stability"].update(streak=0),
+        ):
+            corrupted = deepcopy(saved)
+            mutate(corrupted)
+            target = ProjectedAdam(viscosity_space(), objective, options)
+            before = target.state_dict()
+            with self.assertRaises(ValueError):
+                target.load_state_dict(corrupted)
+            self.assertEqual(target.state_dict(), before)
+
     def test_invalid_optimizer_settings(self):
         for options in ({"learning_rate": 0}, {"beta1": 1}, {"epsilon": 0},
                         {"max_backtracks": -1}, {"max_evaluations": 0},
-                        {"backtrack_factor": 1}, {"loss_tolerance": -1}):
+                        {"backtrack_factor": 1}, {"loss_tolerance": -1},
+                        {"parameter_stability_updates": -1},
+                        {"parameter_stability_rtol": -1},
+                        {"parameter_stability_atol": {"viscosity": math.nan}}):
             with self.assertRaises(ValueError):
                 AdamOptions(**options)
 

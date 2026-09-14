@@ -1,0 +1,38 @@
+{
+  "operation": "Common integer-pixel crop, no resampling of publication images, no scene modification",
+  "crop_xyxy_px": [
+    389,
+    577,
+    3211,
+    2278
+  ],
+  "image_size_px": [
+    2822,
+    1701
+  ],
+  "png_dpi_metadata": 500,
+  "pdf_width_inches": 7.1,
+  "pdf_effective_pixels_per_inch": 397.46478873239437,
+  "pdf_encoding": "Losslessly Flate-compressed RGB raster",
+  "input_sha256": {
+    "episode18_t0p5004_clean.png": "bc9f06fe439083d6a906402837f3955cd0c1199da2f52c45309d642490542618",
+    "episode18_t1p2008_clean.png": "dbf4d4c43a0ae6c4f13f0d94c0223c4a3d6d819394a370182069f03cfdb9c438",
+    "figure_manifest.json": "48322f763ba274e913a1f710a374b7f0f180ea14fe94da51ab94089c7eeea5c2",
+    "compose_article_figure.py": "205d29b24fe521822bff3022a0b5e973094f3574e3ecb5b016f4f2461f92a4fd",
+    "render_article_stills.py": "897472fb3638822e625c522f1a26ac4babe695cd234d292cf8ac484d77a3f5e4"
+  },
+  "output_sha256": {
+    "figure1_t0p5004.png": "394d6dc3e74a9f36fe1213fef1d192909b491c88be58f4323c86b0155afd7b85",
+    "figure1_t0p5004.pdf": "e362d58045bcb79fe25f0059c83a74e81979c261d0d7dc38352c8cd6efd18cd3",
+    "figure1_t1p2008.png": "249c7d35c54b9fd5a5f2530967fcbd0bbc8093cd97026edbe8b778177cb6797e",
+    "figure1_t1p2008.pdf": "f9467a4bb6c0ad9422e48c9e41e4bd0fb4aa34e98a41e1cecd7779dbb8dd756a",
+    "figure1_preview.png": "4b74b08e9359f728181b79dd47ce8fee6955596cf63609f6a210b36a3f1e7f34"
+  },
+  "rendering_parameters": {
+    "voxel_m": 0.0015,
+    "gaussian_sigma_voxels": 0.8,
+    "density_isovalue": 0.2,
+    "tile_cells": 64
+  },
+  "no_simulation_or_calibration_run": true
+}

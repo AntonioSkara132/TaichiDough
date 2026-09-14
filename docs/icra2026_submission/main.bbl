@@ -1,0 +1,105 @@
+\begin{thebibliography}{10}
+
+\bibitem{jiang2016mpm}
+C.~Jiang, C.~Schroeder, J.~Teran, A.~Stomakhin, and A.~Selle, ``The material
+  point method for simulating continuum materials.'' ACM SIGGRAPH 2016 Courses,
+  2016.
+
+\bibitem{jiang2015apic}
+C.~Jiang, C.~Schroeder, A.~Selle, J.~Teran, and A.~Stomakhin, ``The affine
+  particle-in-cell method,'' {\em ACM Transactions on Graphics}, vol.~34,
+  no.~4, 2015.
+
+\bibitem{hu2018mlsmpm}
+Y.~Hu, Y.~Fang, Z.~Ge, Z.~Qu, Y.~Zhu, A.~Pradhana, and C.~Jiang, ``A moving
+  least squares material point method with displacement discontinuity and
+  two-way rigid body coupling,'' {\em ACM Transactions on Graphics}, vol.~37,
+  no.~4, 2018.
+
+\bibitem{stomakhin2013snow}
+A.~Stomakhin, C.~Schroeder, L.~Chai, J.~Teran, and A.~Selle, ``A material point
+  method for snow simulation,'' {\em ACM Transactions on Graphics}, vol.~32,
+  no.~4, pp.~102:1--102:10, 2013.
+
+\bibitem{hu2019taichi}
+Y.~Hu, T.-M. Li, L.~Anderson, J.~Ragan-Kelley, and F.~Durand, ``Taichi: A
+  language for high-performance computation on spatially sparse data
+  structures,'' {\em ACM Transactions on Graphics}, vol.~38, no.~6, 2019.
+
+\bibitem{hu2019chainqueen}
+Y.~Hu, J.~Liu, A.~Spielberg, J.~B. Tenenbaum, W.~T. Freeman, J.~Wu, D.~Rus, and
+  W.~Matusik, ``Chainqueen: A real-time differentiable physical simulator for
+  soft robotics,'' in {\em IEEE International Conference on Robotics and
+  Automation}, 2019.
+
+\bibitem{hu2020difftaichi}
+Y.~Hu, L.~Anderson, T.-M. Li, Q.~Sun, N.~Carr, J.~Ragan-Kelley, and F.~Durand,
+  ``Difftaichi: Differentiable programming for physical simulation,'' in {\em
+  International Conference on Learning Representations}, 2020.
+
+\bibitem{huang2021plasticinelab}
+Z.~Huang, Y.~Hu, T.~Du, S.~Zhou, H.~Su, J.~B. Tenenbaum, and C.~Gan,
+  ``Plasticinelab: A soft-body manipulation benchmark with differentiable
+  physics,'' in {\em International Conference on Learning Representations},
+  2021.
+
+\bibitem{sundaresan2022diffcloud}
+P.~Sundaresan, R.~Antonova, and J.~Bohg, ``Diffcloud: Real-to-sim from point
+  clouds with differentiable simulation and rendering of deformable objects,''
+  in {\em IEEE/RSJ International Conference on Intelligent Robots and Systems},
+  2022.
+
+\bibitem{arnavaz2023diffdepth}
+K.~Arnavaz, M.~K. Nielsen, P.~G. Kry, M.~Macklin, and K.~Erleben,
+  ``Differentiable depth for real2sim calibration of soft body simulations,''
+  {\em Computer Graphics Forum}, 2023.
+
+\bibitem{yang2025dpsi}
+X.~Yang, Z.~Ji, and Y.-K. Lai, ``Differentiable physics-based system
+  identification for robotic manipulation of elastoplastic materials,'' {\em
+  The International Journal of Robotics Research}, 2025.
+
+\bibitem{chen2026empm}
+Y.~Chen, Y.~Hu, L.~Sun, T.~Kusnur, L.~Herlant, and C.~Jiang, ``{EMPM}: Embodied
+  {MPM} for modeling and simulation of deformable objects,'' {\em IEEE Robotics
+  and Automation Letters}, 2026.
+
+\bibitem{raue2011identifiability}
+A.~Raue, C.~Kreutz, T.~Maiwald, U.~Klingm{\"u}ller, and J.~Timmer, ``Addressing
+  parameter identifiability by model-based experimentation,'' {\em IET Systems
+  Biology}, vol.~5, no.~2, pp.~120--130, 2011.
+
+\bibitem{brynjarsdottir2014discrepancy}
+J.~Brynjarsd{\'o}ttir and A.~O'Hagan, ``Learning about physical parameters: The
+  importance of model discrepancy,'' {\em Inverse Problems}, vol.~30, no.~11,
+  2014.
+
+\bibitem{shi2022robocraft}
+H.~Shi, H.~Xu, Z.~Huang, Y.~Li, and J.~Wu, ``Robocraft: Learning to see,
+  simulate, and shape elasto-plastic objects with graph networks,'' in {\em
+  Robotics: Science and Systems}, 2022.
+
+\bibitem{shi2023robocook}
+H.~Shi, H.~Xu, S.~Clarke, Y.~Li, and J.~Wu, ``Robocook: Long-horizon
+  elasto-plastic object manipulation with diverse tools,'' in {\em Conference
+  on Robot Learning}, 2023.
+
+\bibitem{bauer2024doughnet}
+D.~Bauer, Z.~Xu, and S.~Song, ``Doughnet: A visual predictive model for
+  topological manipulation of deformable objects,'' in {\em European Conference
+  on Computer Vision}, 2024.
+
+\bibitem{fabbri2015dough}
+A.~Fabbri and C.~Cevoli, ``Estimation of semolina dough rheological parameters
+  by inversion of a finite elements model,'' {\em Journal of Agricultural
+  Engineering}, vol.~46, no.~3, pp.~95--99, 2015.
+
+\bibitem{yazar2023doughreview}
+G.~Yazar, ``Wheat flour quality assessment by fundamental non-linear
+  rheological methods: A critical review,'' {\em Foods}, vol.~12, no.~18, 2023.
+
+\bibitem{ghorbel2014adhesion}
+D.~Ghorbel and B.~Launay, ``An investigation into the nature of wheat flour
+  dough adhesive behaviour,'' {\em Food Research International}, 2014.
+
+\end{thebibliography}

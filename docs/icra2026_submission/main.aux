@@ -1,0 +1,94 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\babel@aux[2]{}
+\@nameuse{bbl@beforestart}
+\providecommand\HyperFirstAtBeginDocument{\AtBeginDocument}
+\HyperFirstAtBeginDocument{\ifx\hyper@anchor\@undefined
+\global\let\oldcontentsline\contentsline
+\gdef\contentsline#1#2#3#4{\oldcontentsline{#1}{#2}{#3}}
+\global\let\oldnewlabel\newlabel
+\gdef\newlabel#1#2{\newlabelxx{#1}#2}
+\gdef\newlabelxx#1#2#3#4#5#6{\oldnewlabel{#1}{{#2}{#3}}}
+\AtEndDocument{\ifx\hyper@anchor\@undefined
+\let\contentsline\oldcontentsline
+\let\newlabel\oldnewlabel
+\fi}
+\fi}
+\global\let\hyper@last\relax 
+\gdef\HyperFirstAtBeginDocument#1{#1}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\babel@aux{english}{}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{section.1}\protected@file@percent }
+\newlabel{sec:introduction}{{I}{1}{Introduction}{section.1}{}}
+\citation{jiang2016mpm}
+\citation{jiang2015apic,hu2018mlsmpm}
+\citation{stomakhin2013snow}
+\citation{hu2019taichi}
+\citation{hu2019chainqueen,hu2020difftaichi}
+\citation{huang2021plasticinelab}
+\citation{sundaresan2022diffcloud,arnavaz2023diffdepth}
+\citation{yang2025dpsi}
+\citation{chen2026empm}
+\citation{raue2011identifiability,brynjarsdottir2014discrepancy}
+\citation{shi2022robocraft,shi2023robocook}
+\citation{bauer2024doughnet}
+\citation{fabbri2015dough}
+\citation{yazar2023doughreview,ghorbel2014adhesion}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces TaichiDough pipeline. A single calibrated RGB-D camera and recorded poses of two spatulas provide the initial geometry, observations, and boundary motion. A corrected MLS-MPM rollout is projected into the camera and compared with measured depth. Robot execution and synthetic-data learning are intended downstream uses rather than experiments reported here.}}{2}{figure.1}\protected@file@percent }
+\newlabel{fig:pipeline}{{1}{2}{TaichiDough pipeline. A single calibrated RGB-D camera and recorded poses of two spatulas provide the initial geometry, observations, and boundary motion. A corrected MLS-MPM rollout is projected into the camera and compared with measured depth. Robot execution and synthetic-data learning are intended downstream uses rather than experiments reported here}{figure.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {II}Related Work}{2}{section.2}\protected@file@percent }
+\newlabel{sec:related}{{II}{2}{Related Work}{section.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {III}Method}{2}{section.3}\protected@file@percent }
+\newlabel{sec:method}{{III}{2}{Method}{section.3}{}}
+\newlabel{eq:inverse_problem}{{1}{2}{Method}{equation.3.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {III-A}Metric Reconstruction and Tool Replay}{2}{subsection.3.1}\protected@file@percent }
+\newlabel{eq:mass_initialization}{{2}{2}{Metric Reconstruction and Tool Replay}{equation.3.2}{}}
+\citation{jiang2016mpm}
+\citation{hu2019taichi}
+\newlabel{eq:tool_velocity}{{3}{3}{Metric Reconstruction and Tool Replay}{equation.3.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {III-B}Differentiable MLS-MPM}{3}{subsection.3.2}\protected@file@percent }
+\newlabel{eq:deformation_update}{{4}{3}{Differentiable MLS-MPM}{equation.3.4}{}}
+\newlabel{eq:lame}{{5}{3}{Differentiable MLS-MPM}{equation.3.5}{}}
+\newlabel{eq:stress}{{6}{3}{Differentiable MLS-MPM}{equation.3.6}{}}
+\newlabel{eq:p2g}{{8}{3}{Differentiable MLS-MPM}{equation.3.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {III-C}Partial-View Objective and Optimization}{3}{subsection.3.3}\protected@file@percent }
+\newlabel{eq:training_loss}{{9}{3}{Partial-View Objective and Optimization}{equation.3.9}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Results and Discussion}{3}{section.4}\protected@file@percent }
+\newlabel{sec:results}{{IV}{3}{Results and Discussion}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {IV-A}Metric Initialization}{3}{subsection.4.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Exact-timestamp Episode~18 camera views and simulation outputs. The top row is contextual RGB extracted from the original Rosbag; the bottom row is saved dough-only simulated optical depth rendered with the same calibrated camera and display crop. The simulation does not render spatula occlusion. Frames after 2.00\,s are temporal continuation of the same motion, not independent generalization.}}{4}{figure.2}\protected@file@percent }
+\newlabel{fig:matched}{{2}{4}{Exact-timestamp Episode~18 camera views and simulation outputs. The top row is contextual RGB extracted from the original Rosbag; the bottom row is saved dough-only simulated optical depth rendered with the same calibrated camera and display crop. The simulation does not render spatula occlusion. Frames after 2.00\,s are temporal continuation of the same motion, not independent generalization}{figure.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Accepted objective and parameter history for the interrupted five-variable differentiable run. The orange ring marks the best saved state. Evaluation 18 was interrupted and all completed objectives recorded finite replay mismatches; these are best-so-far effective simulator parameters, not a converged physical estimate.}}{4}{figure.3}\protected@file@percent }
+\newlabel{fig:parameters}{{3}{4}{Accepted objective and parameter history for the interrupted five-variable differentiable run. The orange ring marks the best saved state. Evaluation 18 was interrupted and all completed objectives recorded finite replay mismatches; these are best-so-far effective simulator parameters, not a converged physical estimate}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {IV-B}Static and Differentiable Fitting}{4}{subsection.4.2}\protected@file@percent }
+\bibstyle{ieeetr}
+\bibdata{bibliography/bibliography}
+\bibcite{jiang2016mpm}{1}
+\bibcite{jiang2015apic}{2}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Existing single-sequence evidence. The experiments use different simulator revisions and fixed settings and are not a matched optimizer comparison. ``Continuation'' denotes later frames of the same recorded motion.}}{5}{table.1}\protected@file@percent }
+\newlabel{tab:evidence}{{I}{5}{Existing single-sequence evidence. The experiments use different simulator revisions and fixed settings and are not a matched optimizer comparison. ``Continuation'' denotes later frames of the same recorded motion}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {IV-C}Frozen Strict Evaluation}{5}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {IV-D}Limitations for Single-View Identification}{5}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion}{5}{section.5}\protected@file@percent }
+\newlabel{sec:conclusion}{{V}{5}{Conclusion}{section.5}{}}
+\@writefile{toc}{\contentsline {section}{References}{5}{section*.1}\protected@file@percent }
+\bibcite{hu2018mlsmpm}{3}
+\bibcite{stomakhin2013snow}{4}
+\bibcite{hu2019taichi}{5}
+\bibcite{hu2019chainqueen}{6}
+\bibcite{hu2020difftaichi}{7}
+\bibcite{huang2021plasticinelab}{8}
+\bibcite{sundaresan2022diffcloud}{9}
+\bibcite{arnavaz2023diffdepth}{10}
+\bibcite{yang2025dpsi}{11}
+\bibcite{chen2026empm}{12}
+\bibcite{raue2011identifiability}{13}
+\bibcite{brynjarsdottir2014discrepancy}{14}
+\bibcite{shi2022robocraft}{15}
+\bibcite{shi2023robocook}{16}
+\bibcite{bauer2024doughnet}{17}
+\bibcite{fabbri2015dough}{18}
+\bibcite{yazar2023doughreview}{19}
+\bibcite{ghorbel2014adhesion}{20}
+\gdef \@abspage@last{6}

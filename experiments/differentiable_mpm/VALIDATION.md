@@ -1,5 +1,16 @@
 # Differentiable MPM validation
 
+## Calibration logging, stability and initial overrides
+
+Focused host-only tests pass for the calibration upgrades. These tests use analytic objectives and mocked episode workers; they do not run MPM kernels, a real calibration, or GPU qualification.
+
+- `python3 -m unittest experiments.differentiable_mpm.tests.test_optimizer -v`: 32 tests pass. Added coverage checks evaluation-observer records, callback/checkpoint separation, three-update physical stability convergence, tolerance reset, rejected-attempt streak preservation, corrupt-state rejection, and resumed versus uninterrupted numerical state.
+- `python3 -m unittest experiments.differentiable_mpm.tests.test_calibrate_cli -v`: 34 tests pass. Added coverage checks concise physical/optimizer gradient output, complete evaluation records in `events.jsonl`, balanced stability defaults, explicit disabling, and quiet terminal output.
+- `python3 -m unittest experiments.differentiable_mpm.tests.test_calibrate_dataset -v`: 21 tests pass. Added coverage checks dataset initial E/viscosity overrides, unchanged source-document hash, changed resolved fingerprint, bound rejection, changed-initial-value resume rejection, concise combined-objective output, complete event persistence, and quiet output.
+- `python3 -m unittest experiments.differentiable_mpm.tests.test_calibrate_dataset_attempts -v`: 8 tests pass. Added host-only coverage for Cartesian ordering, exact child commands, interpreter-path preservation, validation without output creation, sequential summaries, completed-run verification, immutable failed-attempt retries, interruption/resume behavior, and best-attempt selection.
+
+The ten-episode manifest now declares E=2,000–60,000 Pa, Poisson ratio=0.45–0.49 and viscosity=0–60 Pa.s. This configuration change defines a new run identity. Existing calibration directories remain historical records and are not resumed under the changed bounds. No real calibration was launched while implementing or testing these changes.
+
 ## Multi-episode driver
 
 The shared-material dataset driver is implemented, and its small corrected multi-motion numerical checks pass. Its objective averages existing episode-mean losses with fixed normalized weights and accumulates shared physical gradients. The existing optimizer evaluates every training episode for each proposal/backtrack. Subprocesses run sequentially; input preparation and compilation repeat. First-setup tools use retention1/absorption0/stickiness0, with each episode's floor parameters preserved.

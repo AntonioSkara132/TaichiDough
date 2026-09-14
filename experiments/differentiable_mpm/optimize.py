@@ -9,6 +9,7 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 import math
 import time
+from typing import cast
 
 import numpy as np
 
@@ -39,11 +40,15 @@ class AdamOptions:
     max_evaluations: int | None = None
     learning_rate_policy: str = "persistent-v1"
     learning_rate_growth: float = 1.25
+    parameter_stability_updates: int = 0
+    parameter_stability_rtol: float = 0.0
+    parameter_stability_atol: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self):
         numbers = (self.learning_rate, self.beta1, self.beta2, self.epsilon,
                    self.backtrack_factor, self.min_learning_rate, self.gradient_tolerance,
-                   self.step_tolerance, self.armijo, self.loss_tolerance, self.learning_rate_growth)
+                   self.step_tolerance, self.armijo, self.loss_tolerance, self.learning_rate_growth,
+                   self.parameter_stability_rtol)
         if not all(math.isfinite(value) for value in numbers):
             raise ValueError("Adam options must be finite")
         if self.learning_rate <= 0 or not 0 < self.min_learning_rate <= self.learning_rate:
@@ -62,6 +67,19 @@ class AdamOptions:
             raise ValueError("learning_rate_policy must be persistent-v1 or recover-v1")
         if self.learning_rate_growth < 1:
             raise ValueError("learning_rate_growth must be at least one")
+        if type(self.parameter_stability_updates) is not int or self.parameter_stability_updates < 0:
+            raise ValueError("parameter_stability_updates must be a nonnegative integer")
+        if self.parameter_stability_rtol < 0:
+            raise ValueError("parameter_stability_rtol must be nonnegative")
+        if not isinstance(self.parameter_stability_atol, Mapping):
+            raise ValueError("parameter_stability_atol must map parameter names to tolerances")
+        unknown = set(self.parameter_stability_atol) - set(PARAMETER_NAMES)
+        if unknown:
+            raise ValueError(f"Unknown parameter stability tolerances: {sorted(unknown)}")
+        for name, value in self.parameter_stability_atol.items():
+            if (isinstance(value, bool) or not isinstance(value, (int, float))
+                    or not math.isfinite(value) or value < 0):
+                raise ValueError(f"parameter_stability_atol.{name} must be finite and nonnegative")
 
 
 @dataclass
@@ -120,17 +138,27 @@ class ProjectedAdam:
     ``objective_id`` also checks a caller-supplied objective fingerprint here.
     """
 
-    _TERMINAL = {"converged_gradient", "stalled_step", "stalled_invalid",
+    _TERMINAL = {"converged_gradient", "converged_parameters", "stalled_step", "stalled_invalid",
                  "stalled_descent", "evaluation_budget_exhausted", "invalid_initial"}
     _STATUSES = _TERMINAL | {"uninitialized", "ready", "running", "budget_exhausted"}
 
     def __init__(self, space: PhysicalParameterSpace,
                  objective: Callable[[dict[str, float]], ObjectiveValue],
-                 options: AdamOptions | None = None, callback=None, objective_id: str | None = None):
+                 options: AdamOptions | None = None, callback=None, objective_id: str | None = None,
+                 evaluation_observer=None):
         self.space = space
         self.objective = objective
         self.options = options or AdamOptions()
         self.callback = callback
+        self.evaluation_observer = evaluation_observer
+        if evaluation_observer is not None and not callable(evaluation_observer):
+            raise TypeError("evaluation_observer must be callable or None")
+        if self.options.parameter_stability_updates:
+            tolerances = set(self.options.parameter_stability_atol)
+            if tolerances != set(space.fit):
+                raise ValueError("Enabled parameter stability requires exactly one absolute tolerance per fitted parameter")
+        elif self.options.parameter_stability_atol:
+            raise ValueError("parameter_stability_atol requires parameter_stability_updates > 0")
         if objective_id is not None and not isinstance(objective_id, str):
             raise ValueError("objective_id must be a string or None")
         self.objective_id = objective_id
@@ -142,6 +170,7 @@ class ProjectedAdam:
         self.accepted_updates = 0
         self.evaluations = 0
         self.history: list[dict] = []
+        self.parameter_stability_streak = 0
         self.status = "uninitialized"
         self.current: ObjectiveValue | None = None
         self.best_u: np.ndarray | None = None
@@ -171,7 +200,31 @@ class ProjectedAdam:
             raise InvalidStateError("Coordinate gradient is too large for Adam squared moments")
         if not isinstance(result.diagnostics, Mapping):
             raise TypeError("Objective diagnostics must be a mapping")
-        return ObjectiveValue(value, gradient, _plain(result.diagnostics))
+        return ObjectiveValue(value, gradient, cast(dict, _plain(result.diagnostics)))
+
+    def _observe(self, event):
+        if self.evaluation_observer is not None:
+            self.evaluation_observer(deepcopy(cast(dict, _plain(event))))
+
+    def _parameter_stability(self, old_parameters, new_parameters, previous_streak, *, counted):
+        required = self.options.parameter_stability_updates
+        record = {"enabled": required > 0, "accepted_update_counted": counted,
+                  "required_updates": required, "streak": previous_streak}
+        if not required or not counted:
+            return previous_streak, record
+        changes, limits, within = {}, {}, {}
+        for name in self.space.fit:
+            old, new = float(old_parameters[name]), float(new_parameters[name])
+            change = abs(new - old)
+            limit = (float(self.options.parameter_stability_atol[name])
+                     + self.options.parameter_stability_rtol * max(abs(old), abs(new)))
+            changes[name], limits[name], within[name] = change, limit, change <= limit
+        streak = previous_streak + 1 if all(within.values()) else 0
+        record.update(streak=streak, rtol=self.options.parameter_stability_rtol,
+                      atol=dict(self.options.parameter_stability_atol), changes=changes,
+                      limits=limits, within_tolerance=within,
+                      all_within_tolerance=all(within.values()))
+        return streak, record
 
     def _evaluate(self, coordinates, stage, backtrack=None):
         if self.options.max_evaluations is not None and self.evaluations >= self.options.max_evaluations:
@@ -181,6 +234,9 @@ class ProjectedAdam:
         event = {"type": "evaluation", "evaluation": self.evaluations,
                  "iteration": self.iterations, "stage": stage, "backtrack": backtrack,
                  "coordinates": coordinates.tolist(), "parameters": parameters}
+        self._observe({"type": "evaluation_started", "evaluation": self.evaluations,
+                       "iteration": self.iterations, "stage": stage, "backtrack": backtrack,
+                       "coordinates": coordinates.tolist(), "parameters": parameters})
         started = time.monotonic()
         try:
             result = self._checked_objective(self.objective(dict(parameters)), coordinates)
@@ -188,6 +244,7 @@ class ProjectedAdam:
             event.update(valid=False, elapsed_s=time.monotonic() - started,
                          error_type=type(error).__name__, error=str(error))
             self.history.append(event)
+            self._observe(event)
             if isinstance(error, (InvalidStateError, FloatingPointError, OverflowError)):
                 return None, str(error)
             raise
@@ -196,10 +253,11 @@ class ProjectedAdam:
                      coordinate_gradient=self.space.pullback(coordinates, result.gradient).tolist(),
                      diagnostics=result.diagnostics)
         self.history.append(event)
+        self._observe(event)
         return result, None
 
     def _notify(self, event):
-        event = _plain(event)
+        event = cast(dict, _plain(event))
         self.history.append(event)
         if self.callback is not None:
             self.callback(deepcopy(event), self.state_dict())
@@ -234,6 +292,7 @@ class ProjectedAdam:
 
     def step(self):
         self.initialize()
+        assert self.current is not None and self.best_value is not None
         if self.status in self._TERMINAL:
             return {"type": "status", "status": self.status, "iteration": self.iterations}
         gradient = self.space.pullback(self.u, self.current.gradient)
@@ -248,6 +307,7 @@ class ProjectedAdam:
         self.iterations += 1
         self.status = "running"
         old_u = self.u.copy()
+        old_parameters = self.space.physical(old_u)
         old_value = self.current.value
         b1, b2 = self.options.beta1, self.options.beta2
         with np.errstate(over="ignore", invalid="ignore"):
@@ -271,6 +331,9 @@ class ProjectedAdam:
         valid_candidates = 0
         attempts = []
         stop_reason = None
+        stability_streak_before = self.parameter_stability_streak
+        _, stability = self._parameter_stability(old_parameters, old_parameters,
+                                                 stability_streak_before, counted=False)
         for backtrack in range(self.options.max_backtracks + 1):
             if rate < self.options.min_learning_rate:
                 stop_reason = "minimum_learning_rate"
@@ -302,6 +365,8 @@ class ProjectedAdam:
                     self.m, self.v = next_m, next_v
                     self.accepted_updates = next_update
                     self.learning_rate = rate
+                    self.parameter_stability_streak, stability = self._parameter_stability(
+                        old_parameters, self.space.physical(self.u), stability_streak_before, counted=True)
                     if candidate.value < self.best_value:
                         self.best_u = candidate_u.copy()
                         self.best_value = candidate.value
@@ -315,7 +380,10 @@ class ProjectedAdam:
                 break
             rate *= self.options.backtrack_factor
         if accepted:
-            self.status = "ready"
+            self.status = ("converged_parameters"
+                           if (self.options.parameter_stability_updates
+                               and self.parameter_stability_streak >= self.options.parameter_stability_updates)
+                           else "ready")
         else:
             self.learning_rate = max(min(rate, self.learning_rate), self.options.min_learning_rate)
             if stop_reason == "evaluation_budget":
@@ -340,13 +408,14 @@ class ProjectedAdam:
                  "accepted_learning_rate": rate if accepted else None,
                  "stop_reason": stop_reason,
                  "accepted_updates": self.accepted_updates, "evaluations": self.evaluations,
-                 "attempts": attempts}
+                 "parameter_stability": stability, "attempts": attempts}
         return self._notify(event)
 
     def run(self, iterations):
         if type(iterations) is not int or iterations < 0:
             raise ValueError("iterations must be a nonnegative integer")
         self.initialize()
+        assert self.current is not None and self.best_u is not None and self.best_value is not None
         if self.status == "budget_exhausted":
             self.status = "ready"
         for _ in range(iterations):
@@ -370,10 +439,11 @@ class ProjectedAdam:
 
     def state_dict(self):
         return {
-            "schema_version": 1, "space": self.space.settings(), "options": asdict(self.options),
+            "schema_version": 2, "space": self.space.settings(), "options": asdict(self.options),
             "objective_id": self.objective_id, "status": self.status,
             "iterations": self.iterations, "accepted_updates": self.accepted_updates,
             "evaluations": self.evaluations, "learning_rate": self.learning_rate,
+            "parameter_stability_streak": self.parameter_stability_streak,
             "coordinates": self.u.tolist(), "physical_parameters": self.space.physical(self.u),
             "first_moment": self.m.tolist(), "second_moment": self.v.tolist(),
             "current": self._objective_dict(self.current),
@@ -386,7 +456,7 @@ class ProjectedAdam:
 
     def load_state_dict(self, state):
         """Validate a complete saved state before replacing any live optimizer data."""
-        if not isinstance(state, Mapping) or state.get("schema_version") != 1:
+        if not isinstance(state, Mapping) or state.get("schema_version") != 2:
             raise ValueError("Unsupported optimizer state schema")
         if state.get("space") != self.space.settings() or state.get("options") != asdict(self.options):
             raise ValueError("Saved parameter definitions or optimizer options do not match")
@@ -395,14 +465,29 @@ class ProjectedAdam:
         status = state.get("status")
         if status not in self._STATUSES or status == "running":
             raise ValueError("Unknown saved optimizer status or incomplete optimizer attempt")
-        counts = [state.get(name) for name in ("iterations", "accepted_updates", "evaluations")]
-        if not all(type(value) is int and value >= 0 for value in counts):
+        iterations = state.get("iterations")
+        updates = state.get("accepted_updates")
+        evaluations = state.get("evaluations")
+        if (type(iterations) is not int or iterations < 0
+                or type(updates) is not int or updates < 0
+                or type(evaluations) is not int or evaluations < 0):
             raise ValueError("Optimizer counters must be nonnegative integers")
-        iterations, updates, evaluations = counts
         if updates > iterations:
             raise ValueError("Accepted-update count exceeds optimizer attempts")
         if self.options.max_evaluations is not None and evaluations > self.options.max_evaluations:
             raise ValueError("Saved evaluation count exceeds the configured budget")
+        stability_streak = state.get("parameter_stability_streak")
+        if type(stability_streak) is not int or not 0 <= stability_streak <= updates:
+            raise ValueError("Saved parameter stability streak is invalid")
+        if not self.options.parameter_stability_updates and stability_streak != 0:
+            raise ValueError("Disabled parameter stability cannot have a saved streak")
+        if status == "converged_parameters":
+            if (not self.options.parameter_stability_updates
+                    or stability_streak < self.options.parameter_stability_updates):
+                raise ValueError("Parameter-converged status does not match its saved streak")
+        elif (self.options.parameter_stability_updates
+              and stability_streak >= self.options.parameter_stability_updates):
+            raise ValueError("Saved parameter stability streak requires converged_parameters status")
         rate = float(state["learning_rate"])
         if not math.isfinite(rate) or not self.options.min_learning_rate <= rate <= self.options.learning_rate:
             raise ValueError("Saved learning rate is outside the configured range")
@@ -420,6 +505,8 @@ class ProjectedAdam:
         best_u = None
         best_value = None
         if current_data is not None:
+            if not isinstance(current_data, Mapping) or not isinstance(best_data, Mapping):
+                raise ValueError("Saved current and best evaluations must be objects")
             current = self._checked_objective(ObjectiveValue(**current_data), u)
             best_u = self.space._vector(best_data["coordinates"]).copy()
             if best_data.get("parameters") != self.space.physical(best_u):
@@ -448,6 +535,8 @@ class ProjectedAdam:
         if current is not None and len(committed) != 1:
             raise ValueError("Saved optimizer must have exactly one valid initial evaluation")
         retained_rate = self.options.learning_rate
+        expected_stability_streak = 0
+        retained_parameters = None if not committed else committed[0]["parameters"]
         for event in step_events:
             if event.get("learning_rate_policy") != self.options.learning_rate_policy:
                 raise ValueError("Saved optimizer step has a different learning-rate policy")
@@ -471,16 +560,29 @@ class ProjectedAdam:
                 candidate = evaluation_events[index - 1]
                 if candidate.get("valid") is not True or candidate.get("iteration") != event["iteration"]:
                     raise ValueError("Saved accepted proposal does not name a valid evaluation from its attempt")
+                expected_stability_streak, expected_stability = self._parameter_stability(
+                    retained_parameters, candidate["parameters"], expected_stability_streak, counted=True)
+                if event.get("parameter_stability") != expected_stability:
+                    raise ValueError("Saved parameter stability details do not match accepted parameters")
+                retained_parameters = candidate["parameters"]
                 committed.append(candidate)
                 g = self.space._vector(event["coordinate_gradient_before"])
                 with np.errstate(over="ignore", invalid="ignore"):
                     expected_m = self.options.beta1 * expected_m + (1 - self.options.beta1) * g
                     expected_v = self.options.beta2 * expected_v + (1 - self.options.beta2) * g * g
+            else:
+                _, expected_stability = self._parameter_stability(
+                    retained_parameters, retained_parameters, expected_stability_streak, counted=False)
+                if event.get("parameter_stability") != expected_stability:
+                    raise ValueError("Rejected optimizer attempt changed parameter stability state")
         if rate != retained_rate:
             raise ValueError("Saved learning rate does not match completed optimizer history")
+        if stability_streak != expected_stability_streak:
+            raise ValueError("Saved parameter stability streak does not match optimizer history")
         if not np.array_equal(m, expected_m) or not np.array_equal(v, expected_v):
             raise ValueError("Saved Adam moments do not match accepted-gradient history")
         if current is not None:
+            assert best_u is not None and best_value is not None
             last = committed[-1]
             if (last.get("coordinates") != u.tolist() or last.get("parameters") != self.space.physical(u)
                     or last.get("value") != current.value or last.get("physical_gradient") != current.gradient
@@ -493,4 +595,5 @@ class ProjectedAdam:
         self.u, self.m, self.v = u, m, v
         self.current, self.best_u, self.best_value = current, best_u, best_value
         self.iterations, self.accepted_updates, self.evaluations = iterations, updates, evaluations
+        self.parameter_stability_streak = stability_streak
         self.learning_rate, self.status, self.history = rate, status, history

@@ -109,8 +109,9 @@ class CalibrateCliTests(unittest.TestCase):
             } if strict else None}
 
         with ExitStack() as stack:
-            stack.enter_context(redirect_stdout(io.StringIO()))
-            stack.enter_context(redirect_stderr(io.StringIO()))
+            stdout, stderr = io.StringIO(), io.StringIO()
+            stack.enter_context(redirect_stdout(stdout))
+            stack.enter_context(redirect_stderr(stderr))
             mocks = {}
             for name, replacement in (
                 ('load_config', Mock(side_effect=load)),
@@ -130,7 +131,7 @@ class CalibrateCliTests(unittest.TestCase):
                 stack.enter_context(patch.object(calibrate, name, replacement))
                 mocks[name] = replacement
             yield SimpleNamespace(mocks=mocks, prepared_calls=prepared_calls, stores=stores,
-                                  exports=exports, rollout=rollout)
+                                  exports=exports, rollout=rollout, stdout=stdout, stderr=stderr)
 
     def run_cli(self, arguments):
         return calibrate.run(calibrate.parse_args(arguments))
@@ -145,6 +146,44 @@ class CalibrateCliTests(unittest.TestCase):
         self.assertEqual(args.segment_length, 8)
         self.assertEqual(args.end_frame, 2)
         self.assertTrue(args.finite_difference)
+
+    def test_concise_fit_logging_and_balanced_stability_defaults(self):
+        output = self.root / 'concise-fit'
+        with self.environment() as env:
+            self.assertEqual(self.run_cli([
+                'fit', '--iterations', '1', '--no-evaluate', '--output-dir', str(output)]), 0)
+            text = env.stdout.getvalue()
+        self.assertIn('stage=initial', text)
+        self.assertIn('loss=', text)
+        self.assertIn('dL/dviscosity=', text)
+        self.assertIn('dL/du_viscosity=', text)
+        self.assertIn('update=1 accepted', text)
+        self.assertNotIn('Objective call', text)
+        self.assertNotIn('Optimizer: {', text)
+        manifest = json.loads((output / 'run_manifest.json').read_text())
+        options = manifest['identity']['optimizer']
+        self.assertEqual(options['parameter_stability_updates'], 3)
+        self.assertEqual(options['parameter_stability_rtol'], 1e-4)
+        self.assertEqual(options['parameter_stability_atol'], {'viscosity': 1e-3})
+        events = [json.loads(line) for line in (output / 'events.jsonl').read_text().splitlines()]
+        completed = [event for event in events if event.get('event') == 'optimizer_evaluation']
+        self.assertTrue(completed)
+        self.assertIn('physical_gradient', completed[0])
+        self.assertIn('coordinate_gradient', completed[0])
+
+    def test_fit_stability_can_be_disabled_and_quiet_keeps_terminal_result(self):
+        output = self.root / 'quiet-fit'
+        with self.environment() as env:
+            self.assertEqual(self.run_cli([
+                'fit', '--iterations', '0', '--no-evaluate', '--fit-log', 'quiet',
+                '--parameter-stability-updates', '0', '--output-dir', str(output)]), 0)
+            text = env.stdout.getvalue()
+        self.assertIn('status=budget_exhausted', text)
+        self.assertIn('Calibration result:', text)
+        self.assertNotIn('grad_physical[', text)
+        options = json.loads((output / 'run_manifest.json').read_text())['identity']['optimizer']
+        self.assertEqual(options['parameter_stability_updates'], 0)
+        self.assertEqual(options['parameter_stability_atol'], {})
 
     def test_physics_version_defaults_overrides_and_provenance(self):
         self.assertIsNone(calibrate.parse_args(['validate']).physics_version)

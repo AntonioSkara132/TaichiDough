@@ -52,10 +52,10 @@ class PhysicalParameterSpace:
         unknown = set(self.fit) - set(PARAMETER_NAMES)
         if unknown:
             raise ValueError(f"Unknown fitted parameters: {sorted(unknown)}")
-        if plasticity not in {"none", "stretch-clamp"}:
-            raise ValueError("plasticity must be none or stretch-clamp")
+        if plasticity not in {"none", "stretch-clamp", "von-mises"}:
+            raise ValueError("plasticity must be none, stretch-clamp or von-mises")
         self.plasticity = plasticity
-        if plasticity == "none" and {"plastic_min", "plastic_max"}.intersection(self.fit):
+        if plasticity != "stretch-clamp" and {"plastic_min", "plastic_max"}.intersection(self.fit):
             raise ValueError("Fitting plastic limits requires explicit stretch-clamp plasticity")
         supplied_bounds = dict(bounds or {})
         supplied_scales = dict(scales or {})
@@ -68,7 +68,7 @@ class PhysicalParameterSpace:
             a = np.asarray(values, dtype=np.float64)
             if a.shape != (2,) or not np.isfinite(a).all():
                 raise ValueError(f"{name} bounds must be two finite numbers")
-            self.bounds[name] = tuple(float(v) for v in a)
+            self.bounds[name] = (float(a[0]), float(a[1]))
         for name, (lower, upper) in self.bounds.items():
             if lower >= upper:
                 raise ValueError(f"{name} bounds must have positive width")

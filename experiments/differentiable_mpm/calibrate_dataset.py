@@ -4,23 +4,25 @@ from __future__ import annotations
 import argparse
 from dataclasses import asdict
 from datetime import datetime, timezone
-import json
 from pathlib import Path
 import sys
 import uuid
 
 import numpy as np
 
-from .dataset_config import MATERIAL_NAMES, load_dataset
+from .dataset_config import MATERIAL_NAMES, SCHEMA_V2, load_dataset
 from .dataset_inventory import inventory_draft, scan_dataset
 from .loss_options import is_paper_loss, loss_temporal_reduction, parse_loss_config
 from .multi_episode import (DatasetObjective, EpisodeExecutionError, EpisodeProcessEvaluator,
                             read_json, stable_runtime)
 from .optimize import AdamOptions, ProjectedAdam
 from .results import RUN_ROOT, RunStore, canonical_hash, source_identity
+from .run_logging import (format_optimizer_boundary, format_optimizer_evaluation,
+                          stability_settings)
 from .state import P2G_MODES, PHYSICS_VERSIONS
 
 SELECTION_SCHEMA = "taichidough/dataset-material-selection/v1"
+SELECTION_SCHEMA_V2 = "taichidough/dataset-physical-selection/v2"
 
 
 def episode_selection_record(episode, parameters):
@@ -60,6 +62,12 @@ def parse_args(argv=None):
     parser.add_argument("--learning-rate-growth", type=float)
     parser.add_argument("--max-backtracks", type=int)
     parser.add_argument("--max-evaluations", type=int)
+    parser.add_argument("--parameter-stability-updates", type=int)
+    parser.add_argument("--parameter-stability-rtol", type=float)
+    parser.add_argument("--parameter-stability-atol", action="append", default=[], metavar="NAME=VALUE")
+    parser.add_argument("--initial-youngs-modulus", type=float)
+    parser.add_argument("--initial-viscosity", type=float)
+    parser.add_argument("--fit-log", choices=("concise", "detailed", "quiet"), default="concise")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--no-runtime", action="store_true")
     parser.add_argument("--no-evaluate", action="store_true")
@@ -76,6 +84,11 @@ def parse_args(argv=None):
         parser.error("Discovery roots/config candidates are only for inventory")
     if args.iterations < 0 or args.cpu_threads < 1:
         parser.error("iterations must be nonnegative and cpu-threads positive")
+    if args.parameter_stability_updates is not None and args.parameter_stability_updates < 0:
+        parser.error("parameter-stability-updates must be nonnegative")
+    if args.parameter_stability_rtol is not None and (not np.isfinite(args.parameter_stability_rtol)
+                                                       or args.parameter_stability_rtol < 0):
+        parser.error("parameter-stability-rtol must be finite and nonnegative")
     if args.segment_length is not None and args.segment_length < 1:
         parser.error("segment-length must be positive")
     if args.worker_timeout_s is not None and (not np.isfinite(args.worker_timeout_s) or args.worker_timeout_s <= 0):
@@ -112,6 +125,13 @@ def dataset_options(args):
               if getattr(args, key) is not None}
     if overrides:
         result["path_overrides"] = overrides
+    initial_overrides = {}
+    if args.initial_youngs_modulus is not None:
+        initial_overrides["youngs_modulus"] = args.initial_youngs_modulus
+    if args.initial_viscosity is not None:
+        initial_overrides["viscosity"] = args.initial_viscosity
+    if initial_overrides:
+        result["initial_overrides"] = initial_overrides
     return result
 
 
@@ -119,9 +139,15 @@ def fresh_name(prefix):
     return prefix + "_" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S") + "_" + uuid.uuid4().hex[:8]
 
 
-def progress(event):
-    kind = event.get("event")
-    if kind in {"worker_started", "episode_started"}:
+def progress(event, mode="detailed"):
+    kind = event.get("event", "")
+    if kind.endswith("failed"):
+        print(f"{kind}: {event.get('error', '')}", file=sys.stderr, flush=True)
+    elif kind == "dataset_objective_finished" and not event["replay_consistent"]:
+        print("WARNING: this combined gradient includes finite replay mismatches.", flush=True)
+    elif mode != "detailed":
+        return
+    elif kind in {"worker_started", "episode_started"}:
         print(f"{kind}: {event['episode_id']} {event.get('action', '')}", flush=True)
         if event.get("directory"):
             print(f"  logs: {event['directory']}", flush=True)
@@ -130,10 +156,6 @@ def progress(event):
               f"weight={event['normalized_weight']:.6g}; elapsed={event['elapsed_s']:.2f}s", flush=True)
     elif kind == "dataset_objective_finished":
         print(f"Dataset loss={event['value']:.9g}; gradient={event['gradient']}", flush=True)
-        if not event["replay_consistent"]:
-            print("WARNING: this combined gradient includes finite replay mismatches.", flush=True)
-    elif kind.endswith("failed"):
-        print(f"{kind}: {event.get('error', '')}", file=sys.stderr, flush=True)
 
 
 def _runner(dataset, args, options, output_root, source, *, event=progress, prepared=None, runtimes=None):
@@ -156,7 +178,7 @@ def preflight(dataset, args, options, source):
     with RunStore(root, identity) as store:
         def event(record):
             store.append_event(record)
-            progress(record)
+            progress(record, args.fit_log if args.action == "fit" else "detailed")
         runner = _runner(dataset, args, options, store.path / "episodes", source, event=event)
         for ep in dataset.episodes:
             try:
@@ -199,15 +221,17 @@ def _dataset_identity(dataset, args, summaries, source):
 
 def load_selection(path, dataset, dataset_identity):
     record = read_json(path)
-    if not isinstance(record, dict) or record.get("schema") != SELECTION_SCHEMA:
-        raise ValueError("Expected a dataset material selection, not a single-episode parameter file")
+    expected_schema = SELECTION_SCHEMA_V2 if dataset.schema == SCHEMA_V2 else SELECTION_SCHEMA
+    if not isinstance(record, dict) or record.get("schema") != expected_schema:
+        raise ValueError("Expected a compatible dataset parameter selection")
     if record.get("dataset_identity") != dataset_identity:
         raise ValueError("Selected material belongs to different episode inputs, model or runtime settings")
     if record.get("dataset_fingerprint") != dataset.fingerprint:
         raise ValueError("Selected material belongs to another dataset configuration")
-    shared = record.get("shared_material_parameters")
-    if not isinstance(shared, dict) or set(shared) != set(MATERIAL_NAMES):
-        raise ValueError("Selected material must supply exactly the five shared physical values")
+    parameter_key = "shared_physical_parameters" if dataset.schema == SCHEMA_V2 else "shared_material_parameters"
+    shared = record.get(parameter_key)
+    if not isinstance(shared, dict) or set(shared) != set(dataset.shared_parameter_names):
+        raise ValueError("Selected parameters must supply exactly the dataset shared physical values")
     for ep in dataset.episodes:
         ep.parameters_for(shared)
     return dict(shared), {"path": str(Path(path).resolve()), "content_sha256": canonical_hash(record)}
@@ -278,14 +302,22 @@ def run(args):
         return 0 if not report["errors"] else 2
     options = dataset_options(args)
     dataset = load_dataset(args.dataset, **options)
-    print(f"Dataset {dataset.name}: {len(dataset.episodes)} episodes; shared material={dataset.fit_parameters}", flush=True)
-    print("Execution: one subprocess at a time; input preparation and compilation repeat per episode/candidate.", flush=True)
+    parameter_key = "shared_physical_parameters" if dataset.schema == SCHEMA_V2 else "shared_material_parameters"
+    if args.action != "fit" or args.fit_log == "detailed":
+        print(f"Dataset {dataset.name}: {len(dataset.episodes)} episodes; shared material={dataset.fit_parameters}", flush=True)
+        print("Execution: one subprocess at a time; input preparation and compilation repeat per episode/candidate.", flush=True)
     if args.ignore_recompute_mismatch:
         print("WARNING: finite replay mismatches are allowed; resulting gradients may be approximate.", flush=True)
     optimizer_options = dict(dataset.episodes[0].config.optimizer)
     for key in ("learning_rate", "learning_rate_policy", "learning_rate_growth", "max_backtracks", "max_evaluations"):
         if getattr(args, key) is not None:
             optimizer_options[key] = getattr(args, key)
+    optimizer_options = stability_settings(
+        optimizer_options, dataset.fit_parameters,
+        updates=args.parameter_stability_updates,
+        rtol=args.parameter_stability_rtol,
+        atol_items=args.parameter_stability_atol,
+    )
     adam_options = AdamOptions(**optimizer_options)
     summaries, failures, preflight_root = preflight(dataset, args, options, source)
     if failures:
@@ -305,7 +337,7 @@ def run(args):
         store.write_json("validated_inputs.json", {"preflight_directory": str(preflight_root), "episodes": summaries})
         def event(record):
             store.append_event(record)
-            progress(record)
+            progress(record, args.fit_log if args.action == "fit" else "detailed")
         runner = _runner(dataset, args, options, store.path / "episodes", source, event=event,
                          prepared={key: value["prepared_fingerprint"] for key, value in summaries.items()},
                          runtimes={key: stable_runtime(value["runtime"]) for key, value in summaries.items()})
@@ -317,7 +349,7 @@ def run(args):
             return 0
         if args.action == "gradient":
             evaluation = objective(shared)
-            result = {"status": "gradient_complete", "evaluation": asdict(evaluation), "shared_material_parameters": shared}
+            result = {"status": "gradient_complete", "evaluation": asdict(evaluation), parameter_key: shared}
             if args.finite_difference:
                 result["finite_difference"] = finite_difference_report(objective, dataset, shared, evaluation.gradient)
                 if not result["finite_difference"]["passed"]:
@@ -327,12 +359,23 @@ def run(args):
         if args.action in {"replay", "evaluate"}:
             evaluations, passed = _evaluate_selected(dataset, runner, shared, args.split, strict=args.action == "evaluate")
             store.write_json("result.json", {"status": "evaluation_complete" if passed else "evaluation_failed",
-                                             "evaluations": evaluations, "shared_material_parameters": shared})
+                                             "evaluations": evaluations, parameter_key: shared})
             return 0 if passed else 2
+        fit_names = dataset.fit_parameters
+        def evaluation_observer(event_record):
+            store.append_event({"event": "optimizer_" + event_record["type"], **event_record})
+            message = format_optimizer_evaluation(event_record, fit_names)
+            if args.fit_log != "quiet" or event_record.get("valid") is False:
+                print(message, file=sys.stderr if event_record.get("valid") is False else sys.stdout, flush=True)
         def callback(event_record, state):
             store.save_optimizer(event_record, state)
-            print("Optimizer: " + json.dumps(event_record, sort_keys=True), flush=True)
-        optimizer = ProjectedAdam(dataset.parameter_space(), objective, adam_options, callback, objective_id=store.identity_hash)
+            message = format_optimizer_boundary(event_record, state, fit_names)
+            terminal = event_record.get("status") in ProjectedAdam._TERMINAL
+            if message is not None and (args.fit_log != "quiet" or event_record.get("type") == "status" or terminal):
+                print(message, flush=True)
+        optimizer = ProjectedAdam(dataset.parameter_space(), objective, adam_options, callback,
+                                  objective_id=store.identity_hash,
+                                  evaluation_observer=evaluation_observer)
         if args.resume:
             optimizer.load_state_dict(store.optimizer_state())
         try:
@@ -343,20 +386,24 @@ def run(args):
                                              "accepted_updates": optimizer.accepted_updates,
                                              "evaluations": optimizer.evaluations})
             raise
-        selected = {name: optimization.best_parameters[name] for name in MATERIAL_NAMES}
+        selected = {name: optimization.best_parameters[name] for name in dataset.shared_parameter_names}
         selections = {ep.id: episode_selection_record(ep, selected) for ep in dataset.episodes}
         has_holdout = any(ep.membership == "validation" for ep in dataset.episodes)
-        selection = {"schema": SELECTION_SCHEMA, "shared_material_parameters": selected,
+        selection_key = "shared_physical_parameters" if dataset.schema == SCHEMA_V2 else "shared_material_parameters"
+        selection_schema = SELECTION_SCHEMA_V2 if dataset.schema == SCHEMA_V2 else SELECTION_SCHEMA
+        selection = {"schema": selection_schema, selection_key: selected,
                      "fitted_parameters": list(dataset.fit_parameters), "training_value": optimization.best_value,
                      "selection_membership": "training", "dataset_fingerprint": dataset.fingerprint,
                      "dataset_identity": verified, "identity_sha256": store.identity_hash,
                      "physics_version": verified["physics_version"], "physics_reference": verified["physics_reference"],
                      "episodes": selections, "independent_heldout_episodes_declared": has_holdout,
                      "ignore_recompute_mismatch": args.ignore_recompute_mismatch,
-                     "note": "Shared material values only; contacts and geometry remain episode-specific. No parameter conversion between physics versions."}
+                     "note": ("Shared material and selected contact values; remaining contacts and geometry stay episode-specific. "
+                              "No parameter conversion between physics versions." if dataset.schema == SCHEMA_V2 else
+                              "Shared material values only; contacts and geometry remain episode-specific. No parameter conversion between physics versions.")}
         store.write_json("selected_parameters.json", selection)
         result = {"status": optimization.status, "optimization": asdict(optimization),
-                  "shared_material_parameters": selected, "evaluations": {},
+                  selection_key: selected, "evaluations": {},
                   "independent_heldout_episodes_declared": has_holdout,
                   "successful_objectives_this_process": objective.successful_calls,
                   "objectives_with_replay_mismatch": objective.calls_with_mismatches,

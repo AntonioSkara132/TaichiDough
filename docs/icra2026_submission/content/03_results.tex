@@ -1,0 +1,62 @@
+\section{Results and Discussion}
+\label{sec:results}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.98\textwidth]{matched_sequence.pdf}
+\caption{Exact-timestamp Episode~18 camera views and simulation outputs. The top row is contextual RGB extracted from the original Rosbag; the bottom row is saved dough-only simulated optical depth rendered with the same calibrated camera and display crop. The simulation does not render spatula occlusion. Frames after 2.00\,s are temporal continuation of the same motion, not independent generalization.}
+\label{fig:matched}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.96\textwidth]{parameter_history.pdf}
+\caption{Accepted objective and parameter history for the interrupted five-variable differentiable run. The orange ring marks the best saved state. Evaluation 18 was interrupted and all completed objectives recorded finite replay mismatches; these are best-so-far effective simulator parameters, not a converged physical estimate.}
+\label{fig:parameters}
+\end{figure*}
+
+\begin{table*}[t]
+\caption{Existing single-sequence evidence. The experiments use different simulator revisions and fixed settings and are not a matched optimizer comparison. ``Continuation'' denotes later frames of the same recorded motion.}
+\label{tab:evidence}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}p{0.19\textwidth}p{0.36\textwidth}p{0.37\textwidth}@{}}
+\toprule
+Experiment & Result & Interpretation \\
+\midrule
+Metric static initialization & IoU $0.8306$; median/p95 depth error $0.148/1.155$\,mm & Initial visible geometry only; no constitutive validation \\
+Derivative-free $E$ sweep & Best candidate $130.6$\,kPa; training loss $0.3611$ & Rejected because the minimum is broad and flat \\
+Differentiable five-variable fit & Objective $0.4246\!\rightarrow\!0.1623$ ($61.8\%$) & Interrupted after 15 accepted updates; mismatch-tolerant replay \\
+Separate strict replay & Train $0.2821$ vs. frozen $0.3416$; continuation $0.3939$ vs. frozen $0.8265$ & Better visible prediction, but $E=300$\,kPa reaches the upper bound \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+We report existing Episode~18 evidence in three groups. They use different simulator revisions or fixed settings and are therefore not pooled as repeated trials. Table~\ref{tab:evidence} records the role and main limitation of each result, while Figs.~\ref{fig:matched} and~\ref{fig:parameters} show the camera-matched sequence and differentiable optimization history.
+
+\subsection{Metric Initialization}
+The metric calibration aggregates 384 moving-tag correspondences and fixes the camera, mocap scene, and floor in metres. At the initial frame, 3970 observed points are compared with 25,495 virtually visible points without fitted translation, scale, or post-hoc registration. On a 3\,mm top-view grid, the reconstructed footprint obtains IoU $0.8306$, extent ratios $1.077$ and $1.106$, and an area ratio of $1.191$. The centroid error is $(-0.98,1.25)$\,mm, while median and 95th-percentile absolute depth errors are $0.148$ and $1.155$\,mm. This supports the initial observation-to-simulation alignment, not the constitutive law.
+
+\subsection{Static and Differentiable Fitting}
+The derivative-free baseline varies only $E$ with viscosity fixed to zero and plastic projection disabled. Its nominal candidate is $130.6$\,kPa, but the result is explicitly unaccepted: candidates from approximately $91$ to $187$\,kPa lie inside the configured near-best tolerance. A bootstrap over the single training window repeatedly selects the same discrete candidate and is not a between-trial uncertainty interval.
+
+The newer differentiable run jointly adjusts $E$, $\nu$, viscosity $\eta$, and the two principal-stretch bounds. Seventeen objective evaluations and fifteen accepted updates reduce the partial-view training objective from $0.42455$ to $0.16229$. The best saved state is
+\begin{equation}
+\begin{split}
+E&=8.803\ \mathrm{kPa},\quad \nu=0.48708,\quad
+\eta=30.37\ \mathrm{Pa\,s},\\
+\sigma_{\min}&=0.86262,\qquad \sigma_{\max}=1.06714.
+\end{split}
+\end{equation}
+Evaluation 18 ended with a keyboard interruption, so no final selected-parameter record was produced. The saved full-prefix reverse evaluation spans 9839 steps and 59 observations using 155 host checkpoints of length 64. Recomputed segments record 2879 mismatches: 192 endpoint-state arrays and 2687 per-step contact/yield summaries. Maximum endpoint differences are $99.12\,\mu$m in position, $0.1843$\,m/s in velocity, $0.02916$\,s$^{-1}$ in $C$, and $1.506\!\times\!10^{-4}$ in $F$, although the maximum observation-loss difference is only $3.58\!\times\!10^{-7}$. The small scalar loss discrepancy does not verify the derivative because states and piecewise contact decisions differ. The curve therefore shows that the returned approximate gradient reduced its declared objective; it does not demonstrate convergence, unique recovery, or the exact derivative of the recorded forward trajectory.
+
+\subsection{Frozen Strict Evaluation}
+A separate completed corrected-physics run exports its selected state to the independent strict evaluator. Its mean four-component score is $0.2821$ on frames 1--60, compared with $0.3416$ for frozen initial geometry. On frames 61--97 the selected rollout scores $0.3939$, compared with $0.8265$ for frozen geometry. All expected frames are valid. Mean post-initial pixel IoU is $0.4586$ in the fitting interval and $0.4659$ over the complete replay report; mean depth-change errors are $4.59$ and $5.90$\,mm for the corresponding training and later-frame scores.
+
+This result shows that deformation under the prescribed replay predicts visible geometry better than leaving the object fixed. It is not a clean validation of identified physical parameters: $E$ reaches its $300$\,kPa upper bound, viscosity reaches zero, and the run also permits replay mismatches. The later interval uses the same dough, camera, calibration, and recorded manipulation after replay from frame zero. We therefore call it temporal continuation rather than generalization.
+
+\subsection{Limitations for Single-View Identification}
+A single depth view leaves hidden volume and occluded contact unmeasured, and the evaluator does not render the spatulas into the simulated depth image. Material estimates are consequently conditional on reconstructed volume, mass/density, floor pose, tool registration, contact law and friction, numerical resolution, and loss smoothing. A separate diagnostic also finds an observed table plane about $47.6$\,mm above the configured floor with approximately $5^{\circ}$ tilt, which can be absorbed incorrectly by material or contact parameters. Near-incompressible $\nu$, elasticity, viscosity, and stretch clipping may compensate for one another under a single monotonic trajectory. The present evidence therefore supports an implemented observation-conditioned fitting pipeline and measurable prediction improvement, but not camera-only rheometry or universal dough constants.
+
+\FloatBarrier

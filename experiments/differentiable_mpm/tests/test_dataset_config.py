@@ -8,7 +8,8 @@ import unittest
 import numpy as np
 
 from experiments.differentiable_mpm.config import SCHEMA as EPISODE_SCHEMA
-from experiments.differentiable_mpm.dataset_config import MATERIAL_NAMES, SCHEMA, load_dataset
+from experiments.differentiable_mpm.dataset_config import (MATERIAL_NAMES, PHYSICAL_NAMES, SCHEMA,
+                                                            SCHEMA_V2, load_dataset)
 from experiments.differentiable_mpm.state import DEFAULT_PARAMETERS
 from experiments.differentiable_mpm.tests.helpers import temporary_directory
 
@@ -69,6 +70,55 @@ class DatasetConfigTests(unittest.TestCase):
             self.assertEqual(episode.config.parameters["floor_retention"], 0.2 + 0.5 * index)
             self.assertEqual(episode.scored_window.indices(), [1, 3, 4])
             self.assertEqual({name: episode.config.parameters[name] for name in MATERIAL_NAMES}, self.initial)
+
+    def test_v2_fits_shared_floor_friction_and_stickiness(self):
+        self.document["schema"] = SCHEMA_V2
+        self.document["shared_parameters"]["initial"].update(
+            floor_retention=0.35, tool_friction_coefficient=0.8, tool_stickiness=0.2)
+        self.document["shared_parameters"]["fit"] = [
+            "viscosity", "floor_retention", "tool_friction_coefficient", "tool_stickiness"]
+        self.document["shared_parameters"]["bounds"] = {
+            "viscosity": [0.0, 80.0], "floor_retention": [0.0, 1.0],
+            "tool_friction_coefficient": [0.0, 2.0], "tool_stickiness": [0.0, 1.0]}
+        for config in self.configs:
+            config["simulation"].update(tool_collision="sdf",
+                                        tool_contact_model="coulomb-adhesive-v1",
+                                        tool_contact_absorption=0.0)
+            config["paths"].update(collision_manifest=str(self.root / "collision.json"),
+                                   kinova_collision_mesh=str(self.root / "kinova.stl"),
+                                   ur_collision_mesh=str(self.root / "ur.stl"))
+        self.write()
+        dataset = load_dataset(self.path)
+        self.assertEqual(dataset.schema, SCHEMA_V2)
+        self.assertEqual(dataset.shared_parameter_names, PHYSICAL_NAMES)
+        self.assertEqual(dataset.parameter_space().fit, tuple(self.document["shared_parameters"]["fit"]))
+        self.assertEqual(dataset.as_dict()["tool_contact"], {"retention": 1.0, "absorption": 0.0})
+        for episode in dataset.episodes:
+            effective = episode.parameters_for(dataset.shared_initial)
+            self.assertEqual(effective["floor_retention"], 0.35)
+            self.assertEqual(effective["tool_friction_coefficient"], 0.8)
+            self.assertEqual(effective["tool_stickiness"], 0.2)
+            self.assertEqual(episode.config.simulation["tool_stickiness"], 0.2)
+
+    def test_v2_joint_friction_and_stickiness_requires_adhesive_sdf_contact(self):
+        self.document["schema"] = SCHEMA_V2
+        self.document["shared_parameters"]["initial"].update(
+            floor_retention=0.35, tool_friction_coefficient=0.8, tool_stickiness=0.0)
+        self.document["shared_parameters"]["fit"] = ["tool_friction_coefficient", "tool_stickiness"]
+        self.document["shared_parameters"]["bounds"] = {
+            "tool_friction_coefficient": [0.0, 2.0], "tool_stickiness": [0.0, 1.0]}
+        for collision, model in (("none", "coulomb-adhesive-v1"), ("sdf", "coulomb-v1")):
+            for config in self.configs:
+                config["simulation"].update(tool_collision=collision, tool_contact_model=model,
+                                            tool_contact_absorption=0.0)
+                if collision == "sdf":
+                    config["paths"].update(collision_manifest=str(self.root / "collision.json"),
+                                           kinova_collision_mesh=str(self.root / "kinova.stl"),
+                                           ur_collision_mesh=str(self.root / "ur.stl"))
+            self.write()
+            with self.subTest(collision=collision, model=model), self.assertRaisesRegex(
+                    ValueError, "Joint tool friction and stickiness"):
+                load_dataset(self.path)
 
     def test_optional_global_floor_and_tool_friction_override_every_episode(self):
         self.document["floor_retention"] = 0.35
@@ -266,6 +316,42 @@ class DatasetConfigTests(unittest.TestCase):
 
     def test_plastic_fitting_requires_active_model_for_every_episode(self):
         self.configs[1]["simulation"]["plasticity"] = "none"
+        self.write()
+        with self.assertRaisesRegex(ValueError, "plastic bounds"):
+            load_dataset(self.path)
+
+    def test_von_mises_dataset_preserves_five_values_and_requires_common_yield_stress(self):
+        self.document["shared_parameters"]["fit"] = ["youngs_modulus", "poisson_ratio", "viscosity"]
+        self.document["shared_parameters"]["bounds"] = {
+            "youngs_modulus": [4000, 40000],
+            "poisson_ratio": [0.1, 0.4],
+            "viscosity": [0, 80],
+        }
+        for config in self.configs:
+            config["simulation"].update(
+                plasticity="von-mises",
+                von_mises_yield_stress_pa=1000.0,
+                tool_contact_absorption=0.0,
+                tool_stickiness=0.0,
+            )
+        self.write()
+        dataset = load_dataset(self.path)
+        self.assertEqual(set(dataset.shared_initial), set(MATERIAL_NAMES))
+        self.assertEqual(dataset.fit_parameters, ("youngs_modulus", "poisson_ratio", "viscosity"))
+        self.assertEqual(dataset.parameter_space().fit, dataset.fit_parameters)
+        self.configs[1]["simulation"]["von_mises_yield_stress_pa"] = 1200.0
+        self.write()
+        with self.assertRaisesRegex(ValueError, "incompatible shared"):
+            load_dataset(self.path)
+
+    def test_von_mises_dataset_rejects_plastic_limit_fit(self):
+        for config in self.configs:
+            config["simulation"].update(
+                plasticity="von-mises",
+                von_mises_yield_stress_pa=1000.0,
+                tool_contact_absorption=0.0,
+                tool_stickiness=0.0,
+            )
         self.write()
         with self.assertRaisesRegex(ValueError, "plastic bounds"):
             load_dataset(self.path)

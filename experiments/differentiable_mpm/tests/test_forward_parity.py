@@ -14,7 +14,8 @@ import unittest
 import numpy as np
 
 from experiments.differentiable_mpm.reference_adapter import (
-    REPOSITORY_ROOT, EXPERIMENT_ROOT, current_reference_policy, reference_policy, reference_identity,
+    REPOSITORY_ROOT, EXPERIMENT_ROOT, current_reference_policy, reference_arguments,
+    reference_policy, reference_identity,
 )
 from experiments.differentiable_mpm.state import (
     DEFAULT_PARAMETERS, ParticleState, SDFData, SimulationConfig, STATE_NAMES, ToolControl,
@@ -201,6 +202,15 @@ def launch_worker(kind, fixture, steps, output, physics_version="corrected-v1"):
 
 
 class ForwardParityTests(unittest.TestCase):
+    def test_von_mises_is_rejected_before_reference_translation(self):
+        config = SimulationConfig(
+            n_particles=1,
+            plasticity="von-mises",
+            von_mises_yield_stress_pa=1000.0,
+        )
+        with self.assertRaisesRegex(ValueError, "does not implement von-mises"):
+            reference_arguments(config, DEFAULT_PARAMETERS)
+
     def test_corrected_forward_states_match_corrected_reference(self):
         self.check_forward_states("corrected-v1")
 

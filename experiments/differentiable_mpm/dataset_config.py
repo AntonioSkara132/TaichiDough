@@ -15,7 +15,10 @@ from .state import SimulationConfig, validate_parameters
 
 
 SCHEMA = "taichidough/differentiable-dataset/v1"
+SCHEMA_V2 = "taichidough/differentiable-dataset/v2"
 MATERIAL_NAMES = ("youngs_modulus", "poisson_ratio", "viscosity", "plastic_min", "plastic_max")
+CONTACT_NAMES = ("floor_retention", "tool_friction_coefficient", "tool_stickiness")
+PHYSICAL_NAMES = MATERIAL_NAMES + CONTACT_NAMES
 TOOL_CONTACT = {"retention": 1.0, "absorption": 0.0, "stickiness": 0.0}
 _EPISODE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
 
@@ -42,10 +45,14 @@ def _number(value, name):
     return result
 
 
+def _shared_values(values, names):
+    if not isinstance(values, Mapping) or set(values) != set(names):
+        raise ValueError("Shared values must specify exactly " + ", ".join(names))
+    return {name: _number(values[name], name) for name in names}
+
+
 def _material_values(values):
-    if not isinstance(values, Mapping) or set(values) != set(MATERIAL_NAMES):
-        raise ValueError("Shared material values must specify exactly " + ", ".join(MATERIAL_NAMES))
-    return {name: _number(values[name], name) for name in MATERIAL_NAMES}
+    return _shared_values(values, MATERIAL_NAMES)
 
 
 def _unique_keys(pairs):
@@ -77,9 +84,12 @@ class DatasetEpisode:
     weight: float
     scored_window: FrameWindow
 
+    shared_parameter_names: tuple[str, ...]
+
     def parameters_for(self, shared_values):
-        """Keep this episode's fixed contact parameters when inserting shared material."""
-        values = {**self.config.parameters, **_material_values(shared_values), "tool_retention": 1.0}
+        """Insert the dataset's shared values while preserving episode-specific values."""
+        values = {**self.config.parameters, **_shared_values(shared_values, self.shared_parameter_names),
+                  "tool_retention": 1.0}
         validate_parameters(values)
         return values
 
@@ -91,6 +101,7 @@ class DatasetEpisode:
 
 @dataclass(frozen=True)
 class DatasetConfig:
+    schema: str
     name: str
     episodes: tuple[DatasetEpisode, ...]
     shared_initial: dict[str, float]
@@ -101,6 +112,10 @@ class DatasetConfig:
     config_path: Path
     source_document_sha256: str
 
+    @property
+    def shared_parameter_names(self):
+        return PHYSICAL_NAMES if self.schema == SCHEMA_V2 else MATERIAL_NAMES
+
     def parameter_space(self):
         first = self.episodes[0]
         return PhysicalParameterSpace(first.parameters_for(self.shared_initial), self.fit_parameters,
@@ -108,10 +123,12 @@ class DatasetConfig:
                                       bounds=self.parameter_bounds)
 
     def as_dict(self):
-        result = {"schema": SCHEMA, "name": self.name,
+        result = {"schema": self.schema, "name": self.name,
                   "shared_parameters": {"initial": dict(self.shared_initial), "fit": list(self.fit_parameters),
                                         "bounds": {key: list(value) for key, value in self.parameter_bounds.items()}},
-                  "tool_contact": dict(TOOL_CONTACT), "episodes": [episode.as_dict() for episode in self.episodes],
+                  "tool_contact": (dict(TOOL_CONTACT) if self.schema == SCHEMA else
+                                   {"retention": 1.0, "absorption": 0.0}),
+                  "episodes": [episode.as_dict() for episode in self.episodes],
                   "config_path": str(self.config_path), "source_document_sha256": self.source_document_sha256}
         if self.floor_retention is not None:
             result["floor_retention"] = self.floor_retention
@@ -136,7 +153,7 @@ def _common_settings(config):
 
 
 def load_dataset(path, *, path_overrides=None, backend=None, precision=None, p2g_mode=None,
-                 physics_version=None, segment_length=None):
+                 physics_version=None, segment_length=None, initial_overrides=None):
     """Resolve and validate a manifest without reading recordings or changing files.
 
     Episode-config references and input overrides are relative to the dataset
@@ -149,22 +166,42 @@ def load_dataset(path, *, path_overrides=None, backend=None, precision=None, p2g
     _object(document, "dataset", {"schema", "name", "shared_parameters", "tool_contact",
                                   "floor_retention", "tool_friction_coefficient", "episodes"},
             {"schema", "name", "shared_parameters", "episodes"})
-    if document["schema"] != SCHEMA:
-        raise ValueError(f"Dataset manifest must use {SCHEMA}")
+    schema = document["schema"]
+    if schema not in {SCHEMA, SCHEMA_V2}:
+        raise ValueError(f"Dataset manifest must use {SCHEMA} or {SCHEMA_V2}")
     if not isinstance(document["name"], str) or not document["name"].strip():
         raise ValueError("Dataset name is required")
     shared = _object(document["shared_parameters"], "shared_parameters", {"initial", "fit", "bounds"}, {"initial", "fit"})
-    initial = _material_values(shared["initial"])
+    shared_names = PHYSICAL_NAMES if schema == SCHEMA_V2 else MATERIAL_NAMES
+    initial = _shared_values(shared["initial"], shared_names)
     fit = shared["fit"]
-    if (not isinstance(fit, list) or not fit or not all(isinstance(name, str) for name in fit)
-            or len(set(fit)) != len(fit) or set(fit) - set(MATERIAL_NAMES)):
-        raise ValueError("Shared fit must list distinct material parameter names only")
+    if (not isinstance(fit, list) or not fit or not all(type(name) is str for name in fit)
+            or len(set(fit)) != len(fit) or set(fit) - set(shared_names)):
+        description = "physical" if schema == SCHEMA_V2 else "material"
+        raise ValueError(f"Shared fit must list distinct {description} parameter names only")
     raw_bounds = _object(shared.get("bounds", {}), "shared bounds", fit)
     bounds = {}
     for name, values in raw_bounds.items():
         if not isinstance(values, list) or len(values) != 2:
             raise ValueError(f"Shared {name} bounds must be two finite numbers")
         bounds[name] = [_number(value, f"{name} bound") for value in values]
+    if initial_overrides is None:
+        initial_overrides = {}
+    if not isinstance(initial_overrides, Mapping):
+        raise ValueError("initial_overrides must map material names to values")
+    allowed_initial_overrides = {"youngs_modulus", "viscosity"}
+    unknown_initial_overrides = set(initial_overrides) - allowed_initial_overrides
+    if unknown_initial_overrides:
+        raise ValueError(f"Initial overrides are limited to Young's modulus and viscosity: {sorted(unknown_initial_overrides)}")
+    for name, raw_value in initial_overrides.items():
+        if name not in fit or name not in bounds:
+            raise ValueError(f"Initial override {name} must be a fitted parameter with declared bounds")
+        value = _number(raw_value, f"initial_overrides.{name}")
+        if not bounds[name][0] <= value <= bounds[name][1]:
+            raise ValueError(f"Initial override {name}={value} lies outside bounds {bounds[name]}")
+        initial[name] = value
+    if schema == SCHEMA_V2 and any(name in document for name in ("floor_retention", "tool_friction_coefficient")):
+        raise ValueError("Dataset v2 contact values belong in shared_parameters")
     contact = _object(document.get("tool_contact", {}), "tool_contact", TOOL_CONTACT)
     for name, expected in TOOL_CONTACT.items():
         if _number(contact.get(name, expected), f"tool_contact.{name}") != expected:
@@ -225,7 +262,11 @@ def load_dataset(path, *, path_overrides=None, backend=None, precision=None, p2g
         overrides = {name: _resolved_path(value, path.parent, f"{episode_id}.{name}")
                      for name, value in overrides.items()}
         config = load_config(config_path, overrides)
-        fixed = {"tool_retention": 1.0, "tool_stickiness": 0.0}
+        fixed = {"tool_retention": 1.0}
+        if schema == SCHEMA:
+            fixed["tool_stickiness"] = 0.0
+        else:
+            fixed.update({name: initial[name] for name in CONTACT_NAMES})
         if floor_retention is not None:
             fixed["floor_retention"] = floor_retention
         if tool_friction_coefficient is not None:
@@ -233,7 +274,12 @@ def load_dataset(path, *, path_overrides=None, backend=None, precision=None, p2g
         config.parameters = {**config.parameters, **initial, **fixed}
         config.fit_parameters = list(fit)
         config.parameter_bounds = {name: list(values) for name, values in bounds.items()}
-        config.simulation.update(tool_contact_absorption=0.0, tool_stickiness=0.0)
+        config.simulation.update(tool_contact_absorption=0.0, tool_stickiness=fixed["tool_stickiness"])
+        if schema == SCHEMA_V2:
+            config.simulation["tool_friction_coefficient"] = fixed["tool_friction_coefficient"]
+            if {"tool_friction_coefficient", "tool_stickiness"} <= set(fit):
+                if config.simulation.get("tool_collision") != "sdf" or config.simulation.get("tool_contact_model") != "coulomb-adhesive-v1":
+                    raise ValueError("Joint tool friction and stickiness fitting requires tool_collision='sdf' and tool_contact_model='coulomb-adhesive-v1'")
         for name, value in (("precision", precision), ("p2g_mode", p2g_mode), ("physics_version", physics_version)):
             if value is not None:
                 config.simulation[name] = value
@@ -259,12 +305,13 @@ def load_dataset(path, *, path_overrides=None, backend=None, precision=None, p2g
         elif current != common:
             differing = [name for name in common if current[name] != common[name]]
             raise ValueError(f"Episode {episode_id} has incompatible shared settings: {', '.join(differing)}")
-        episodes.append(DatasetEpisode(episode_id, config, config_path, membership, weight, scored_window))
+        episodes.append(DatasetEpisode(episode_id, config, config_path, membership, weight, scored_window,
+                                       tuple(shared_names)))
     unknown_overrides = set(path_overrides) - ids
     if unknown_overrides:
         raise ValueError("Path overrides name unknown episodes: " + ", ".join(sorted(unknown_overrides)))
     if not any(episode.membership == "training" for episode in episodes):
         raise ValueError("Dataset requires at least one training episode")
-    return DatasetConfig(document["name"], tuple(episodes), initial, tuple(fit), bounds,
+    return DatasetConfig(schema, document["name"], tuple(episodes), initial, tuple(fit), bounds,
                          floor_retention, tool_friction_coefficient, path,
                          hashlib.sha256(raw).hexdigest())

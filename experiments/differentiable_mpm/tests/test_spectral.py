@@ -18,6 +18,7 @@ import taichi as ti
 
 from experiments.differentiable_mpm.spectral import (
     clamp_forward, clamp_vjp, polar_forward, polar_vjp,
+    von_mises_forward, von_mises_vjp,
 )
 
 
@@ -37,6 +38,11 @@ class SpectralKernels:
         self.bounds_bar = ti.Vector.field(2, dtype=dtype, shape=())
         self.yielded = ti.field(dtype=ti.i32, shape=())
         self.yielded_reference = ti.field(dtype=ti.i32, shape=())
+        self.material = ti.Vector.field(3, dtype=dtype, shape=())
+        self.von_mises = ti.Matrix.field(3, 3, dtype=dtype, shape=())
+        self.von_mises_bar = ti.Matrix.field(3, 3, dtype=dtype, shape=())
+        self.von_mises_parameter_bar = ti.Vector.field(2, dtype=dtype, shape=())
+        self.von_mises_yielded = ti.field(dtype=ti.i32, shape=())
 
     @ti.kernel
     def forward(self):
@@ -70,6 +76,22 @@ class SpectralKernels:
         self.projected_bar[None] = F_bar
         self.bounds_bar[None] = ti.Vector([lower_bar, upper_bar])
 
+    @ti.kernel
+    def von_mises_forward_kernel(self):
+        value, yielded = von_mises_forward(
+            self.F[None], self.material[None][0], self.material[None][1], self.material[None][2],
+        )
+        self.von_mises[None] = value
+        self.von_mises_yielded[None] = yielded
+
+    @ti.kernel
+    def von_mises_backward_kernel(self):
+        F_bar, young_bar, poisson_bar = von_mises_vjp(
+            self.F[None], self.material[None][0], self.material[None][1], self.material[None][2], self.bar[None],
+        )
+        self.von_mises_bar[None] = F_bar
+        self.von_mises_parameter_bar[None] = ti.Vector([young_bar, poisson_bar])
+
     def value(self, F, lower, upper, G, which):
         self.F[None] = F
         self.bounds[None] = [lower, upper]
@@ -85,6 +107,19 @@ class SpectralKernels:
         self.backward()
         field = self.rotation_bar if which == "polar" else self.projected_bar
         return field.to_numpy().astype(np.float64), self.bounds_bar.to_numpy().astype(np.float64)
+
+    def von_mises_value(self, F, young, poisson, yield_stress, G):
+        self.F[None] = F
+        self.material[None] = [young, poisson, yield_stress]
+        self.von_mises_forward_kernel()
+        return float(np.sum(self.von_mises.to_numpy().astype(np.float64) * G)), self.von_mises.to_numpy(), int(self.von_mises_yielded[None])
+
+    def von_mises_adjoint(self, F, young, poisson, yield_stress, G):
+        self.F[None] = F
+        self.material[None] = [young, poisson, yield_stress]
+        self.bar[None] = G
+        self.von_mises_backward_kernel()
+        return self.von_mises_bar.to_numpy().astype(np.float64), self.von_mises_parameter_bar.to_numpy().astype(np.float64)
 
 
 def _rotation(axis, angle):
@@ -114,6 +149,21 @@ def _numpy_forward(F, lower, upper, which):
     """High-accuracy mathematical-map oracle, used only in gradient tests."""
     U, s, Vh = np.linalg.svd(F)
     return U @ Vh if which == "polar" else (U * np.clip(s, lower, upper)) @ Vh
+
+
+def _numpy_von_mises(F, young, poisson, yield_stress):
+    """High-accuracy mathematical Hencky J2 map used only by tests."""
+    U, s, Vh = np.linalg.svd(F)
+    epsilon = np.log(s)
+    mean = np.mean(epsilon)
+    deviator = epsilon - mean
+    radius = np.linalg.norm(deviator)
+    limit = yield_stress * (1.0 + poisson) / young
+    yielded = radius >= limit
+    if yielded:
+        epsilon = mean + limit * deviator / radius
+        s = np.exp(epsilon)
+    return (U * s) @ Vh, yielded
 
 
 def _run_precision(precision):
@@ -277,6 +327,84 @@ def _run_precision(precision):
             F_bar, bounds_bar = kernels.adjoint(F, 0.9, upper, G, "clamp")
             self.assertGreater(abs(bounds_bar[1]), 0.1)
             np.testing.assert_allclose(F_bar + F_bar.T, 0, atol=analytic_atol, rtol=0)
+
+        def test_von_mises_forward_matches_numpy_oracle(self):
+            young, poisson = 5000.0, 0.3
+            L = _rotation([1, -2, 3], 0.41)
+            R = _rotation([2, 1, -1], -0.29)
+            cases = {
+                "volumetric": (1.12 * np.eye(3), 100.0, False),
+                "elastic": (L @ np.diag(np.exp([0.02, -0.01, -0.01])) @ R.T, 1000.0, False),
+                "active_distinct": (L @ np.diag(np.exp([0.20, -0.04, -0.16])) @ R.T, 100.0, True),
+                "active_repeated": (L @ np.diag(np.exp([0.20, -0.10, -0.10])) @ R.T, 100.0, True),
+            }
+            tolerance = 2e-11 if precision == "f64" else 3e-6
+            for name, (F, yield_stress, expected_yielded) in cases.items():
+                with self.subTest(case=name):
+                    _, actual, yielded = kernels.von_mises_value(
+                        F.astype(np_dtype), young, poisson, yield_stress, np.eye(3),
+                    )
+                    expected, oracle_yielded = _numpy_von_mises(F, young, poisson, yield_stress)
+                    self.assertEqual(yielded, int(expected_yielded))
+                    self.assertEqual(oracle_yielded, expected_yielded)
+                    np.testing.assert_allclose(actual, expected, rtol=tolerance, atol=tolerance)
+                    self.assertGreater(np.linalg.det(actual), 0)
+                    self.assertAlmostEqual(np.linalg.det(actual), np.linalg.det(F),
+                                           delta=tolerance * max(1.0, abs(np.linalg.det(F))))
+
+        def test_von_mises_matrix_and_parameter_vjp(self):
+            young, poisson, yield_stress = 5000.0, 0.3, 100.0
+            L = _rotation([1, 2, -1], 0.37)
+            R = _rotation([-2, 1, 3], -0.43)
+            fixtures = {
+                "active_distinct": L @ np.diag(np.exp([0.20, -0.04, -0.16])) @ R.T,
+                "active_repeated": L @ np.diag(np.exp([0.20, -0.10, -0.10])) @ R.T,
+            }
+            matrix_tolerance = 3e-6 if precision == "f64" else 8e-3
+            parameter_tolerance = 2e-7 if precision == "f64" else 4e-3
+            vm_steps = (2e-4, 7e-5, 2e-5) if precision == "f64" else (8e-3, 4e-3, 2e-3)
+            for name, F in fixtures.items():
+                F = F.astype(np_dtype).astype(np.float64)
+                F_bar, parameter_bar = kernels.von_mises_adjoint(F, young, poisson, yield_stress, G)
+                directions = [rng.normal(size=(3, 3)) for _ in range(3)]
+                for direction in directions:
+                    direction /= np.linalg.norm(direction)
+                    ad = float(np.sum(F_bar * direction))
+                    errors = []
+                    for h in vm_steps:
+                        plus = float(np.sum(_numpy_von_mises(F + h * direction, young, poisson, yield_stress)[0] * G))
+                        minus = float(np.sum(_numpy_von_mises(F - h * direction, young, poisson, yield_stress)[0] * G))
+                        errors.append(abs((plus - minus) / (2 * h) - ad))
+                    self.assertLessEqual(min(errors), matrix_tolerance * max(1.0, abs(ad)), name)
+                for index, (value, h) in enumerate(((young, 0.5), (poisson, 2e-5))):
+                    args_plus = [young, poisson]
+                    args_minus = [young, poisson]
+                    args_plus[index] = value + h
+                    args_minus[index] = value - h
+                    plus = float(np.sum(_numpy_von_mises(F, *args_plus, yield_stress)[0] * G))
+                    minus = float(np.sum(_numpy_von_mises(F, *args_minus, yield_stress)[0] * G))
+                    fd = (plus - minus) / (2 * h)
+                    self.assertLessEqual(abs(fd - parameter_bar[index]),
+                                         parameter_tolerance * max(1.0, abs(fd), abs(parameter_bar[index])))
+
+        def test_von_mises_elastic_vjp_is_identity(self):
+            F = _rotation([2, -1, 1], 0.2) @ np.diag(np.exp([0.02, -0.01, -0.01]))
+            F_bar, parameter_bar = kernels.von_mises_adjoint(F.astype(np_dtype), 5000.0, 0.3, 1000.0, G)
+            np.testing.assert_allclose(F_bar, G, rtol=0, atol=analytic_atol)
+            np.testing.assert_allclose(parameter_bar, 0, rtol=0, atol=analytic_atol)
+
+        def test_von_mises_threshold_uses_active_derivative(self):
+            young, poisson = 5000.0, 0.25
+            logarithmic = np.array([0.16, -0.08, -0.08])
+            radius = float(np.linalg.norm(logarithmic - np.mean(logarithmic)))
+            yield_stress = radius * young / (1.0 + poisson)
+            F = np.diag(np.exp(logarithmic)).astype(np_dtype)
+            _, _, yielded = kernels.von_mises_value(F, young, poisson, yield_stress, G)
+            self.assertEqual(yielded, 1)
+            F_bar, parameter_bar = kernels.von_mises_adjoint(F, young, poisson, yield_stress, G)
+            self.assertTrue(np.isfinite(F_bar).all())
+            self.assertTrue(np.isfinite(parameter_bar).all())
+            self.assertGreater(np.linalg.norm(parameter_bar), 0)
 
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(KernelTests)
     result = unittest.TextTestRunner(verbosity=2).run(suite)

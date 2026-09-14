@@ -1,0 +1,233 @@
+{
+  "source_run": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/runs/dataset_fit_20260913T195731_c5aeaabd_best_preview_v2_fixed",
+  "source_simulation_status": "completed",
+  "simulation_rerun": false,
+  "calibration_rerun": false,
+  "generative_image_used": false,
+  "parameters": {
+    "youngs_modulus": 8803.00073189629,
+    "poisson_ratio": 0.4870814294802972,
+    "viscosity": 30.370366046279457,
+    "plastic_min": 0.862623700149902,
+    "plastic_max": 1.0671377211961366,
+    "tool_retention": 1.0,
+    "floor_retention": 0.7,
+    "tool_friction_coefficient": 0.9,
+    "tool_stickiness": 0.0
+  },
+  "mass": {
+    "mass_source": "reconstructed_volume_and_measured_mass",
+    "object_volume_m3": 0.000113832,
+    "density_kg_m3": 1200.0,
+    "total_mass_kg": 0.1365984,
+    "particle_volume_m3": 4.743e-09,
+    "particle_mass_kg": 5.691600000000001e-06,
+    "particle_count": 24000,
+    "grid_size": 48
+  },
+  "colors": {
+    "dough": "#d9a45d",
+    "tool_1": "#326bb1",
+    "tool_2": "#c85049"
+  },
+  "frames": [
+    {
+      "name": "episode18_t0p5004",
+      "source_frame": 15,
+      "original_source_frame": 17,
+      "step": 2502,
+      "simulation_time_s": 0.5004000000000001,
+      "particle_count": 24000,
+      "particle_bounds_m": [
+        [
+          0.4198220670223236,
+          0.0,
+          0.4107683002948761
+        ],
+        [
+          0.5522109270095825,
+          0.015772482380270958,
+          0.5732125043869019
+        ]
+      ],
+      "tool_poses": [
+        [
+          0.5111263990402222,
+          0.01819532923400402,
+          0.24739059805870056,
+          0.9453492760658264,
+          -0.12210536003112793,
+          -0.007845031097531319,
+          0.3022308349609375
+        ],
+        [
+          0.5579070448875427,
+          0.002325540641322732,
+          0.7485828995704651,
+          -0.6681222319602966,
+          0.3667204678058624,
+          -0.6360277533531189,
+          0.12082026898860931
+        ]
+      ],
+      "extraction": {
+        "vertices": 145248,
+        "triangles": 48416,
+        "density_max": 1.9906612634658813,
+        "boundary_min_m": [
+          0.41788850784301756,
+          -0.0019289417266845632,
+          0.408660445690155
+        ],
+        "boundary_max_m": [
+          0.553970272064209,
+          0.016940528869628907,
+          0.575157434463501
+        ],
+        "extraction": "disjoint cell tiles with Gaussian halos; all particles included",
+        "tile_cells": 64,
+        "tiles_checked": 10,
+        "max_grid_voxels": 357911,
+        "vertices_note": "Triangle vertices counted with repetitions, not welded vertices"
+      },
+      "camera": {
+        "projection": "orthographic",
+        "position_m": [
+          1.2664686941335135,
+          0.9014279811196149,
+          -0.460863406037443
+        ],
+        "target_m": [
+          0.4644511099325428,
+          0.07649560879861625,
+          0.5015576950037219
+        ],
+        "up": [
+          0,
+          1,
+          0
+        ],
+        "parallel_scale_m": 0.26466972651657417,
+        "image_size_px": [
+          3600,
+          2300
+        ],
+        "grid_spacing_m": 0.05
+      }
+    },
+    {
+      "name": "episode18_t1p2008",
+      "source_frame": 36,
+      "original_source_frame": 38,
+      "step": 6004,
+      "simulation_time_s": 1.2008,
+      "particle_count": 24000,
+      "particle_bounds_m": [
+        [
+          0.4101285934448242,
+          4.3388390622567385e-05,
+          0.4201570749282837
+        ],
+        [
+          0.5854873061180115,
+          0.05010609328746796,
+          0.5479965209960938
+        ]
+      ],
+      "tool_poses": [
+        [
+          0.4831688404083252,
+          0.027094870805740356,
+          0.3018592894077301,
+          0.927408754825592,
+          -0.19540707767009735,
+          0.11975377053022385,
+          0.29561474919319153
+        ],
+        [
+          0.5645873546600342,
+          0.07922245562076569,
+          0.6625708341598511,
+          -0.6897661685943604,
+          0.21539264917373657,
+          -0.6661143898963928,
+          0.18471676111221313
+        ]
+      ],
+      "extraction": {
+        "vertices": 262608,
+        "triangles": 87536,
+        "density_max": 16.291858673095703,
+        "boundary_min_m": [
+          0.4088631477355957,
+          -0.0033283710479736356,
+          0.41838301277160644
+        ],
+        "boundary_max_m": [
+          0.5864689114093781,
+          0.05149935722351075,
+          0.5501439571380615
+        ],
+        "extraction": "disjoint cell tiles with Gaussian halos; all particles included",
+        "tile_cells": 64,
+        "tiles_checked": 12,
+        "max_grid_voxels": 357911,
+        "vertices_note": "Triangle vertices counted with repetitions, not welded vertices"
+      },
+      "camera": {
+        "projection": "orthographic",
+        "position_m": [
+          1.2664686941335135,
+          0.9014279811196149,
+          -0.460863406037443
+        ],
+        "target_m": [
+          0.4644511099325428,
+          0.07649560879861625,
+          0.5015576950037219
+        ],
+        "up": [
+          0,
+          1,
+          0
+        ],
+        "parallel_scale_m": 0.26466972651657417,
+        "image_size_px": [
+          3600,
+          2300
+        ],
+        "grid_spacing_m": 0.05
+      }
+    }
+  ],
+  "input_sha256": {
+    "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/runs/dataset_fit_20260913T195731_c5aeaabd_best_preview_v2_fixed/simulation/simulation_result.json": "4e9f4c0410b31189f219ed90c86d376c7b5132dd1529ac67e6f41ebc9ed70966",
+    "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/runs/dataset_fit_20260913T195731_c5aeaabd_best_preview_v2_fixed/simulation/prepared_inputs.json": "a6684672cb74ef9bdbc6e7e44f20c264cf8cafc80eb02b44b701143db71a8aa7",
+    "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/runs/dataset_fit_20260913T195731_c5aeaabd_best_preview_v2_fixed/forward_config.json": "1cc0932ba5f3634a7c0faafa432d9559de24690479dca01bbda91e04e11d00e8",
+    "/home/antonio/diplomski_antonio/diplomski/TaichiDough/output/figures/episode18_article_stills_v1/render_article_stills.py": "897472fb3638822e625c522f1a26ac4babe695cd234d292cf8ac484d77a3f5e4",
+    "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/forward_video_v2/render_support.py": "9b05927770118a9534915580d24af32f5cc061dc28256f6887b75b273d1b9405",
+    "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/episode18_registered_tools_v1/ur_spathla_collision_solid.stl": "65e2afa80894c45dde9ef1791786c8652d1de22a0a6b39de098fb2567552b251",
+    "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/episode18_registered_tools_v1/gen3_spathla_collision_solid.stl": "c4d7a910e928d265f387003f33638a3ac123f7c8472af5d691882a099fb4867a",
+    "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/runs/dataset_fit_20260913T195731_c5aeaabd_best_preview_v2_fixed/simulation/snapshots/particles_000015.npy": "3d088640be5facebdb8851dbaf9bf91b85733dc59242ded07132bcdf3dcb856a",
+    "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/runs/dataset_fit_20260913T195731_c5aeaabd_best_preview_v2_fixed/simulation/snapshots/particles_000036.npy": "c279385a921cbeb0209bb843d3f9c7e3c56fc6f109835a7b171c6fa7825f5c64"
+  },
+  "inputs_unchanged": true,
+  "output_sha256": {
+    "episode18_t0p5004.pdf": "550433242b807934914fbe3ceff3b4592a7dc4bb143e9098f916e639dd37ae9b",
+    "episode18_t0p5004.png": "c2d821f181b65fab1c44fe72f709424065d574a381a9e8c8d75635481cd8e242",
+    "episode18_t0p5004_clean.pdf": "9ea27d1d7f9b818a9bff00f1c009947ec7eaadb5077696326bb95119365c8684",
+    "episode18_t0p5004_clean.png": "bc9f06fe439083d6a906402837f3955cd0c1199da2f52c45309d642490542618",
+    "episode18_t1p2008.pdf": "6a6b3f715004a3679ebc30d3a949633194bc1d36e12b1e82501f9dec7ba59616",
+    "episode18_t1p2008.png": "d553e3b26c420e0d51a1e8c365be537a8dbc2c284411446f4ff624530f12c070",
+    "episode18_t1p2008_clean.pdf": "c3e209710c730d3c759ac2b47e0bf9009225100fc0dcf36f13a92c8e6d3fc74b",
+    "episode18_t1p2008_clean.png": "dbf4d4c43a0ae6c4f13f0d94c0223c4a3d6d819394a370182069f03cfdb9c438",
+    "preview.png": "0043dd65ce8a8434edb49568dae3676a59bccd8b221b9bb5f1b9986a9650f1d9"
+  },
+  "limitations": [
+    "Qualitative render of a saved forward replay, not an observed camera image.",
+    "Uses best-so-far parameters from an interrupted fit, not validated final material identification.",
+    "Display geometry is a density isosurface; particles and recorded tool poses are unchanged.",
+    "Colors and 5 cm floor grid are display choices; they do not encode stress or error.",
+    "PDFs contain losslessly embedded high-resolution raster images, not vector geometry."
+  ]
+}

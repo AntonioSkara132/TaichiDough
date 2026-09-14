@@ -1,6 +1,6 @@
 # Tunable tool contact
 
-For the next non-adhesive experiment, fit **tool friction only**, keep stickiness zero, and use `coulomb-v1`. The original registered-tools configuration and archive are unchanged. This implementation is in the experimental single-episode solver; **the dataset driver still rejects shared tool friction and stickiness**.
+For a non-adhesive experiment, fit **tool friction only**, keep stickiness zero, and use `coulomb-v1`. The original registered-tools configuration and archive are unchanged. Single-episode configurations use their existing physical parameter fields. Dataset schema v2 can additionally share floor retention, tool friction, and stickiness across episodes; schema v1 remains material-only.
 
 ## Parameters and supported models
 

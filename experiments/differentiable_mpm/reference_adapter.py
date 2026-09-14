@@ -329,8 +329,10 @@ def run_reference_evaluator(argv, import_report=None, repo_root=None, experiment
 
 
 def reference_arguments(config: SimulationConfig, parameters: Mapping[str, float]) -> SimpleNamespace:
-    """Map every forward-physics setting to the frozen build_sim argument names."""
+    """Map every supported forward-physics setting to the frozen simulator."""
     validate_parameters(parameters)
+    if config.plasticity == "von-mises":
+        raise ValueError("The preserved simulator does not implement von-mises plasticity")
     if config.tool_contact_model == "coulomb-adhesive-v1":
         raise ValueError("The preserved simulator does not implement coulomb-adhesive-v1")
     if config.precision != "f32":
@@ -387,6 +389,8 @@ class ReferenceStepper:
 
         if ti.lang.impl.get_runtime().prog is None:
             raise RuntimeError("Initialize Taichi explicitly before constructing ReferenceStepper")
+        if config.plasticity == "von-mises":
+            raise ValueError("The preserved simulator does not implement von-mises plasticity")
         self.config = config
         self.reference_identity = reference_identity(config.physics_version, repo_root)
         module = load_reference(repo_root, physics_version=config.physics_version)

@@ -75,6 +75,7 @@ class SimulationConfig:
     gravity: float = -9.81
     floor_y: float = 0.0
     plasticity: str = "none"
+    von_mises_yield_stress_pa: float | None = None
     use_jp: bool = False
     jp_hardening: float = 0.0
     jp_min: float = 0.5
@@ -99,8 +100,22 @@ class SimulationConfig:
     def __post_init__(self):
         if self.n_particles < 1 or self.grid < 8:
             raise ValueError("Require particles > 0 and grid >= 8")
-        if self.plasticity not in {"none", "stretch-clamp"}:
-            raise ValueError("plasticity must be none or stretch-clamp")
+        if self.plasticity not in {"none", "stretch-clamp", "von-mises"}:
+            raise ValueError("plasticity must be none, stretch-clamp or von-mises")
+        yield_stress = self.von_mises_yield_stress_pa
+        if yield_stress is not None and (
+                isinstance(yield_stress, (bool, np.bool_))
+                or not isinstance(yield_stress, (int, float))
+                or not np.isfinite(yield_stress)
+                or yield_stress <= 0):
+            raise ValueError("von_mises_yield_stress_pa must be a finite positive number")
+        if self.plasticity == "von-mises":
+            if yield_stress is None:
+                raise ValueError("von-mises plasticity requires von_mises_yield_stress_pa")
+            if self.use_jp or self.jp_hardening != 0:
+                raise ValueError("von-mises plasticity does not support Jp evolution or hardening")
+            if self.plastic_velocity_damping != 1 or self.plastic_affine_damping != 1:
+                raise ValueError("von-mises plasticity requires unit plastic damping")
         if self.tool_collision not in {"none", "sdf"}:
             raise ValueError("The experiment supports recorded SDF tools or no tools")
         if not isinstance(self.tool_contact_model, str) or self.tool_contact_model not in TOOL_CONTACT_MODELS:

@@ -1,0 +1,29 @@
+{
+  "status": "passed",
+  "source_and_output_hash_checks": 28,
+  "figures": [
+    {
+      "name": "t0p5004",
+      "dimensions_px": [
+        2822,
+        1701
+      ],
+      "crop_pixels_unchanged": true,
+      "pdf_rgb_pixels_equal_png": true,
+      "pdfinfo": "Custom Metadata: no\nMetadata Stream: no\nTagged:          no\nUserProperties:  no\nSuspects:        no\nForm:            none\nJavaScript:      no\nPages:           1\nEncrypted:       no\nPage size:       511.2 x 308.133 pts\nPage rot:        0\nFile size:       547215 bytes\nOptimized:       no\nPDF version:     1.4\n"
+    },
+    {
+      "name": "t1p2008",
+      "dimensions_px": [
+        2822,
+        1701
+      ],
+      "crop_pixels_unchanged": true,
+      "pdf_rgb_pixels_equal_png": true,
+      "pdfinfo": "Custom Metadata: no\nMetadata Stream: no\nTagged:          no\nUserProperties:  no\nSuspects:        no\nForm:            none\nJavaScript:      no\nPages:           1\nEncrypted:       no\nPage size:       511.2 x 308.133 pts\nPage rot:        0\nFile size:       682833 bytes\nOptimized:       no\nPDF version:     1.4\n"
+    }
+  ],
+  "figure_images_visually_inspected": true,
+  "simulation_rerun": false,
+  "calibration_rerun": false
+}

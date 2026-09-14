@@ -12,11 +12,15 @@ from experiments.differentiable_mpm.state import (
 )
 
 
-def fixture(plastic=False, floor=False, sdf=False, p2g_mode="atomic", physics_version="corrected-v1",
-            tool_contact_model="retention-v1"):
+def fixture(plastic=False, von_mises=False, floor=False, sdf=False, p2g_mode="atomic",
+            physics_version="corrected-v1", tool_contact_model="retention-v1"):
+    if plastic and von_mises:
+        raise ValueError("Choose one plasticity fixture")
+    plasticity = "von-mises" if von_mises else "stretch-clamp" if plastic else "none"
     config = SimulationConfig(n_particles=4, grid=12, precision="f64", dt=2e-4,
                               particle_mass=0.001, particle_volume=1e-6,
-                              gravity=-2.0, plasticity="stretch-clamp" if plastic else "none",
+                              gravity=-2.0, plasticity=plasticity,
+                              von_mises_yield_stress_pa=300.0 if von_mises else None,
                               use_jp=plastic, jp_hardening=2.0 if plastic else 0.0,
                               floor_y=0.028 if floor else 0.0,
                               floor_plastic_damping_band=0.01 if floor else 0.0,
@@ -29,8 +33,9 @@ def fixture(plastic=False, floor=False, sdf=False, p2g_mode="atomic", physics_ve
                                    [.456, .428, .432], [.431, .421, .445]], np.float64)
     state.v[:] = [[.1, -.2, .04], [-.05, -.1, .08], [.02, -.3, -.03], [.01, -.1, .07]]
     state.C[:] = np.array([[.2, .3, .02], [-.08, -.1, .07], [.03, -.01, .15]])
-    state.F[:] = np.array([[.84 if plastic else .94, .03, .01], [.0, 1.04, -.02],
-                           [.01, .015, 1.17 if plastic else 1.09]])
+    active_plasticity = plastic or von_mises
+    state.F[:] = np.array([[.84 if active_plasticity else .94, .03, .01], [.0, 1.04, -.02],
+                           [.01, .015, 1.17 if active_plasticity else 1.09]])
     state.Jp[:] = [1.01, .97, 1.04, .93]
     if floor:
         state.x[:, 1] = [0.018, 0.020, 0.021, 0.023]
@@ -290,6 +295,30 @@ class SolverGradientTests(unittest.TestCase):
         self.check_state_gradients(solver, state, params, control, seed)
         self.assertNotEqual(gradients["plastic_min"], 0)
         self.assertNotEqual(gradients["plastic_max"], 0)
+
+    def test_active_von_mises_projection_and_gradients(self):
+        solver, state, params, control = self.make(von_mises=True)
+        initial_jp = state.Jp.copy()
+        seed = terminal_seed(state)
+        gradients = self.check_parameter_gradients(
+            solver, state, params, control, seed,
+            names=("youngs_modulus", "poisson_ratio", "viscosity"),
+        )
+        self.check_state_gradients(solver, state, params, control, seed)
+        self.assertGreater(solver.diagnostics()["yielded"], 0)
+        self.assertEqual(gradients["plastic_min"], 0)
+        self.assertEqual(gradients["plastic_max"], 0)
+        self.value(solver, state, params, control, seed)
+        np.testing.assert_array_equal(solver.state(1).Jp, initial_jp)
+
+    def test_short_von_mises_trajectory(self):
+        solver, state, params, control = self.make(von_mises=True)
+        seed = terminal_seed(state)
+        self.check_parameter_gradients(
+            solver, state, params, control, seed, steps=5,
+            names=("youngs_modulus", "poisson_ratio", "viscosity"),
+        )
+        self.check_state_gradients(solver, state, params, control, seed, steps=5)
 
     def test_short_trajectory(self):
         solver, state, params, control = self.make(plastic=True)

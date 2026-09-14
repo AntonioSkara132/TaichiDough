@@ -15,14 +15,14 @@ STANDARD_TESTS = (
     'test_inputs', 'test_calibrate_cli', 'test_recompute_check', 'test_backend', 'test_spectral', 'test_loss',
     'test_solver', 'test_corrected_transfer', 'test_coulomb_contact', 'test_trajectory', 'test_forward_parity', 'test_synthetic',
     'test_dataset_config', 'test_dataset_inventory', 'test_episode_worker',
-    'test_multi_episode', 'test_calibrate_dataset', 'test_multi_trajectory',
+    'test_multi_episode', 'test_calibrate_dataset', 'test_calibrate_dataset_attempts', 'test_multi_trajectory',
     'test_table_alignment', 'test_table_frame', 'test_forward_video_v2',
     'test_point_set_loss', 'test_loss_targets', 'test_loss_options_integration',
     'test_paper_loss_trajectory', 'test_runtime_target_validation',
 )
 QUICK_TESTS = STANDARD_TESTS[:7] + (
     'test_dataset_config', 'test_dataset_inventory', 'test_episode_worker',
-    'test_multi_episode', 'test_calibrate_dataset',
+    'test_multi_episode', 'test_calibrate_dataset', 'test_calibrate_dataset_attempts',
     'test_table_alignment', 'test_table_frame', 'test_forward_video_v2',
     'test_loss_targets', 'test_loss_options_integration', 'test_runtime_target_validation',
 )

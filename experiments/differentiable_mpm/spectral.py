@@ -13,9 +13,9 @@ unsupported states before invoking these functions.
 
 At a clamp threshold the derivative from the capped side is used: input-stretch
 sensitivity is zero and bound sensitivity is one. If the bounds coincide, the
-lower bound takes precedence at equality. There is no classical derivative at
-these thresholds. Repeated stretches away from them are smooth and need no
-singular-value-gap regularization.
+lower bound takes precedence at equality. The Von Mises map likewise uses the
+active-return derivative at its yield threshold. There is no classical derivative
+at these thresholds. Repeated stretches use analytic divided-difference limits.
 """
 
 import taichi as ti
@@ -86,3 +86,84 @@ def clamp_vjp(F, lower, upper, Y_bar):
                 + skew_coefficient * (K[i, j] - K[j, i]) * 0.5
             )
     return U @ local_bar @ V.transpose(), lower_bar, upper_bar
+
+
+@ti.func
+def von_mises_forward(F, youngs_modulus, poisson_ratio, yield_stress):
+    """Perfect isotropic J2 return in principal Hencky-strain coordinates."""
+    U, sig, V = ti.svd(F)
+    epsilon = ti.Vector([0.0, 0.0, 0.0])
+    mean = F[0, 0] * 0.0
+    for i in ti.static(range(3)):
+        epsilon[i] = ti.log(sig[i, i])
+        mean += epsilon[i] / 3.0
+    deviator = epsilon - mean
+    radius = deviator.norm()
+    limit = yield_stress * (1.0 + poisson_ratio) / youngs_modulus
+    yielded = 0
+    if radius >= limit:
+        yielded = 1
+        corrected_epsilon = mean + limit * deviator / radius
+        for i in ti.static(range(3)):
+            sig[i, i] = ti.exp(corrected_epsilon[i])
+    return U @ sig @ V.transpose(), yielded
+
+
+@ti.func
+def von_mises_vjp(F, youngs_modulus, poisson_ratio, yield_stress, Y_bar):
+    """VJP of :func:`von_mises_forward`, including projection bars for E and nu."""
+    U, sig, V = ti.svd(F)
+    epsilon = ti.Vector([0.0, 0.0, 0.0])
+    mean = F[0, 0] * 0.0
+    for i in ti.static(range(3)):
+        epsilon[i] = ti.log(sig[i, i])
+        mean += epsilon[i] / 3.0
+    deviator = epsilon - mean
+    radius = deviator.norm()
+    limit = yield_stress * (1.0 + poisson_ratio) / youngs_modulus
+    young_bar = F[0, 0] * 0.0
+    poisson_bar = F[0, 0] * 0.0
+    F_bar = Y_bar
+    if radius >= limit:
+        normal = deviator / radius
+        corrected = ti.Vector([0.0, 0.0, 0.0])
+        for i in ti.static(range(3)):
+            corrected[i] = ti.exp(mean + limit * normal[i])
+
+        strain_jacobian = F * 0.0
+        stretch_jacobian = F * 0.0
+        for i, j in ti.static(ti.ndrange(3, 3)):
+            centering = (1.0 if i == j else 0.0) - 1.0 / 3.0
+            strain_jacobian[i, j] = (
+                1.0 / 3.0
+                + limit / radius * (centering - normal[i] * normal[j])
+            )
+            stretch_jacobian[i, j] = corrected[i] * strain_jacobian[i, j] / sig[j, j]
+
+        K = U.transpose() @ Y_bar @ V
+        diagonal_bar = ti.Vector([K[0, 0], K[1, 1], K[2, 2]])
+        stretch_bar = stretch_jacobian.transpose() @ diagonal_bar
+        limit_bar = F[0, 0] * 0.0
+        for i in ti.static(range(3)):
+            limit_bar += K[i, i] * corrected[i] * normal[i]
+        young_bar = -limit_bar * limit / youngs_modulus
+        poisson_bar = limit_bar * limit / (1.0 + poisson_ratio)
+
+        local_bar = F * 0.0
+        for i, j in ti.static(ti.ndrange(3, 3)):
+            if ti.static(i == j):
+                local_bar[i, i] = stretch_bar[i]
+            else:
+                scale = ti.max(1.0, ti.max(ti.abs(sig[i, i]), ti.abs(sig[j, j])))
+                symmetric_coefficient = F[0, 0] * 0.0
+                if ti.abs(sig[i, i] - sig[j, j]) <= 1e-6 * scale:
+                    symmetric_coefficient = stretch_jacobian[i, i] - stretch_jacobian[i, j]
+                else:
+                    symmetric_coefficient = (corrected[i] - corrected[j]) / (sig[i, i] - sig[j, j])
+                skew_coefficient = (corrected[i] + corrected[j]) / (sig[i, i] + sig[j, j])
+                local_bar[i, j] = (
+                    symmetric_coefficient * (K[i, j] + K[j, i]) * 0.5
+                    + skew_coefficient * (K[i, j] - K[j, i]) * 0.5
+                )
+        F_bar = U @ local_bar @ V.transpose()
+    return F_bar, young_bar, poisson_bar

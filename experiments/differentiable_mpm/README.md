@@ -63,9 +63,9 @@ Run commands below from the TaichiDough repository root. New outputs belong unde
 
 ## Multi-episode calibration
 
-The new `calibrate_dataset` command provides one shared-material fit over an explicit episode manifest, with equal-episode or declared weighted objectives and one numerical subprocess at a time. Tools use fixed retention1/absorption0/stickiness0 in the first setup; episode-specific floor inputs stay unchanged. See [MULTI_EPISODE.md](MULTI_EPISODE.md) for manifests, inventory, validation, fitting, exact resume and remote commands.
+The `calibrate_dataset` command fits shared physical parameters over an explicit episode manifest, with equal-episode or declared weighted objectives and one numerical subprocess at a time. Dataset schema v1 remains material-only with its existing fixed-contact behavior and fingerprints. Schema v2 can also share and fit floor retention, tool friction, and tool stickiness. Joint friction-and-stickiness fitting requires SDF collision, `coulomb-adhesive-v1`, and zero absorption. See [MULTI_EPISODE.md](MULTI_EPISODE.md) for manifests, inventory, validation, fitting, exact resume and remote commands.
 
-The driver is implemented and locally verified: 276 host/regression tests pass, and four actual corrected CPU f64 multi-motion tests pass. A weighted two-motion synthetic fit reduces combined training loss by 38.01%, all five material AD/FD checks pass, and held-out motion data is excluded from selection. See `VALIDATION.md` for exact evidence and limitations. The [ten-episode two-second dataset](data/ten_episode_shared_alignment_v1/README.md) is ready for input preparation and fitting under the user's shared-alignment assumption: common simulated floor y=0 and exact Episode18 tool transforms, with existing per-recording coordinate conversions and downward-filled initial reconstructions retained. All ten passed routine input checks. The dataset uses a separate 1200 kg/m³ density assumption and calculated per-episode masses. Existing 250 g configurations are unchanged. Episode18's observed floor inconsistency remains unresolved. No real dataset fit has been launched.
+The driver is implemented and locally verified: 276 host/regression tests pass, and four actual corrected CPU f64 multi-motion tests pass. A weighted two-motion synthetic fit reduces combined training loss by 38.01%, all five material AD/FD checks pass, and held-out motion data is excluded from selection. See `VALIDATION.md` for exact evidence and limitations. The [ten-episode two-second dataset](data/ten_episode_shared_alignment_v1/README.md) is ready for input preparation and fitting under the user's shared-alignment assumption: common simulated floor y=0 and exact Episode18 tool transforms, with existing per-recording coordinate conversions and downward-filled initial reconstructions retained. Its current shared bounds are E=2,000–60,000 Pa, Poisson ratio=0.45–0.49 and viscosity=0–60 Pa.s; the existing plastic-stretch bounds remain unchanged. All ten passed routine input checks. The dataset uses a separate 1200 kg/m³ density assumption and calculated per-episode masses. Existing 250 g configurations are unchanged. Episode18's observed floor inconsistency remains unresolved. No real dataset fit has been launched.
 
 ## Commands
 
@@ -165,7 +165,17 @@ For a short integration run, add `--end-frame 2 --iterations 2 --no-evaluate`. F
 
 Projected Adam receives physical simulation gradients, transforms them into bounded coordinates, and uses checked/backtracked proposals. Invalid candidates leave the accepted parameter state intact. The default `persistent-v1` retains reductions to the proposal rate. Optional `--learning-rate-policy recover-v1 --learning-rate-growth 1.25` allows the next proposal rate to recover toward its initial value; every proposal still requires finite gradients and the same sufficient-decrease test. This can improve efficiency after temporary backtracking, but is not a fix for every visibility transition. Rate policy and growth are part of exact-resume identity.
 
-`budget_exhausted` means the requested work completed, not that calibration converged. A stalled/invalid optimizer is reported separately.
+Fit logging defaults to `--fit-log concise`. It prints one candidate line with the fitted physical values, one result line with loss plus both gradient forms, and one optimizer-update line. `dL/d<name>` is the derivative with respect to the named physical parameter; `dL/du_<name>` is the derivative after the parameter transformation used by Adam. Use `--fit-log detailed` to retain replay and episode progress, or `--fit-log quiet` to print warnings, terminal status and result paths only. Complete evaluation and optimizer records remain in `events.jsonl` and `optimizer_state.json` in every mode.
+
+Both fit commands apply physical-parameter stability stopping by default. An accepted update is stable for parameter `p` when
+
+```text
+abs(p_new - p_old) <= atol[p] + rtol * max(abs(p_old), abs(p_new))
+```
+
+All fitted parameters must satisfy the test for three consecutive accepted updates. The balanced defaults use `rtol=1e-4`, with absolute tolerances E=5 Pa, Poisson ratio=`1e-5`, viscosity=`1e-3` Pa.s, and each plastic stretch limit=`1e-5`. Rejected optimizer attempts neither increment nor reset the streak. The terminal status is `converged_parameters`; projected-gradient convergence remains `converged_gradient`. Override the rule with `--parameter-stability-updates`, `--parameter-stability-rtol`, and repeatable `--parameter-stability-atol NAME=VALUE`. Set `--parameter-stability-updates 0` to disable it.
+
+`budget_exhausted` means the requested work completed, not that calibration converged. `evaluation_budget_exhausted` means the objective-call limit was reached. A stalled or invalid optimizer is reported separately.
 
 By default a fit selects on training frames 1–60 only, then exports the frozen best parameters for unchanged strict evaluation. Validation replays from frame 0 through 97 and scores only 61–97. It never initializes from an observed held-out deformation. `--no-evaluate` skips these independent checks explicitly.
 

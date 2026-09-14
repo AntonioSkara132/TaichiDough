@@ -7,9 +7,11 @@
 - `data/dataset_manifest_readiness_v1/readiness.json` records the available-input findings and missing preparations.
 - `data/dataset_manifest_readiness_v1/validation.json` records the authoring checks.
 
-**Shared tool-friction fitting is not supported by the current dataset driver.** Its allowed shared parameters remain `youngs_modulus`, `poisson_ratio`, `viscosity`, `plastic_min`, and `plastic_max`. The separate contact update adds single-episode friction tuning, not dataset shared-friction support. Adding `tool_friction_coefficient` to this dataset's `shared_parameters.initial` or `fit` is rejected; these files do not conceal that limitation.
+Dataset schema v1 remains material-only and keeps its existing fingerprints. Dataset schema v2 adds three shared physical values: `floor_retention`, `tool_friction_coefficient`, and `tool_stickiness`. A v2 `shared_parameters.initial` object contains the five material values plus those three contact values; `fit` may select any distinct subset and `bounds` applies to selected values.
 
-The prepared file preserves the referenced configuration's fixed Coulomb tool coefficient **0.5** and floor retention **0.4**, with zero tool stickiness. This is not the same as the later recorded fit that used fixed tool coefficient 0.3. Initial material values are starting guesses from the prepared configuration, not new fitted results. No configuration was changed to copy the later fit silently.
+Joint fitting of `tool_friction_coefficient` and `tool_stickiness` requires every episode to use `tool_collision: "sdf"`, `tool_contact_model: "coulomb-adhesive-v1"`, and zero `tool_contact_absorption`. The loader enforces these settings. `tool_retention` remains fixed at 1.0 and is not a dataset-v2 shared coordinate.
+
+The prepared v1 file preserves the referenced configuration's fixed Coulomb tool coefficient **0.5** and floor retention **0.4**, with zero tool stickiness. This is not the same as the later recorded fit that used fixed tool coefficient 0.3. Initial material values are starting guesses from the prepared configuration, not new fitted results. No configuration was changed to copy the later fit silently.
 
 ## What the JSON means
 

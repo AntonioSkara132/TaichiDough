@@ -43,8 +43,97 @@ def named_values(values):
 def parameter_text(values):
     labels = {"youngs_modulus": "E(Pa)", "poisson_ratio": "nu", "viscosity": "viscosity(Pa.s)",
               "plastic_min": "plastic_min", "plastic_max": "plastic_max",
-              "tool_retention": "tool_retention", "floor_retention": "floor_retention"}
+              "tool_retention": "tool_retention", "floor_retention": "floor_retention",
+              "tool_friction_coefficient": "tool_friction", "tool_stickiness": "tool_stickiness"}
     return named_values({labels.get(key, key): value for key, value in values.items()})
+
+
+BALANCED_STABILITY_ATOL = {
+    "youngs_modulus": 5.0,
+    "poisson_ratio": 1e-5,
+    "viscosity": 1e-3,
+    "plastic_min": 1e-5,
+    "plastic_max": 1e-5,
+    "tool_retention": 1e-5,
+    "floor_retention": 1e-5,
+    "tool_friction_coefficient": 1e-4,
+    "tool_stickiness": 1e-5,
+}
+
+
+def parse_named_values(items, label):
+    result = {}
+    for text in items or ():
+        try:
+            name, raw = text.split("=", 1)
+            value = float(raw)
+        except (ValueError, TypeError) as error:
+            raise ValueError(f"{label} requires NAME=VALUE") from error
+        if not name or name in result:
+            raise ValueError(f"{label} names must be nonempty and unique")
+        if not math.isfinite(value) or value < 0:
+            raise ValueError(f"{label}.{name} must be finite and nonnegative")
+        result[name] = value
+    return result
+
+
+def stability_settings(options, fit_names, updates=None, rtol=None, atol_items=()):
+    """Apply the balanced physical-parameter stability preset and CLI overrides."""
+    result = dict(options)
+    count = 3 if updates is None else updates
+    relative = 1e-4 if rtol is None else rtol
+    if type(count) is not int or count < 0:
+        raise ValueError("parameter-stability-updates must be a nonnegative integer")
+    if not math.isfinite(relative) or relative < 0:
+        raise ValueError("parameter-stability-rtol must be finite and nonnegative")
+    overrides = parse_named_values(atol_items, "parameter-stability-atol")
+    unknown = set(overrides) - set(fit_names)
+    if unknown:
+        raise ValueError(f"Stability tolerances refer to parameters that are not fitted: {sorted(unknown)}")
+    result["parameter_stability_updates"] = count
+    result["parameter_stability_rtol"] = relative
+    result["parameter_stability_atol"] = ({name: overrides.get(name, BALANCED_STABILITY_ATOL[name])
+                                            for name in fit_names} if count else {})
+    return result
+
+
+def fitted_values(values, fit_names):
+    return {name: values[name] for name in fit_names}
+
+
+def format_optimizer_evaluation(event, fit_names):
+    fit_names = tuple(fit_names)
+    if event.get("type") == "evaluation_started":
+        backtrack = "" if event.get("backtrack") is None else f" bt={event['backtrack']}"
+        return (f"eval={event['evaluation']} iter={event['iteration']} stage={event['stage']}{backtrack} "
+                f"params[{parameter_text(fitted_values(event['parameters'], fit_names))}]")
+    if event.get("valid") is not True:
+        backtrack = "" if event.get("backtrack") is None else f" bt={event['backtrack']}"
+        return (f"WARNING eval={event['evaluation']} iter={event['iteration']} stage={event['stage']}{backtrack} "
+                f"invalid {event.get('error_type', 'Error')}: {event.get('error', '')}")
+    physical = {f"dL/d{name}": event["physical_gradient"][name] for name in fit_names}
+    coordinate = {f"dL/du_{name}": value for name, value in zip(fit_names, event["coordinate_gradient"], strict=True)}
+    return (f"eval={event['evaluation']} loss={number(event['value'])} "
+            f"grad_physical[{named_values(physical)}] grad_optimizer[{named_values(coordinate)}]")
+
+
+def format_optimizer_boundary(event, state, fit_names):
+    kind = event.get("type")
+    if kind == "step":
+        accepted = event.get("accepted") is True
+        label = "accepted" if accepted else "rejected"
+        stability = event.get("parameter_stability", {})
+        stable = (f" stable={stability.get('streak', 0)}/{stability.get('required_updates', 0)}"
+                  if stability.get("enabled") else "")
+        parameters = parameter_text(fitted_values(event["parameters"], fit_names))
+        return (f"update={event['iteration']} {label} status={event['status']} "
+                f"loss={number(event['value_before'])}->{number(event['value_after'])} "
+                f"rate={number(event.get('accepted_learning_rate'))}{stable} params[{parameters}]")
+    if kind == "status":
+        return (f"status={event['status']} iter={state['iterations']} accepted_updates={state['accepted_updates']} "
+                f"evaluations={state['evaluations']} stable={state.get('parameter_stability_streak', 0)}/"
+                f"{state['options'].get('parameter_stability_updates', 0)}")
+    return None
 
 
 class RunLogger:
@@ -251,6 +340,8 @@ class RunLogger:
         self.emit("optimizer_" + kind, message, payload=event)
 
     def optimizer_checkpoint(self, event, state):
+        if self.store is None:
+            raise RuntimeError("Optimizer checkpoints require a bound run store")
         record = self._record("optimizer_checkpoint", payload=event)
         self.store.save_optimizer(record, state)
         message = (f'Optimizer status={state["status"]} accepted_updates={state["accepted_updates"]} '

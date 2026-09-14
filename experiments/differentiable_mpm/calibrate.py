@@ -19,6 +19,8 @@ from .optimize import AdamOptions, ObjectiveValue, ProjectedAdam
 from .parameters import PhysicalParameterSpace
 from .reference_adapter import reference_identity, reference_policy, verify_reference
 from .results import EXPERIMENT_ROOT, RUN_ROOT, RunStore, json_value, source_identity
+from .run_logging import (format_optimizer_boundary, format_optimizer_evaluation,
+                          stability_settings)
 from .runtime import init_runtime
 from .solver import Stepper
 from .state import (PARAMETER_NAMES, LEGACY_PARAMETER_NAMES, TUNABLE_TOOL_PARAMETERS,
@@ -59,6 +61,10 @@ def parse_args(argv=None):
     parser.add_argument('--learning-rate-growth', type=float,
                         help='Proposal-rate growth factor for recover-v1; capped at the initial learning rate')
     parser.add_argument('--max-evaluations', type=int)
+    parser.add_argument('--parameter-stability-updates', type=int)
+    parser.add_argument('--parameter-stability-rtol', type=float)
+    parser.add_argument('--parameter-stability-atol', action='append', default=[], metavar='NAME=VALUE')
+    parser.add_argument('--fit-log', choices=('concise', 'detailed', 'quiet'), default='concise')
     parser.add_argument('--resume', action='store_true', help='Resume an exactly matching fit run')
     parser.add_argument('--no-evaluate', action='store_true', help='Skip final independent training/held-out evaluation')
     parser.add_argument('--no-runtime', action='store_true', help='Validate inputs only; no backend qualification')
@@ -70,6 +76,11 @@ def parse_args(argv=None):
     args = parser.parse_args(argv)
     if args.iterations < 0:
         parser.error('--iterations must be nonnegative')
+    if args.parameter_stability_updates is not None and args.parameter_stability_updates < 0:
+        parser.error('--parameter-stability-updates must be nonnegative')
+    if args.parameter_stability_rtol is not None and (not np.isfinite(args.parameter_stability_rtol)
+                                                       or args.parameter_stability_rtol < 0):
+        parser.error('--parameter-stability-rtol must be finite and nonnegative')
     if args.resume and (args.action != 'fit' or args.output_dir is None):
         parser.error('--resume requires fit and an explicit --output-dir')
     if args.no_runtime and args.action != 'validate':
@@ -105,7 +116,7 @@ def read_parameters(path, simulation=None):
         raise ValueError('Parameter file needs complete physical values or a best_parameters record')
     if not isinstance(values, dict):
         raise ValueError('Physical parameters must be an object')
-    source = {'path': str(path), 'sha256': hashlib.sha256(raw).hexdigest()}
+    source: dict[str, object] = {'path': str(path), 'sha256': hashlib.sha256(raw).hexdigest()}
     defaults = dict(simulation or {})
     if set(TUNABLE_TOOL_PARAMETERS) - set(values):
         manifest_path = path.parent / 'run_manifest.json'
@@ -166,9 +177,10 @@ def progress_printer(event):
         print(f'{label} at step={step}/{total}{segment}: {detail}', flush=True)
 
 
-def stored_progress(store):
+def stored_progress(store, *, display=True):
     def callback(event):
-        progress_printer(event)
+        if display or event['phase'] in {'invalid_adjoint', 'recompute_mismatch'}:
+            progress_printer(event)
         if event['phase'] == 'recompute_mismatch':
             filename = 'last_recompute_warning.json' if event.get('ignored', False) else 'last_recompute_failure.json'
             store.write_json(filename, event)
@@ -475,12 +487,13 @@ def run(args):
     memory = estimate_memory(prepared.simulation_config.n_particles, prepared.total_steps, config.segment_length,
                              prepared.simulation_config.precision, prepared.simulation_config.grid, config.tool_sdf_resolution,
                              physics_version=prepared.simulation_config.physics_version)
-    print(f'Prepared {prepared.simulation_config.n_particles} particles; replay0–{prepared.end_frame}; '
-          f'{prepared.total_steps} steps; {len(prepared.observations)} observations; backend={config.backend}', flush=True)
-    print('Memory estimate: ' + json.dumps(memory), flush=True)
-    print(f'Physics version: {prepared.simulation_config.physics_version}; reference={physics_reference["simulator_sha256"]}', flush=True)
-    print(f'P2G mode: {prepared.simulation_config.p2g_mode} '
-          '(transfer mode only; other reductions are unchanged)', flush=True)
+    if args.action != 'fit' or args.fit_log == 'detailed':
+        print(f'Prepared {prepared.simulation_config.n_particles} particles; replay0–{prepared.end_frame}; '
+              f'{prepared.total_steps} steps; {len(prepared.observations)} observations; backend={config.backend}', flush=True)
+        print('Memory estimate: ' + json.dumps(memory), flush=True)
+        print(f'Physics version: {prepared.simulation_config.physics_version}; reference={physics_reference["simulator_sha256"]}', flush=True)
+        print(f'P2G mode: {prepared.simulation_config.p2g_mode} '
+              '(transfer mode only; other reductions are unchanged)', flush=True)
     options_dict = dict(config.optimizer)
     if args.learning_rate is not None:
         options_dict['learning_rate'] = args.learning_rate
@@ -490,6 +503,12 @@ def run(args):
         options_dict['learning_rate_growth'] = args.learning_rate_growth
     if args.max_evaluations is not None:
         options_dict['max_evaluations'] = args.max_evaluations
+    options_dict = stability_settings(
+        options_dict, config.fit_parameters,
+        updates=args.parameter_stability_updates,
+        rtol=args.parameter_stability_rtol,
+        atol_items=args.parameter_stability_atol,
+    )
     options = AdamOptions(**options_dict)
     space = PhysicalParameterSpace(prepared.parameters, config.fit_parameters,
                                    prepared.simulation_config.plasticity, bounds=config.parameter_bounds)
@@ -519,8 +538,11 @@ def run(args):
             store.write_json('result.json', result)
             print(f'Input validation written to {store.path / "result.json"}', flush=True)
             return 0
-        stepper, rollout = make_rollout(prepared, progress=stored_progress(store),
-                                        ignore_recompute_mismatch=args.ignore_recompute_mismatch)
+        stepper, rollout = make_rollout(
+            prepared,
+            progress=stored_progress(store, display=args.action != 'fit' or args.fit_log == 'detailed'),
+            ignore_recompute_mismatch=args.ignore_recompute_mismatch,
+        )
         if args.action == 'sensitivity':
             try:
                 result = sensitivity_report(rollout, space, prepared.parameters, prepared, args.sensitivity_step)
@@ -555,6 +577,8 @@ def run(args):
                                                  'parameters': prepared.parameters, 'runtime': runtime})
                 store.append_event({'event': 'gradient_failed', 'error': str(error)})
                 raise
+            if evaluation.gradient is None:
+                raise InvalidStateError('Gradient action did not return physical derivatives')
             result = {'status': 'gradient_computed', 'parameters': prepared.parameters,
                       'runtime': {**runtime, 'forward_verified': True, 'backward_verified': True,
                                   'backward_replay_consistent': evaluation.diagnostics.get('replay_consistent', True)},
@@ -584,8 +608,9 @@ def run(args):
         def objective(parameters):
             count[0] += 1
             store.append_event({'event': 'objective_started', 'call_in_process': count[0], 'parameters': parameters})
-            print(f'Objective call {count[0]}: {parameters}', flush=True)
             evaluation = rollout.value_and_gradient(parameters)
+            if evaluation.gradient is None:
+                raise InvalidStateError('Fit objective did not return physical derivatives')
             successful_objectives[0] += 1
             if not evaluation.diagnostics.get('replay_consistent', True):
                 objectives_with_mismatches[0] += 1
@@ -593,12 +618,21 @@ def run(args):
                       + json.dumps(evaluation.diagnostics.get('recompute_mismatch_counts', {})), flush=True)
             record = evaluation_record(evaluation)
             store.write_json('last_objective.json', {'parameters': parameters, **record})
-            print(f'Objective loss={evaluation.value:.9g}; physical_gradient={evaluation.gradient}', flush=True)
             return ObjectiveValue(evaluation.value, evaluation.gradient, evaluation.diagnostics)
+        fit_names = space.fit
+        def evaluation_observer(event):
+            store.append_event({'event': 'optimizer_' + event['type'], **event})
+            message = format_optimizer_evaluation(event, fit_names)
+            if args.fit_log != 'quiet' or event.get('valid') is False:
+                print(message, file=sys.stderr if event.get('valid') is False else sys.stdout, flush=True)
         def callback(event, state):
             store.save_optimizer(event, state)
-            print('Optimizer: ' + json.dumps(json_value(event), sort_keys=True), flush=True)
-        optimizer = ProjectedAdam(space, objective, options, callback, objective_id=store.identity_hash)
+            message = format_optimizer_boundary(event, state, fit_names)
+            terminal = event.get('status') in ProjectedAdam._TERMINAL
+            if message is not None and (args.fit_log != 'quiet' or event.get('type') == 'status' or terminal):
+                print(message, flush=True)
+        optimizer = ProjectedAdam(space, objective, options, callback, objective_id=store.identity_hash,
+                                  evaluation_observer=evaluation_observer)
         if args.resume:
             optimizer.load_state_dict(store.optimizer_state())
         try:

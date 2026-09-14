@@ -112,7 +112,8 @@ class DatasetObjective:
     def value_and_gradient(self, parameters, *, compute_grad=True):
         if type(compute_grad) is not bool:
             raise ValueError("compute_grad must be boolean")
-        shared = {name: _finite_number(parameters[name], name) for name in MATERIAL_NAMES}
+        shared = {name: _finite_number(parameters[name], name)
+                  for name in getattr(self.dataset, "shared_parameter_names", MATERIAL_NAMES)}
         self.calls += 1
         started = time.monotonic()
         self.event({"event": "dataset_objective_started", "call": self.calls,
@@ -283,7 +284,8 @@ class EpisodeProcessEvaluator:
             raise ValueError("no_runtime is only valid for input validation")
         if action != "objective" and compute_grad:
             raise ValueError("Only objective requests compute gradients")
-        shared = {name: _finite_number(parameters[name], name) for name in MATERIAL_NAMES}
+        shared = {name: _finite_number(parameters[name], name)
+                  for name in getattr(self.dataset, "shared_parameter_names", MATERIAL_NAMES)}
         request = {"schema": REQUEST_SCHEMA, "request_id": uuid.uuid4().hex,
                    "episode_id": episode.id, "action": action,
                    "dataset_path": self.dataset_path, "dataset_options": self.dataset_options,

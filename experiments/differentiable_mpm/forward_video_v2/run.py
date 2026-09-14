@@ -64,22 +64,34 @@ def path_overrides(values: list[str]) -> dict[str, dict[str, str]]:
     return result
 
 
-def material(values) -> dict[str, float]:
-    if not isinstance(values, dict) or set(values) != set(MATERIAL_NAMES):
-        raise ValueError("Material parameters must contain exactly the five shared material names")
-    result = {name: float(values[name]) for name in MATERIAL_NAMES}
+def shared_parameters(values, names) -> dict[str, float]:
+    if not isinstance(values, dict) or set(values) != set(names):
+        raise ValueError("Parameters must contain exactly the dataset shared parameter names")
+    result = {name: float(values[name]) for name in names}
     if not all(math.isfinite(value) for value in result.values()):
-        raise ValueError("Material parameters must be finite")
+        raise ValueError("Shared parameters must be finite")
     return result
+
+
+def material(values) -> dict[str, float]:
+    """Validate the material-only format used by dataset v1 callers."""
+    return shared_parameters(values, MATERIAL_NAMES)
+
+
+def dataset_parameter_names(dataset):
+    return tuple(getattr(dataset, "shared_parameter_names", MATERIAL_NAMES))
 
 
 def selection_parameters(path: Path, dataset) -> tuple[dict[str, float], dict]:
     record = json.loads(path.read_text())
-    if record.get("schema") != "taichidough/dataset-material-selection/v1":
-        raise ValueError("Expected a dataset selected_parameters.json file")
+    expected_schema = ("taichidough/dataset-physical-selection/v2" if len(dataset_parameter_names(dataset)) > len(MATERIAL_NAMES)
+                       else "taichidough/dataset-material-selection/v1")
+    if record.get("schema") != expected_schema:
+        raise ValueError("Expected a compatible dataset selected_parameters.json file")
     if record.get("dataset_fingerprint") != dataset.fingerprint:
         raise ValueError("Selected parameters belong to a different dataset configuration")
-    return material(record.get("shared_material_parameters")), {
+    key = "shared_physical_parameters" if len(dataset_parameter_names(dataset)) > len(MATERIAL_NAMES) else "shared_material_parameters"
+    return shared_parameters(record.get(key), dataset_parameter_names(dataset)), {
         "kind": "selected_parameters", "path": str(path), "sha256": sha256(path),
         "training_value": record.get("training_value"),
         "ignore_recompute_mismatch": record.get("ignore_recompute_mismatch"),
@@ -117,7 +129,9 @@ def optimizer_parameters(run_dir: Path, dataset, choice: str) -> tuple[dict[str,
         objective_value = (state.get("current") or {}).get("value")
     if coordinates is None:
         raise ValueError(f"Optimizer checkpoint has no {choice} accepted parameter coordinates")
-    selected = material({name: space.physical(coordinates)[name] for name in MATERIAL_NAMES})
+    selected = shared_parameters({name: space.physical(coordinates)[name]
+                                  for name in dataset_parameter_names(dataset)},
+                                 dataset_parameter_names(dataset))
     return selected, {
         "kind": "optimizer_checkpoint", "choice": choice, "run_dir": str(run_dir),
         "manifest_sha256": sha256(manifest_path), "optimizer_state_sha256": sha256(state_path),
@@ -133,15 +147,19 @@ def parameter_source(args, dataset) -> tuple[dict[str, float], dict]:
         "youngs_modulus": args.youngs_modulus, "poisson_ratio": args.poisson_ratio,
         "viscosity": args.viscosity, "plastic_min": args.plastic_min,
         "plastic_max": args.plastic_max,
+        "floor_retention": args.floor_retention,
+        "tool_friction_coefficient": args.tool_friction_coefficient,
+        "tool_stickiness": args.tool_stickiness,
     }
+    explicit_values = {name: explicit_values[name] for name in dataset_parameter_names(dataset)}
     has_explicit = any(value is not None for value in explicit_values.values())
     sources = int(args.run_dir is not None) + int(args.parameters is not None) + int(has_explicit)
     if sources != 1:
-        raise ValueError("Choose exactly one parameter source: --run-dir, --parameters, or all five explicit material values")
+        raise ValueError("Choose exactly one parameter source: --run-dir, --parameters, or every explicit dataset parameter")
     if has_explicit:
         if any(value is None for value in explicit_values.values()):
-            raise ValueError("Explicit parameters require all five material arguments")
-        return material(explicit_values), {"kind": "explicit_cli"}
+            raise ValueError("Explicit parameters require every shared dataset argument")
+        return shared_parameters(explicit_values, dataset_parameter_names(dataset)), {"kind": "explicit_cli"}
     if args.parameters is not None:
         return selection_parameters(args.parameters.expanduser().resolve(), dataset)
     run_dir = args.run_dir.expanduser().resolve()
@@ -179,6 +197,9 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--viscosity", type=float)
     result.add_argument("--plastic-min", type=float)
     result.add_argument("--plastic-max", type=float)
+    result.add_argument("--floor-retention", type=float)
+    result.add_argument("--tool-friction-coefficient", type=float)
+    result.add_argument("--tool-stickiness", type=float)
     result.add_argument("--path", action="append", default=[], metavar="EPISODE.INPUT=PATH")
     result.add_argument("--backend", choices=("cpu", "cuda", "vulkan"), default="cuda")
     result.add_argument("--precision", choices=("f32", "f64"), default="f32")
@@ -245,7 +266,8 @@ def main(argv=None) -> int:
             "dataset_sha256": sha256(args.dataset.expanduser().resolve()), "dataset_fingerprint": dataset.fingerprint,
             "episode_id": episode.id, "episode_config": str(episode.config_path),
             "parameter_source": provenance, "parameters": parameters,
-            "fixed_parameters": {name: effective[name] for name in effective if name not in MATERIAL_NAMES},
+            "fixed_parameters": {name: effective[name] for name in effective
+                                 if name not in dataset_parameter_names(dataset)},
             "mass_kg": episode.config.mass_kg, "density_kg_m3": episode.config.density_kg_m3,
             "end_frame": end_frame, "available_frames": len(sequence.times),
             "backend": args.backend, "precision": args.precision, "reference_policy": args.reference_policy,

@@ -151,6 +151,10 @@ class ExperimentConfig:
             raise ValueError("Unknown fitted parameter")
         if self.simulation.get("plasticity", "none") != "stretch-clamp" and set(self.fit_parameters) & {"plastic_min", "plastic_max"}:
             raise ValueError("Fitting plastic bounds requires explicit plasticity='stretch-clamp'")
+        if self.simulation.get("plasticity", "none") == "von-mises":
+            inactive = set(self.parameter_bounds) & {"plastic_min", "plastic_max"}
+            if inactive:
+                raise ValueError("Von Mises plastic bounds are inactive and cannot have fitting bounds")
         if set(self.parameter_bounds) - set(self.fit_parameters):
             raise ValueError("Parameter bounds must refer to fitted parameters")
         for name, bound in self.parameter_bounds.items():

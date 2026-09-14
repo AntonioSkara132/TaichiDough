@@ -1,0 +1,6 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+TaichiDough connects a calibrated RGB-D recording and measured two-spatula motion to a mass-preserving MLS-MPM model, partial-view differentiable objective, bounded parameter optimizer, and independent visible-geometry evaluation. Existing Episode~18 results show millimetric centroid/depth alignment with $0.831$ footprint IoU, substantial reduction of the differentiable training objective, and better temporal-continuation prediction than frozen geometry. They also show why objective reduction alone is insufficient for physical identification: the derivative-free modulus search is flat, one differentiable result is interrupted, another reaches a parameter bound, and full CUDA replay is not exactly reproducible.
+
+The current values are therefore effective parameters of a stated camera, reconstruction, contact law, constitutive model, and discretization. Future work will use robot-controlled spatulas to collect deliberately informative loading, unloading, hold, and rate-varied motions; repeat measurements across dough preparations; model tool occlusion; qualify full-horizon gradients; and compare matched differentiable and derivative-free optimizers. Once prediction is validated on independent manipulations, the simulator can support synthetic pretraining for inverse models and bimanual dough-shaping policies.

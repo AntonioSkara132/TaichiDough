@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from experiments.differentiable_mpm import calibrate_dataset as cli
 from experiments.differentiable_mpm.config import REQUIRED_PATHS, SCHEMA as EPISODE_SCHEMA
-from experiments.differentiable_mpm.dataset_config import MATERIAL_NAMES, SCHEMA
+from experiments.differentiable_mpm.dataset_config import MATERIAL_NAMES, SCHEMA, SCHEMA_V2
 from experiments.differentiable_mpm.multi_episode import EpisodeExecutionError
 from experiments.differentiable_mpm.results import RunStore
 from experiments.differentiable_mpm.state import DEFAULT_PARAMETERS, PARAMETER_NAMES
@@ -113,8 +113,9 @@ class DatasetCliTests(unittest.TestCase):
             summaries = {ep.id: self.summary(ep, no_runtime=args.no_runtime) for ep in dataset.episodes}
             return summaries, {name: {'error': 'Mock preflight failure'} for name in self.preflight_failures}, self.root / 'preflight'
         with ExitStack() as stack:
-            stack.enter_context(redirect_stdout(io.StringIO()))
-            stack.enter_context(redirect_stderr(io.StringIO()))
+            stdout, stderr = io.StringIO(), io.StringIO()
+            stack.enter_context(redirect_stdout(stdout))
+            stack.enter_context(redirect_stderr(stderr))
             stack.enter_context(patch.object(cli, 'RUN_ROOT', self.root))
             stack.enter_context(patch.object(cli, 'source_identity', return_value={'fixture_source': source}))
             stack.enter_context(patch('experiments.differentiable_mpm.reference_adapter.reference_identity',
@@ -125,6 +126,8 @@ class DatasetCliTests(unittest.TestCase):
             mocked_runner = stack.enter_context(patch.object(cli, '_runner', side_effect=runner))
             if not actual_preflight:
                 stack.enter_context(patch.object(cli, 'preflight', side_effect=preflight))
+            mocked_runner.stdout = stdout
+            mocked_runner.stderr = stderr
             yield mocked_runner
 
     def run_cli(self, action, output, *extra):
@@ -168,6 +171,42 @@ class DatasetCliTests(unittest.TestCase):
         result = self.json(output)
         self.assertTrue(result['no_runtime'])
 
+    def test_initial_material_overrides_change_resolved_fingerprint_not_source_hash(self):
+        self.document['shared_parameters']['fit'] = ['youngs_modulus', 'viscosity']
+        self.document['shared_parameters']['initial']['youngs_modulus'] = 6000.0
+        self.document['shared_parameters']['bounds']['youngs_modulus'] = [2000.0, 60000.0]
+        self.write_dataset()
+        baseline_source = hashlib.sha256(self.dataset_path.read_bytes()).hexdigest()
+        with self.environment() as runner:
+            self.assertEqual(self.run_cli(
+                'validate', self.root / 'initial-overrides', '--no-runtime',
+                '--initial-youngs-modulus', '12000', '--initial-viscosity', '0.6'), 0)
+            self.assertEqual(runner.call_args.args[2]['initial_overrides'],
+                             {'youngs_modulus': 12000.0, 'viscosity': 0.6})
+        resolved = self.datasets[-1]
+        self.assertEqual(resolved.shared_initial['youngs_modulus'], 12000.0)
+        self.assertEqual(resolved.shared_initial['viscosity'], 0.6)
+        self.assertEqual(resolved.source_document_sha256, baseline_source)
+        with self.environment():
+            self.assertEqual(self.run_cli('validate', self.root / 'initial-default', '--no-runtime'), 0)
+        self.assertNotEqual(resolved.fingerprint, self.datasets[-1].fingerprint)
+        for episode in resolved.episodes:
+            self.assertEqual(episode.config.parameters['youngs_modulus'], 12000.0)
+            self.assertEqual(episode.config.parameters['viscosity'], 0.6)
+
+    def test_initial_material_overrides_reject_out_of_bounds_and_change_resume_identity(self):
+        with self.environment() as runner, self.assertRaisesRegex(ValueError, 'outside bounds'):
+            self.run_cli('validate', self.root / 'outside-initial', '--no-runtime',
+                         '--initial-viscosity', '2')
+        runner.assert_not_called()
+        output = self.root / 'override-resume'
+        with self.environment():
+            self.assertEqual(self.fit(output, '--initial-viscosity', '0.2'), 0)
+        self.calls.clear()
+        with self.environment(), self.assertRaisesRegex(ValueError, 'Run identity differs'):
+            self.fit(output, '--resume', '--initial-viscosity', '0.3')
+        self.assertEqual(self.calls, [])
+
     def test_dataset_fixed_floor_and_tool_friction_reach_workers(self):
         self.document["floor_retention"] = 0.35
         self.document["tool_friction_coefficient"] = 0.8
@@ -201,6 +240,35 @@ class DatasetCliTests(unittest.TestCase):
         self.write_dataset()
         with self.environment(), self.assertRaises(ValueError):
             self.run_cli('validate', self.root / 'missing-window', '--no-runtime')
+
+    def test_concise_fit_log_shows_loss_gradients_parameters_and_keeps_full_events(self):
+        output = self.root / 'concise-log'
+        with self.environment() as runner:
+            self.assertEqual(self.fit(output), 0)
+            text = runner.stdout.getvalue()
+        self.assertIn('stage=initial', text)
+        self.assertIn('loss=', text)
+        self.assertIn('dL/dviscosity=', text)
+        self.assertIn('dL/du_viscosity=', text)
+        self.assertIn('params[viscosity(Pa.s)=', text)
+        self.assertIn('update=1 accepted', text)
+        self.assertNotIn('worker_started:', text)
+        self.assertNotIn('Optimizer: {', text)
+        events = [json.loads(line) for line in (output / 'events.jsonl').read_text().splitlines()]
+        evaluations = [event for event in events if event.get('event') == 'optimizer_evaluation']
+        self.assertTrue(evaluations)
+        self.assertIn('physical_gradient', evaluations[0])
+        self.assertIn('coordinate_gradient', evaluations[0])
+
+    def test_quiet_fit_log_prints_terminal_status_and_result_path(self):
+        output = self.root / 'quiet-log'
+        with self.environment() as runner:
+            self.assertEqual(self.fit(output, '--fit-log', 'quiet'), 0)
+            text = runner.stdout.getvalue()
+        self.assertIn('status=budget_exhausted', text)
+        self.assertIn('Dataset result:', text)
+        self.assertNotIn('grad_physical[', text)
+        self.assertNotIn('worker_started:', text)
 
     def test_actual_optimizer_acceptance_uses_complete_weighted_training_set(self):
         output = self.root / 'fit'
@@ -240,6 +308,43 @@ class DatasetCliTests(unittest.TestCase):
         for call in self.calls:
             self.assertEqual(call['effective']['floor_retention'], self.floors[call['episode_id']])
             self.assertEqual(call['effective']['tool_retention'], 1.0)
+
+    def test_v2_selection_records_and_reloads_shared_contacts(self):
+        self.document['schema'] = SCHEMA_V2
+        self.document['shared_parameters']['initial'].update(
+            floor_retention=0.35, tool_friction_coefficient=0.8, tool_stickiness=0.0)
+        self.document['shared_parameters']['fit'] = [
+            'viscosity', 'floor_retention', 'tool_friction_coefficient', 'tool_stickiness']
+        self.document['shared_parameters']['bounds'].update(
+            floor_retention=[0.0, 1.0], tool_friction_coefficient=[0.0, 2.0],
+            tool_stickiness=[0.0, 1.0])
+        self.document['shared_parameters']['bounds'] = {
+            name: bounds for name, bounds in self.document['shared_parameters']['bounds'].items()
+            if name in self.document['shared_parameters']['fit']}
+        for row in self.document['episodes']:
+            config_path = Path(row['config'])
+            config = json.loads(config_path.read_text())
+            config['simulation'].update(tool_collision='sdf', tool_contact_model='coulomb-adhesive-v1',
+                                        tool_contact_absorption=0.0)
+            config['paths'].update(collision_manifest=str(self.root / 'collision.json'),
+                                   kinova_collision_mesh=str(self.root / 'kinova.stl'),
+                                   ur_collision_mesh=str(self.root / 'ur.stl'))
+            config_path.write_text(json.dumps(config))
+        self.write_dataset()
+        fit = self.root / 'v2-selection'
+        with self.environment():
+            self.assertEqual(self.fit(fit), 0)
+        selected = self.json(fit, 'selected_parameters.json')
+        self.assertEqual(selected['schema'], cli.SELECTION_SCHEMA_V2)
+        values = selected['shared_physical_parameters']
+        self.assertEqual(values['floor_retention'], 0.35)
+        self.assertEqual(values['tool_friction_coefficient'], 0.8)
+        self.assertEqual(values['tool_stickiness'], 0.0)
+        self.calls.clear()
+        with self.environment():
+            self.assertEqual(self.run_cli('evaluate', self.root / 'v2-evaluate',
+                                          '--parameters', str(fit / 'selected_parameters.json')), 0)
+        self.assertTrue(all(call['shared'] == values for call in self.calls))
 
     def test_holdout_evaluation_uses_frozen_selection_after_training(self):
         output = self.root / 'holdout'

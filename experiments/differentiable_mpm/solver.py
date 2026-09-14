@@ -10,7 +10,8 @@ import taichi as ti
 from .state import (DEFAULT_PARAMETERS, PARAMETER_NAMES, STATE_NAMES, InvalidStateError,
                     ParticleState, SimulationConfig, SDFData, ToolControl,
                     normalize_parameters, validate_tool_parameters)
-from .spectral import clamp_forward, clamp_vjp, polar_forward, polar_vjp
+from .spectral import (clamp_forward, clamp_vjp, polar_forward, polar_vjp,
+                       von_mises_forward, von_mises_vjp)
 
 
 @ti.data_oriented
@@ -34,7 +35,8 @@ class Stepper:
         self.grid_offset = -1 if self.corrected_physics else 0
         self.g2p_affine_scale = 4 * self.inv_dx * (self.inv_dx if self.corrected_physics else 1.0)
         self.use_sdf = config.tool_collision == "sdf"
-        self.use_plasticity = config.plasticity == "stretch-clamp"
+        self.use_stretch_clamp = config.plasticity == "stretch-clamp"
+        self.use_von_mises = config.plasticity == "von-mises"
         if self.use_sdf:
             if sdf is None:
                 raise ValueError("SDF collision requires SDFData")
@@ -266,8 +268,17 @@ class Stepper:
             if minimum < self.config.min_singular_value or trial.determinant() <= 0 or not self._finite(minimum):
                 ti.atomic_min(self.invalid[2], p)
             self.yielded[p] = 0
-            if ti.static(self.use_plasticity):
+            if ti.static(self.use_stretch_clamp):
                 corrected, yielded = clamp_forward(trial, self.parameters[3], self.parameters[4])
+                self.corrected[p] = corrected
+                self.yielded[p] = yielded
+                if yielded:
+                    ti.atomic_add(self.counts[0], 1)
+            elif ti.static(self.use_von_mises):
+                corrected, yielded = von_mises_forward(
+                    trial, self.parameters[0], self.parameters[1],
+                    self.config.von_mises_yield_stress_pa,
+                )
                 self.corrected[p] = corrected
                 self.yielded[p] = yielded
                 if yielded:
@@ -278,12 +289,20 @@ class Stepper:
     @ti.kernel
     def _project_backward(self, slot: ti.i32):
         for p in range(self.n):
-            if ti.static(self.use_plasticity):
+            if ti.static(self.use_stretch_clamp):
                 gradient, lower, upper = clamp_vjp(self.trial[p], self.parameters[3], self.parameters[4],
                                                    self.corrected.grad[p])
                 self.trial.grad[p] += gradient
                 self.parameters.grad[3] += lower
                 self.parameters.grad[4] += upper
+            elif ti.static(self.use_von_mises):
+                gradient, young_bar, nu_bar = von_mises_vjp(
+                    self.trial[p], self.parameters[0], self.parameters[1],
+                    self.config.von_mises_yield_stress_pa, self.corrected.grad[p],
+                )
+                self.trial.grad[p] += gradient
+                self.parameters.grad[0] += young_bar
+                self.parameters.grad[1] += nu_bar
             else:
                 self.trial.grad[p] += self.corrected.grad[p]
 
@@ -291,7 +310,7 @@ class Stepper:
     def _history(self, slot: ti.i32):
         for p in range(self.n):
             value = self.Jp[slot, p]
-            if ti.static(self.use_plasticity and self.config.use_jp):
+            if ti.static(self.use_stretch_clamp and self.config.use_jp):
                 value = ti.min(ti.max(value * self.trial[p].determinant() / self.corrected[p].determinant(),
                                       self.config.jp_min), self.config.jp_max)
             self.history[p] = value

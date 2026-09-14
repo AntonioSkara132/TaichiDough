@@ -1,0 +1,46 @@
+\documentclass[letterpaper,10pt,conference]{ieeeconf}
+
+\IEEEoverridecommandlockouts
+\overrideIEEEmargins
+\pdfminorversion=4
+
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{microtype}
+\usepackage{cite}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage{flushend}
+\usepackage[section]{placeins}
+\graphicspath{{figures/}}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+
+\title{Single-Camera Effective Parameter Identification for Bimanual Dough Simulation}
+
+\author{Antonio \v{S}kara, Bruno Maric, Frano Petric and Matko Orsag%
+\thanks{All authors are with the Laboratory for Robotics and Intelligent Control Systems (LARICS), University of Zagreb Faculty of Electrical Engineering and Computing, 10000 Zagreb, Croatia. E-mail: \{antonio.skara, bruno.maric, frano.petric, matko.orsag\}@fer.hr.}%
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Learning bimanual manipulation of deformable materials requires models that connect camera observations, tool motion, and material response. We present TaichiDough, a real-to-simulation pipeline for dough observed by one calibrated RGB-D camera while two spatulas follow recorded trajectories. A metric camera--scene calibration and floor-aware reconstruction initialize a mass-preserving three-dimensional Moving Least Squares Material Point Method model. The corrected Taichi simulator replays signed-distance-field tools and differentiates a partial-view depth objective through the full particle trajectory. Material variables are optimized in scaled latent coordinates, while an independent full-resolution evaluator measures visible-geometry prediction. On one recorded sequence, a five-parameter run reduced its training objective by 61.8\% before interruption. A separate completed run improved a strict temporal-continuation score over frozen geometry, but reached the Young's-modulus bound and used mismatch-tolerant CUDA replay. We therefore interpret the estimates as configuration-dependent effective parameters rather than uniquely identified dough constants. The results establish the sensing, simulation, and optimization basis for future synthetic-data generation and robot-controlled bimanual shaping, while making the present identifiability and numerical limitations explicit.
+\end{abstract}
+
+\input{content/01_into_related}
+\input{content/02_method}
+\input{content/03_results}
+\input{content/04_conclusion}
+
+\bibliographystyle{ieeetr}
+\bibliography{bibliography/bibliography}
+
+\end{document}

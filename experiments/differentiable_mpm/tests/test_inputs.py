@@ -94,6 +94,41 @@ class InputTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "requires explicit plasticity"):
             pure.validate()
 
+    def test_von_mises_configuration_requires_perfect_plasticity_settings(self):
+        from experiments.differentiable_mpm.state import SimulationConfig
+
+        config = SimulationConfig(
+            n_particles=1,
+            plasticity="von-mises",
+            von_mises_yield_stress_pa=1000.0,
+        )
+        self.assertEqual(config.von_mises_yield_stress_pa, 1000.0)
+        invalid = (
+            {"von_mises_yield_stress_pa": None},
+            {"von_mises_yield_stress_pa": 0.0},
+            {"von_mises_yield_stress_pa": float("nan")},
+            {"use_jp": True},
+            {"jp_hardening": 1.0},
+            {"plastic_velocity_damping": 0.9},
+            {"plastic_affine_damping": 0.9},
+        )
+        for changes in invalid:
+            settings = {
+                "n_particles": 1,
+                "plasticity": "von-mises",
+                "von_mises_yield_stress_pa": 1000.0,
+                **changes,
+            }
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                SimulationConfig(**settings)
+
+    def test_von_mises_rejects_stretch_limit_fitting(self):
+        config = self.fixture_config()
+        config.simulation.update(plasticity="von-mises", von_mises_yield_stress_pa=1000.0)
+        config.fit_parameters = ["youngs_modulus", "plastic_min"]
+        with self.assertRaisesRegex(ValueError, "plastic bounds"):
+            config.validate()
+
     def test_examples_select_training_loss_version_explicitly(self):
         from experiments.differentiable_mpm.loss import LossConfig
 
