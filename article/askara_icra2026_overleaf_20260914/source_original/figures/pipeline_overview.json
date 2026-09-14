@@ -1,0 +1,14 @@
+{
+  "schema": "taichidough/icra-figure-provenance/v1",
+  "figure": "pipeline_overview",
+  "kind": "schematic",
+  "completed_stages": [
+    "single-camera capture",
+    "metric calibration and reconstruction",
+    "recorded two-tool MLS-MPM replay",
+    "partial-view differentiation",
+    "bounded parameter optimization"
+  ],
+  "future_stage": "bimanual robot policy learning and execution",
+  "note": "The dashed future block denotes planned work, not a completed experiment."
+}

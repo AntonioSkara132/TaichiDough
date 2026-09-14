@@ -307,7 +307,9 @@ def prepare_experiment(config: ExperimentConfig, split="training", end_frame=Non
     calibration = topview.load_calibration(config.paths["calibration"])
     if not calibration.is_metric or calibration.schema != "taichidough/scene-calibration/v2":
         raise ValueError("Differentiable training requires a metric v2 camera calibration")
-    if calibration.source_frame != "mocap" or calibration.scene_frame not in {"mocap", "table-aligned"}:
+    if calibration.source_frame != "mocap" or calibration.scene_frame not in {
+        "mocap", "table-aligned", "episode3-table-aligned"
+    }:
         raise ValueError("Recorded dough replay requires mocap source and mocap or table-aligned scene coordinates")
     distortion = np.asarray(calibration.camera.get("d", []), dtype=float)
     if distortion.size and not np.allclose(distortion, 0, rtol=0, atol=1e-12):

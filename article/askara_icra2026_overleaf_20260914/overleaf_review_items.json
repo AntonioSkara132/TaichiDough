@@ -1,0 +1,319 @@
+{
+  "project": "askara_icra2026",
+  "overleaf_project_id": "6a96b07076bd7fc6a0f4485a",
+  "captured_date": "2026-09-14",
+  "files": [
+    {
+      "path": "content/01_into_related.tex",
+      "items": [
+        {
+          "type": "comment",
+          "character_offset": 1127,
+          "line": 15,
+          "column": 35,
+          "author": "maric.bruno",
+          "time": "14 September, 8:57 am",
+          "comment": "to je?",
+          "tracked_change": null,
+          "context": ".6\\textwidth} \\caption{Simulation setup with both watertight spatula SDFs and reconstructed dough} \\label{fig:simiulation} \\end{figure*} In this work we introduce \\textbf{TaichiDough}, a real-to-sim pipeline intended for future bimanual deformable object manipulation practices. A calibrated RGB-D camera records the dough while motion capture system (Mocap) provides the poses of both tools. The initial visible shape is reconstructed into a volumetric particle model, measured tool motion"
+        },
+        {
+          "type": "comment",
+          "character_offset": 1233,
+          "line": 15,
+          "column": 141,
+          "author": "maric.bruno",
+          "time": "14 September, 8:57 am",
+          "comment": "ne bi se ogranicio samo na spatulu. Bit ce u buducnosti i silikonska ruka",
+          "tracked_change": null,
+          "context": "\\label{fig:simiulation} \\end{figure*} In this work we introduce \\textbf{TaichiDough}, a real-to-sim pipeline intended for future bimanual deformable object manipulation practices. A calibrated RGB-D camera records the dough while motion capture system (Mocap) provides the poses of both tools. The initial visible shape is reconstructed into a volumetric particle model, measured tool motion is replayed in a three-dimensional Material Point Method (MPM) simulator, and material parameters are adju"
+        },
+        {
+          "type": "change",
+          "character_offset": 1299,
+          "line": 15,
+          "column": 207,
+          "author": "maric.bruno",
+          "time": "14 September, 8:58 am",
+          "comment": null,
+          "tracked_change": "add_circle\nAdded:  system (Mocap)",
+          "context": "\\textbf{TaichiDough}, a real-to-sim pipeline intended for future bimanual deformable object manipulation practices. A calibrated RGB-D camera records the dough while motion capture system (Mocap) provides the poses of both tools. The initial visible shape is reconstructed into a volumetric particle model, measured tool motion is replayed in a three-dimensional Material Point Method (MPM) simulator, and material parameters are adjusted to reduce disagreement between rendered and recorded depth ob"
+        },
+        {
+          "type": "comment",
+          "character_offset": 1772,
+          "line": 18,
+          "column": 3,
+          "author": "maric.bruno",
+          "time": "14 September, 9:46 am",
+          "comment": "cijeli ovaj paragraf mi je meh...",
+          "tracked_change": null,
+          "context": "dered and recorded depth observations. The same forward model supports a derivative-free Young's-modulus search and reverse-mode differentiation through complete trajectories. % The central question is deliberately narrower than camera-based rheometry: what \\emph{effective simulator parameters} can one calibrated view and known tool motion constrain? Absolute camera scale does not remove ambiguity among hidden volume, mass, contact, constitutive response, and numerical discretization. We there"
+        },
+        {
+          "type": "comment",
+          "character_offset": 2232,
+          "line": 18,
+          "column": 463,
+          "author": "maric.bruno",
+          "time": "14 September, 9:46 am",
+          "comment": "ovo treba ublaziti nekako. Reci da je naglasak na ovom prethodno sad, a robot nije u fokusu.",
+          "tracked_change": null,
+          "context": ", and numerical discretization. We therefore report parameter estimates only for the declared model and setup, and separate training loss from a frozen full-resolution evaluation. The robot execution and synthetic-data learning experiments are future work; the present study establishes and examines the identification pipeline that they require. The contributions are: \\begin{itemize} \\item a metric single-camera pipeline that combines floor-aware volumetric initialization; \\item a diff"
+        },
+        {
+          "type": "comment",
+          "character_offset": 2400,
+          "line": 20,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "14 September, 9:52 am",
+          "comment": "prije ove slike treba neku INTRO sliku atraktivnu staviti. Mozda prikaz simulatora.",
+          "tracked_change": null,
+          "context": "evaluation. The robot execution and synthetic-data learning experiments are future work; the present study establishes and examines the identification pipeline that they require. The contributions are: \\begin{itemize} \\item a metric single-camera pipeline that combines floor-aware volumetric initialization; \\item a differentiable MLS-MPM formulation for partial depth observations, including bounded optimizer coordinates for elastic, viscous, and principal-stretch parameters; and \\end{"
+        },
+        {
+          "type": "comment",
+          "character_offset": 2730,
+          "line": 28,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "14 September, 9:55 am",
+          "comment": "?",
+          "tracked_change": null,
+          "context": "fferentiable MLS-MPM formulation for partial depth observations, including bounded optimizer coordinates for elastic, viscous, and principal-stretch parameters; and \\end{itemize} \\begin{figure*}[t] \\centering \\includegraphics[width=0.98\\textwidth]{figures/pipeline_overview.pdf} \\caption{TaichiDough pipeline. A single calibrated RGB-D camera and recorded poses of two spatulas provide the initial geometry, observations, and boundary motion. A corrected MLS-MPM rollout is projected in"
+        },
+        {
+          "type": "comment",
+          "character_offset": 2730,
+          "line": 28,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "14 September, 9:57 am",
+          "comment": "Rekao bi da related work u ovoj formi obuhvaca samo ono sto si ti koristio u ovom radu. To nije poanta related worka. Related work treba sagledati siru sliku. Reci nesto o tom kako ljudi rade s deformabilnim objektima, sto su oni, sto su izazovi, koji su pristupi dostupni u State of the art. Onda mozes uci u neke specificne stvari (subsectioni kako si stavio) ali i tu bi trebao dati pregled sta sve postoji i zasto si odabrao ovo sto si odabrao.",
+          "tracked_change": null,
+          "context": "fferentiable MLS-MPM formulation for partial depth observations, including bounded optimizer coordinates for elastic, viscous, and principal-stretch parameters; and \\end{itemize} \\begin{figure*}[t] \\centering \\includegraphics[width=0.98\\textwidth]{figures/pipeline_overview.pdf} \\caption{TaichiDough pipeline. A single calibrated RGB-D camera and recorded poses of two spatulas provide the initial geometry, observations, and boundary motion. A corrected MLS-MPM rollout is projected in"
+        }
+      ]
+    },
+    {
+      "path": "content/02_method.tex",
+      "items": [
+        {
+          "type": "change",
+          "character_offset": 37,
+          "line": 4,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "14 September, 10:36 am",
+          "comment": null,
+          "tracked_change": "edit\nChanged: We\nto Let us",
+          "context": "\\section{Method} \\label{sec:method} Let us formulate calibration as a trajectory-conditioned inverse problem. Let $z_t$ denote the simulated particle state, $u_t$ the measured poses and velocities of the two spatulas, $\\theta$ the fitted material parameters, and $\\psi$ the fixed reconstruction, contact, camera, and numerical settings: \\begin{equation} \\"
+        },
+        {
+          "type": "comment",
+          "character_offset": 37,
+          "line": 4,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "14 September, 10:36 am",
+          "comment": "Malo mi je ovo previse in medias res...",
+          "tracked_change": null,
+          "context": "\\section{Method} \\label{sec:method} Let us formulate calibration as a trajectory-conditioned inverse problem. Let $z_t$ denote the simulated particle state, $u_t$ the measured poses and velocities of the two spatulas, $\\theta$ the fitted material parameters, and $\\psi$ the fixed reconstruction, contact, camera, and numerical settings: \\begin{equation} \\"
+        },
+        {
+          "type": "change",
+          "character_offset": 339,
+          "line": 8,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "14 September, 10:35 am",
+          "comment": null,
+          "tracked_change": "add_circle\nAdded: \\begin{equation} \\begin{aligned} z_{t+1} &= \\mathcal{S}_{h,\\Delta t}(z_t,u_t;\\theta,\\psi),\\\\ y_t &= \\mathcal{H}_{c}(z_t)+\\delta_t+\\epsilon_t . \\end{aligned} \\label{eq:inverse_problem} \\end{equation} %\nshow less",
+          "context": "$u_t$ the measured poses and velocities of the two spatulas, $\\theta$ the fitted material parameters, and $\\psi$ the fixed reconstruction, contact, camera, and numerical settings: \\begin{equation} \\begin{aligned} z_{t+1} &= \\mathcal{S}_{h,\\Delta t}(z_t,u_t;\\theta,\\psi),\\\\ y_t &= \\mathcal{H}_{c}(z_t)+\\delta_t+\\epsilon_t . \\end{aligned} \\label{eq:inverse_problem} \\end{equation} % \\begin{equation} % z_{t+1}=\\mathcal{S}_{h,\\Delta t}(z_t,u_t;\\theta,\\psi),\\qquad % y_t=\\mathcal{H}_{c}(z_t)+\\delta_t+\\"
+        },
+        {
+          "type": "change",
+          "character_offset": 557,
+          "line": 16,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "14 September, 10:35 am",
+          "comment": null,
+          "tracked_change": "add_circle\nAdded: %",
+          "context": "1} &= \\mathcal{S}_{h,\\Delta t}(z_t,u_t;\\theta,\\psi),\\\\ y_t &= \\mathcal{H}_{c}(z_t)+\\delta_t+\\epsilon_t . \\end{aligned} \\label{eq:inverse_problem} \\end{equation} % \\begin{equation} % z_{t+1}=\\mathcal{S}_{h,\\Delta t}(z_t,u_t;\\theta,\\psi),\\qquad % y_t=\\mathcal{H}_{c}(z_t)+\\delta_t+\\epsilon_t . % \\label{eq:inverse_problem} % \\end{equation} Here $\\mathcal{H}_{c}$ projects particles into the calibrated depth camera, while $\\delta_t$ and $\\epsilon_t$ denote model discrepancy and measurement noise."
+        },
+        {
+          "type": "change",
+          "character_offset": 621,
+          "line": 17,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "14 September, 10:35 am",
+          "comment": null,
+          "tracked_change": "add_circle\nAdded: %",
+          "context": "athcal{H}_{c}(z_t)+\\delta_t+\\epsilon_t . \\end{aligned} \\label{eq:inverse_problem} \\end{equation} % \\begin{equation} % z_{t+1}=\\mathcal{S}_{h,\\Delta t}(z_t,u_t;\\theta,\\psi),\\qquad % y_t=\\mathcal{H}_{c}(z_t)+\\delta_t+\\epsilon_t . % \\label{eq:inverse_problem} % \\end{equation} Here $\\mathcal{H}_{c}$ projects particles into the calibrated depth camera, while $\\delta_t$ and $\\epsilon_t$ denote model discrepancy and measurement noise. The estimated values are therefore effective parameters of this"
+        },
+        {
+          "type": "change",
+          "character_offset": 671,
+          "line": 18,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "14 September, 10:35 am",
+          "comment": null,
+          "tracked_change": "add_circle\nAdded: %",
+          "context": "ned} \\label{eq:inverse_problem} \\end{equation} % \\begin{equation} % z_{t+1}=\\mathcal{S}_{h,\\Delta t}(z_t,u_t;\\theta,\\psi),\\qquad % y_t=\\mathcal{H}_{c}(z_t)+\\delta_t+\\epsilon_t . % \\label{eq:inverse_problem} % \\end{equation} Here $\\mathcal{H}_{c}$ projects particles into the calibrated depth camera, while $\\delta_t$ and $\\epsilon_t$ denote model discrepancy and measurement noise. The estimated values are therefore effective parameters of this specified experiment and simulator, rather than un"
+        },
+        {
+          "type": "change",
+          "character_offset": 701,
+          "line": 19,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "14 September, 10:35 am",
+          "comment": null,
+          "tracked_change": "add_circle\nAdded: %",
+          "context": "} \\end{equation} % \\begin{equation} % z_{t+1}=\\mathcal{S}_{h,\\Delta t}(z_t,u_t;\\theta,\\psi),\\qquad % y_t=\\mathcal{H}_{c}(z_t)+\\delta_t+\\epsilon_t . % \\label{eq:inverse_problem} % \\end{equation} Here $\\mathcal{H}_{c}$ projects particles into the calibrated depth camera, while $\\delta_t$ and $\\epsilon_t$ denote model discrepancy and measurement noise. The estimated values are therefore effective parameters of this specified experiment and simulator, rather than universal dough constants. \\sub"
+        },
+        {
+          "type": "comment",
+          "character_offset": 1265,
+          "line": 29,
+          "column": 54,
+          "author": "maric.bruno",
+          "time": "14 September, 10:38 am",
+          "comment": "ovo mi je isto iz neba pa u rebra. Odakle, kako, gdje je smjesteno? Mozda prije ovoga treba neki mali setup opisati.",
+          "tracked_change": null,
+          "context": "amera records depth and colour, while the motion-capture system records the two spatula frames. Camera intrinsics and a rigid camera-to-scene transform are obtained from repeated AprilTag/mocap correspondences. The calibration also stores the table plane. All point clouds are transformed once into metric scene coordinates; no scale, translation, or rigid registration is fitted during evaluation. The first observed dough surface is voxelised and each occupied vertical column is filled down to"
+        },
+        {
+          "type": "comment",
+          "character_offset": 2311,
+          "line": 50,
+          "column": 47,
+          "author": "maric.bruno",
+          "time": "14 September, 10:39 am",
+          "comment": "referencirati?",
+          "tracked_change": null,
+          "context": "tact point $x$ is \\begin{equation} v_{\\mathrm{tool}}(x)=v_{\\mathrm{lin}}+\\omega\\times(x-c), \\label{eq:tool_velocity} \\end{equation} where $c$ is the tool centre. The unilateral Coulomb approximation removes inward normal relative velocity and limits tangential correction using the configured friction coefficient; separating motion is left unchanged. % A post-advection projection resolves residual floor or tool penetration. \\subsection{Differentiable MLS-MPM} The simulator implements three"
+        },
+        {
+          "type": "change",
+          "character_offset": 2895,
+          "line": 60,
+          "column": 76,
+          "author": "maric.bruno",
+          "time": "14 September, 10:41 am",
+          "comment": null,
+          "tracked_change": "add_circle\nAdded:  given with:",
+          "context": "ichi}. Each particle stores position $x_p$, velocity $v_p$, deformation gradient $F_p$, affine velocity matrix $C_p$, and optional plastic-volume state. The deformation update is given with: \\begin{equation} F_p^{n+1}=(I+\\Delta t\\,C_p)F_p^n . \\label{eq:deformation_update} \\end{equation} Young's modulus $E$ and Poisson ratio $\\nu$ define: \\begin{equation} \\mu=\\frac{E}{2(1+\\nu)},\\qquad \\lambda=\\frac{E\\nu}{(1+\\nu)(1-2\\nu)} . \\label{eq:lame} \\end{equation} With polar factor $R$, $J=\\det(F_p)$"
+        },
+        {
+          "type": "change",
+          "character_offset": 3057,
+          "line": 65,
+          "column": 51,
+          "author": "maric.bruno",
+          "time": "14 September, 10:42 am",
+          "comment": null,
+          "tracked_change": "add_circle\nAdded: :",
+          "context": "ormation update is given with: \\begin{equation} F_p^{n+1}=(I+\\Delta t\\,C_p)F_p^n . \\label{eq:deformation_update} \\end{equation} Young's modulus $E$ and Poisson ratio $\\nu$ define: \\begin{equation} \\mu=\\frac{E}{2(1+\\nu)},\\qquad \\lambda=\\frac{E\\nu}{(1+\\nu)(1-2\\nu)} . \\label{eq:lame} \\end{equation} With polar factor $R$, $J=\\det(F_p)$, and viscosity $\\eta$, the implemented stress contribution is: \\begin{equation} P=2\\mu(F_p-R)F_p^T+\\lambda J(J-1)I +\\eta(C_p+C_p^T). \\label{eq:stress} \\end{"
+        },
+        {
+          "type": "change",
+          "character_offset": 3277,
+          "line": 72,
+          "column": 23,
+          "author": "maric.bruno",
+          "time": "14 September, 10:42 am",
+          "comment": null,
+          "tracked_change": "add_circle\nAdded: :",
+          "context": ")},\\qquad \\lambda=\\frac{E\\nu}{(1+\\nu)(1-2\\nu)} . \\label{eq:lame} \\end{equation} With polar factor $R$, $J=\\det(F_p)$, and viscosity $\\eta$, the implemented stress contribution is: \\begin{equation} P=2\\mu(F_p-R)F_p^T+\\lambda J(J-1)I +\\eta(C_p+C_p^T). \\label{eq:stress} \\end{equation} The final term is an additive rate stress, not a multi-time-scale rheological model. For quadratic B-spline weight $w_{pi}$, particle-to-node offset $d_{pi}$, and grid spacing $\\Delta x$, particle-to-grid tran"
+        },
+        {
+          "type": "comment",
+          "character_offset": 3929,
+          "line": 89,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "14 September, 10:43 am",
+          "comment": "sta su U i V?",
+          "tracked_change": null,
+          "context": "ght)d_{pi}\\right]. \\label{eq:p2g} \\end{align} The corrected grid-to-particle update reconstructs the affine velocity using $4\\Delta x^{-2}d_{pi}$. Optional plasticity decomposes $F_p=U\\Sigma V^T$ and clamps each principal stretch to $[\\sigma_{\\min},\\sigma_{\\max}]$ before reconstruction. These bounds are dimensionless stretch limits, not yield stresses. \\subsection{Partial-View Objective and Optimization} At each selected frame, a differentiable camera-space particle renderer uses compact s"
+        },
+        {
+          "type": "comment",
+          "character_offset": 3984,
+          "line": 90,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "14 September, 10:43 am",
+          "comment": "a sta su sigme?",
+          "tracked_change": null,
+          "context": "ected grid-to-particle update reconstructs the affine velocity using $4\\Delta x^{-2}d_{pi}$. Optional plasticity decomposes $F_p=U\\Sigma V^T$ and clamps each principal stretch to $[\\sigma_{\\min},\\sigma_{\\max}]$ before reconstruction. These bounds are dimensionless stretch limits, not yield stresses. \\subsection{Partial-View Objective and Optimization} At each selected frame, a differentiable camera-space particle renderer uses compact splats and soft visibility to produce depth, coverage, a"
+        },
+        {
+          "type": "comment",
+          "character_offset": 4881,
+          "line": 108,
+          "column": 13,
+          "author": "maric.bruno",
+          "time": "14 September, 10:45 am",
+          "comment": "are or are not? ako nisu kako su onda tretirani?",
+          "tracked_change": null,
+          "context": "relative to the initial frame, $\\ell_c$ penalizes missing positive observed foreground, and $\\ell_q$ is the directed distance from observed points to visible predicted particles. Unknown pixels are not treated as empty space. % Depth and point % distances are divided by the declared $0.01\\,$m scales before applying the % Huber penalty. % This balances objective components; it does not normalize % physical material units. % Splat support, visibility, and nearest-particle % associations are"
+        },
+        {
+          "type": "comment",
+          "character_offset": 6842,
+          "line": 137,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "11 September, 11:01 am",
+          "comment": "Mozda preimenovati u Method",
+          "tracked_change": null,
+          "context": "perator shaping the dough into a ball using two spatulas during data collection. OptiTrack markers attached to the dough are visible.} \\label{fig:data_collection} \\end{figure} \\subsection{Data Collection} Data were collected using two 3D-printed spatulas. The experimental setup consisted of an Intel RealSense D435 camera and an OptiTrack motion-capture system. OptiTrack markers were attached to the spatulas to track their position and orientation during manipulation. The transformation be"
+        },
+        {
+          "type": "comment",
+          "character_offset": 6842,
+          "line": 137,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "11 September, 11:38 am",
+          "comment": "napisati u tekstu sto je",
+          "tracked_change": null,
+          "context": "perator shaping the dough into a ball using two spatulas during data collection. OptiTrack markers attached to the dough are visible.} \\label{fig:data_collection} \\end{figure} \\subsection{Data Collection} Data were collected using two 3D-printed spatulas. The experimental setup consisted of an Intel RealSense D435 camera and an OptiTrack motion-capture system. OptiTrack markers were attached to the spatulas to track their position and orientation during manipulation. The transformation be"
+        }
+      ]
+    },
+    {
+      "path": "content/03_results.tex",
+      "items": [
+        {
+          "type": "comment",
+          "character_offset": 0,
+          "line": 1,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "14 September, 10:58 am",
+          "comment": "Mozemo li s rezultatima reci da su oni doprinijeli razvoju SOTA(state of the art), odnodno da su pomaknuli nekako postojeci SOTA?",
+          "tracked_change": null,
+          "context": "\\section{Results and Discussion} \\label{sec:results} \\begin{figure*}[t] \\centering \\includegraphics[width=0.98\\textwidth]{matched_sequence.pdf} \\caption{Exact-timestamp Episode~18 camera views and simulation outputs. The top row is contextual RGB extracted from the original Rosbag; the bottom row is saved dough-only s"
+        },
+        {
+          "type": "comment",
+          "character_offset": 856,
+          "line": 18,
+          "column": 1,
+          "author": "maric.bruno",
+          "time": "14 September, 10:55 am",
+          "comment": "To je sta?",
+          "tracked_change": null,
+          "context": "f} \\caption{Accepted objective and parameter history for the five-variable differentiable run. The orange ring marks the best saved state. } \\label{fig:parameters} \\end{figure*} Figs.~\\ref{fig:matched} and~\\ref{fig:parameters} show the camera-matched sequence and differentiable optimization history. % \\subsection{Metric Initialization} % The metric calibration aggregates 384 moving-tag correspondences and fixes the camera, mocap scene, and floor in metres. % At the initial frame, 3970 observ"
+        }
+      ]
+    }
+  ]
+}

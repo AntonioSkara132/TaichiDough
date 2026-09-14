@@ -1,0 +1,58 @@
+{
+  "schema": "taichidough/icra-recorded-rgb-extraction/v1",
+  "bag_directory": "/home/antonio/diplomski_antonio/diplomski/data/deformpath_training/DeformPath2/snimanje_23_10/episode18_kugla",
+  "conversion_metadata": "/home/antonio/diplomski_antonio/diplomski/data/deformpath_training/DeformPath3/snimanje_23_10/episode18_kugla/conversion_metadata.json",
+  "topic": "/camera/camera/color/image_raw",
+  "records": [
+    {
+      "source_frame": 0,
+      "pointcloud_timestamp_ns": 1782233873078943359,
+      "image_timestamp_ns": 1782233873078943359,
+      "absolute_time_difference_ns": 0,
+      "encoding": "rgb8",
+      "width": 640,
+      "height": 480,
+      "output": "recorded_rgb_frame_000000.png"
+    },
+    {
+      "source_frame": 30,
+      "pointcloud_timestamp_ns": 1782233874079470459,
+      "image_timestamp_ns": 1782233874079470459,
+      "absolute_time_difference_ns": 0,
+      "encoding": "rgb8",
+      "width": 640,
+      "height": 480,
+      "output": "recorded_rgb_frame_000030.png"
+    },
+    {
+      "source_frame": 60,
+      "pointcloud_timestamp_ns": 1782233875079995850,
+      "image_timestamp_ns": 1782233875079995850,
+      "absolute_time_difference_ns": 0,
+      "encoding": "rgb8",
+      "width": 640,
+      "height": 480,
+      "output": "recorded_rgb_frame_000060.png"
+    },
+    {
+      "source_frame": 75,
+      "pointcloud_timestamp_ns": 1782233875580253418,
+      "image_timestamp_ns": 1782233875580253418,
+      "absolute_time_difference_ns": 0,
+      "encoding": "rgb8",
+      "width": 640,
+      "height": 480,
+      "output": "recorded_rgb_frame_000075.png"
+    },
+    {
+      "source_frame": 97,
+      "pointcloud_timestamp_ns": 1782233876313989258,
+      "image_timestamp_ns": 1782233876313989258,
+      "absolute_time_difference_ns": 0,
+      "encoding": "rgb8",
+      "width": 640,
+      "height": 480,
+      "output": "recorded_rgb_frame_000097.png"
+    }
+  ]
+}

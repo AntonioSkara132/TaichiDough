@@ -228,3 +228,21 @@ def test_rejects_duplicate_or_missing_exact_stamp_mapping(tmp_path):
     refresh_hash(case, case[1].name)
     with pytest.raises(ValueError, match="count differs"):
         run(case)
+
+
+def test_slices_raw_frame_stats_through_pointcloud_indices(tmp_path):
+    case = fixture(tmp_path)
+    metadata_path = case[0] / "sequence_metadata.json"
+    metadata = json.loads(metadata_path.read_text())
+    metadata["pointcloud_filter"]["frame_stats"] = [
+        {"raw_position": position} for position in range(20)
+    ]
+    write_json(metadata_path, metadata)
+    refresh_hash(case, "sequence_metadata.json")
+
+    run(case)
+
+    first = json.loads((case[4] / "one" / "sequence_metadata.json").read_text())
+    assert first["pointcloud_filter"]["frame_stats"] == [
+        {"raw_position": position} for position in [0, 2, 3, 5, 6]
+    ]

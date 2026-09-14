@@ -277,7 +277,8 @@ def _chunk_parent_metadata(parent: dict[str, Any], positions: list[int], frame_c
                            times: np.ndarray, destination: Path) -> dict[str, Any]:
     result = {key: copy.deepcopy(value) for key, value in parent.items()
               if key not in {"pointcloud_indices", "sequence_fingerprint"}}
-    parent_count = len(parent.get("pointcloud_indices", []))
+    parent_indices = parent.get("pointcloud_indices", [])
+    parent_count = len(parent_indices)
     for key, value in list(result.items()):
         if key == "num_pose_frames":
             continue
@@ -291,9 +292,19 @@ def _chunk_parent_metadata(parent: dict[str, Any], positions: list[int], frame_c
         if isinstance(node, dict):
             for key, value in list(node.items()):
                 if key == "frame_stats" and isinstance(value, list):
-                    if len(value) != parent_count:
-                        raise ValueError("Parent frame_stats count differs from pointcloud_indices")
-                    node[key] = [copy.deepcopy(value[position]) for position in positions]
+                    if len(value) == parent_count:
+                        selected = positions
+                    elif (
+                        len(parent_indices) == parent_count
+                        and all(isinstance(index, int) and 0 <= index < len(value)
+                                for index in parent_indices)
+                    ):
+                        selected = [parent_indices[position] for position in positions]
+                    else:
+                        raise ValueError(
+                            "Parent frame_stats must align with processed positions or pointcloud_indices"
+                        )
+                    node[key] = [copy.deepcopy(value[position]) for position in selected]
                 else:
                     slice_frame_stats(value)
         elif isinstance(node, list):

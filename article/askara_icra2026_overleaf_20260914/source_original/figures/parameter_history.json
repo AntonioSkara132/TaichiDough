@@ -1,0 +1,24 @@
+{
+  "schema": "taichidough/icra-figure-provenance/v1",
+  "figure": "parameter_history",
+  "sources": [
+    {
+      "path": "experiments/differentiable_mpm/runs/dataset_fit_20260913T195731_c5aeaabd_visualizations_prancer/dataset_fit_20260913T195731_c5aeaabd/retained_states.csv",
+      "sha256": "c932fbcea9a1965a9bd0169f8e469b6c6d041fc730eaf91afffb0e0d5aa568a0"
+    },
+    {
+      "path": "experiments/differentiable_mpm/runs/dataset_fit_20260913T195731_c5aeaabd/run_manifest.json",
+      "sha256": "92a9d5c6666efad95ba49a0a22b4d27dec57d09557d339576d2d56155e44b93c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/runs/dataset_fit_20260913T195731_c5aeaabd/result.json",
+      "sha256": "767fa2dd8a56754952b0b78980ba83e8b2593beede41b456b163965b2728186f"
+    }
+  ],
+  "accepted_states": 16,
+  "accepted_updates": 15,
+  "terminal_status": "fit_failed",
+  "terminal_error_type": "KeyboardInterrupt",
+  "best_loss": 0.16228778309867545,
+  "display": "No smoothing or omitted accepted states; modulus converted from Pa to kPa."
+}
