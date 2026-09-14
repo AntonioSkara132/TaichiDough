@@ -5,7 +5,7 @@ Overleaf project ID: `6a96b07076bd7fc6a0f4485a`
 Captured: 2026-09-14  
 Reviewer shown by Overleaf: `maric.bruno`
 
-The Review overview contained **17 unresolved comments** and **10 tracked text changes** across three files. The revision target is an ICRA-format, six-page, conservative system paper. The existing title, section order, method, reported experiment, and figures should remain recognizable; changes should clarify and correct the current paper rather than recast it. Numerical claims may be retained only when supported by stored, reproducible artifacts.
+The Review overview contained **17 unresolved comments** and **10 tracked text changes** across three files. The revision target is an ICRA-format, six-page, conservative system paper. The existing title, section order, method, reported experiment, and figures should remain recognizable; changes should clarify and correct the current paper rather than recast it. Numerical claims may be retained only when supported by stored, reproducible artifacts. The five-parameter `E`, `ν`, `η`, `σ_min`, `σ_max` run remains as a preliminary result rather than final material calibration. The revision must not discuss whether a program or operator stopped the run; any convergence statement must be based on the saved optimization history itself.
 
 Exact browser data and source-offset context are preserved in:
 
