@@ -60,6 +60,7 @@ RGB_MIN_COMPONENT_AREA = 100
 REPLAY_ATOL = 1e-5
 REPLAY_RTOL = 1e-5
 TOOL_VERTICAL_OFFSET_M = -0.002
+EXPECTED_TOTAL_MASS_KG = 0.1365984
 
 
 def write_new_json(path: Path, value: Any) -> None:
@@ -153,6 +154,26 @@ def save_full_state(path: Path, state, run_root: Path) -> dict[str, Any]:
         "path": relative_path(path, run_root),
         "sha256": sha256(path),
         "fields": list(STATE_FIELDS),
+    }
+
+
+def numerical_context(config) -> dict[str, Any]:
+    particle_count = int(config.n_particles)
+    particle_mass = getattr(config, "particle_mass", None)
+    return {
+        "n_particles": particle_count,
+        "grid": getattr(config, "grid", None),
+        "particle_mass_kg": particle_mass,
+        "total_mass_kg": None if particle_mass is None else float(particle_count * particle_mass),
+        "particle_volume_m3": getattr(config, "particle_volume", None),
+        "plasticity": getattr(config, "plasticity", None),
+        "use_jp": getattr(config, "use_jp", None),
+        "jp_hardening": getattr(config, "jp_hardening", None),
+        "tool_collision": getattr(config, "tool_collision", None),
+        "tool_contact_padding_m": getattr(config, "tool_contact_padding", None),
+        "tool_contact_model": getattr(config, "tool_contact_model", None),
+        "tool_contact_absorption": getattr(config, "tool_contact_absorption", None),
+        "p2g_mode": getattr(config, "p2g_mode", None),
     }
 
 
@@ -252,6 +273,7 @@ def run_chain(name: str, start_index: int, prepared: list, episodes: list,
         "initial_time_s": float(initial_time_s),
         "control_start_episode": episodes[start_index].id,
         "dynamics_context_episode": episodes[dynamics_index].id,
+        "numerical_context": numerical_context(base.simulation_config),
         "sequence": [episode.id for episode in episodes[start_index:4]],
         "controls_applied_in_order": [episode.id for episode in episodes[start_index:4]],
         "state_fields_carried_between_chunks": list(STATE_FIELDS),
@@ -641,14 +663,14 @@ def make_figure(output: Path, rgb: list[dict[str, Any]], chains: dict[str, list[
                 for spine in axis.spines.values():
                     spine.set_color("#d9dee2")
                     spine.set_linewidth(0.45)
-    fig.savefig(pdf, bbox_inches="tight", pad_inches=0.02)
-    fig.savefig(png, dpi=300, bbox_inches="tight", pad_inches=0.02)
+    fig.savefig(pdf)
+    fig.savefig(png, dpi=300)
     plt.close(fig)
     with Image.open(png) as image:
         png_dimensions = list(image.size)
     manifest = {
         "schema": SCHEMA + "/figure",
-        "parameters": parameters,
+        "parameters": {**parameters, "tool_retention": 1.0},
         "layout": {
             "figure_size_inches": [7.05, 3.55], "logical_grid": [4, 4],
             "rows": ["recorded RGB C1-C4", "connected Chain A C1-C4",
@@ -707,6 +729,8 @@ def validate_inputs(args) -> None:
     if not args.output_dir.is_relative_to(ROOT):
         raise ValueError(f"Output must be inside {ROOT}")
     if args.stage in {"all", "simulate"}:
+        if args.dataset is None or args.range_selection is None:
+            raise ValueError("Simulation stage requires --dataset and --range-selection")
         args.dataset = args.dataset.expanduser().resolve()
         args.range_selection = args.range_selection.expanduser().resolve()
         if args.output_dir.exists():
@@ -718,6 +742,30 @@ def validate_inputs(args) -> None:
         args.conversion_metadata = args.conversion_metadata.expanduser().resolve()
         if args.stage == "figure" and not args.output_dir.is_dir():
             raise FileNotFoundError(f"Simulation output does not exist: {args.output_dir}")
+
+
+def validate_episode18_context(prepared: list) -> None:
+    expected_padding = 1.0 / 48.0 / 16.0
+    for index, item in enumerate(prepared, 1):
+        config = item.simulation_config
+        total_mass = float(config.n_particles * config.particle_mass)
+        if not math.isclose(total_mass, EXPECTED_TOTAL_MASS_KG, rel_tol=0.0, abs_tol=1e-9):
+            raise ValueError(f"Chunk {index:02d} total mass is {total_mass}, expected {EXPECTED_TOTAL_MASS_KG}")
+        expected = {
+            "grid": 48, "plasticity": "stretch-clamp", "use_jp": False,
+            "jp_hardening": 0.0, "tool_collision": "sdf",
+            "tool_contact_model": "coulomb-adhesive-v1",
+            "tool_contact_absorption": 0.0,
+        }
+        for name, value in expected.items():
+            if getattr(config, name) != value:
+                raise ValueError(f"Chunk {index:02d} requires {name}={value!r}")
+        if not math.isclose(config.tool_contact_padding, expected_padding,
+                            rel_tol=0.0, abs_tol=1e-15):
+            raise ValueError(f"Chunk {index:02d} tool contact padding must equal dx/16")
+        if not math.isclose(float(item.parameters["tool_retention"]), 1.0,
+                            rel_tol=0.0, abs_tol=0.0):
+            raise ValueError(f"Chunk {index:02d} tool retention must equal 1.0")
 
 
 def simulation_stage(args, parameters: dict[str, float]) -> tuple[Any, list, list, dict, dict]:
@@ -740,6 +788,7 @@ def simulation_stage(args, parameters: dict[str, float]) -> tuple[Any, list, lis
         init_runtime(args.backend, args.precision, cpu_threads=args.cpu_threads, seed=0)
         prepared = [prepare_experiment(load_config(path), split="training", build_sdf=True)
                     for path in config_paths]
+        validate_episode18_context(prepared)
         chain_a, chain_a_terminal = run_chain(
             CHAIN_A, 0, prepared, episodes, args.output_dir, dynamics_index=0,
         )
@@ -771,11 +820,12 @@ def simulation_stage(args, parameters: dict[str, float]) -> tuple[Any, list, lis
                     "fingerprint": dataset.fingerprint},
         "range_selection": {"path": repository_path(args.range_selection),
                             "sha256": sha256(args.range_selection)},
-        "parameters": parameters,
+        "parameters": {**parameters, "tool_retention": 1.0},
         "tool_pose_offset_m": {"axis": "scene_y", "value": TOOL_VERTICAL_OFFSET_M,
                                "applied_to_both_tools": True},
         "runtime": {"backend": args.backend, "precision": args.precision,
                     "cpu_threads": args.cpu_threads, "reference_policy": args.reference_policy},
+        "numerical_context": numerical_context(prepared[0].simulation_config),
         "source_identity": {"before": source_before, "after": source_after,
                             "unchanged": source_unchanged},
         "chains": chains, "replay_comparison": metrics,
