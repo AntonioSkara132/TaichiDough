@@ -231,15 +231,34 @@ def selections_for(args, dataset) -> list[dict[str, Any]]:
     return rows
 
 
-def extract_rgb(args, selections) -> list[dict[str, Any]]:
-    from PIL import Image
-    import rosbag2_py
-    from rclpy.serialization import deserialize_message
-    from rosidl_runtime_py.utilities import get_message
+def read_rgb_messages(args, targets: dict[int, int]) -> tuple[dict[int, tuple[int, int, Any]], str]:
+    try:
+        import rosbag2_py
+        from rclpy.serialization import deserialize_message
+        from rosidl_runtime_py.utilities import get_message
+    except ModuleNotFoundError:
+        try:
+            import importlib
+            AnyReader = importlib.import_module("rosbags.highlevel").AnyReader
+        except ModuleNotFoundError as error:
+            raise RuntimeError(
+                "RGB extraction requires rosbag2_py or the standalone rosbags package; "
+                "install rosbags in the active Python environment"
+            ) from error
 
-    metadata = json_file(args.conversion_metadata)
-    stamps = metadata["episode"]["timestamps_ns"]
-    targets = {row["original_ordinal"]: int(stamps[row["original_ordinal"]]) for row in selections}
+        candidates: dict[int, tuple[int, int, Any]] = {}
+        with AnyReader([args.bag_dir.resolve()]) as reader:
+            connections = [connection for connection in reader.connections
+                           if connection.topic == args.rgb_topic]
+            if not connections:
+                raise ValueError(f"Topic not found: {args.rgb_topic}")
+            for connection, _, serialized in reader.messages(connections=connections):
+                message = reader.deserialize(serialized, connection.msgtype)
+                stamp = (int(message.header.stamp.sec) * 1_000_000_000
+                         + int(message.header.stamp.nanosec))
+                update_nearest(candidates, targets, stamp, message)
+        return candidates, "rosbags"
+
     reader = rosbag2_py.SequentialReader()
     reader.open(rosbag2_py.StorageOptions(uri=str(args.bag_dir.resolve()), storage_id="sqlite3"),
                 rosbag2_py.ConverterOptions(input_serialization_format="cdr", output_serialization_format="cdr"))
@@ -254,17 +273,26 @@ def extract_rgb(args, selections) -> list[dict[str, Any]]:
             continue
         message = deserialize_message(serialized, message_type)
         stamp = int(message.header.stamp.sec) * 1_000_000_000 + int(message.header.stamp.nanosec)
-        update_nearest(candidates, targets, stamp, serialized)
+        update_nearest(candidates, targets, stamp, message)
+    return candidates, "rosbag2_py"
+
+
+def extract_rgb(args, selections) -> list[dict[str, Any]]:
+    from PIL import Image
+
+    metadata = json_file(args.conversion_metadata)
+    stamps = metadata["episode"]["timestamps_ns"]
+    targets = {row["original_ordinal"]: int(stamps[row["original_ordinal"]]) for row in selections}
+    candidates, reader_name = read_rgb_messages(args, targets)
     if set(candidates) != set(targets):
         raise ValueError("The bag did not provide every requested RGB frame")
     output = args.output_dir / "rgb"; output.mkdir(exist_ok=True)
     records = []
     for row in selections:
         ordinal = row["original_ordinal"]
-        delta, stamp, serialized = candidates[ordinal]
+        delta, stamp, message = candidates[ordinal]
         if args.require_exact_rgb and delta != 0:
             raise ValueError(f"No exact RGB timestamp for point-cloud ordinal {ordinal}")
-        message = deserialize_message(serialized, message_type)
         path = output / f"chunk{row['chunk']:02d}_rgb.png"
         Image.fromarray(decode_image(message)).save(path)
         records.append({"episode_id": row["episode_id"], "original_ordinal": ordinal,
@@ -273,12 +301,24 @@ def extract_rgb(args, selections) -> list[dict[str, Any]]:
                         "width": int(message.width), "height": int(message.height),
                         "path": str(path.resolve()), "sha256": sha256(path)})
     write_json(output / "rgb_manifest.json", {"schema": SCHEMA + "/rgb", "topic": args.rgb_topic,
-               "bag": directory_identity(args.bag_dir), "conversion_metadata": str(args.conversion_metadata.resolve()),
-               "records": records})
+               "reader": reader_name, "bag": directory_identity(args.bag_dir),
+               "conversion_metadata": str(args.conversion_metadata.resolve()), "records": records})
     return records
 
 
+def relocated_repo_path(path: Path) -> Path:
+    if path.exists():
+        return path
+    parts = path.parts
+    if "TaichiDough" in parts:
+        candidate = REPO.joinpath(*parts[parts.index("TaichiDough") + 1:])
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError(path)
+
+
 def stl(path: Path) -> np.ndarray:
+    path = relocated_repo_path(path)
     raw = path.read_bytes(); count = int.from_bytes(raw[80:84], "little")
     if len(raw) != 84 + 50 * count:
         raise ValueError(f"Expected binary STL: {path}")
