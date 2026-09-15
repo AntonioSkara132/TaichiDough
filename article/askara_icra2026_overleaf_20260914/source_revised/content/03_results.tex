@@ -3,47 +3,36 @@
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.98\textwidth]{matched_sequence.pdf}
-\caption{Exact-timestamp Episode~18 camera views and simulation outputs. The top row is contextual RGB extracted from the original Rosbag; the bottom row is saved dough-only simulated optical depth rendered with the same calibrated camera and display crop. The simulation does not render spatula occlusion. Frames after 2.00\,s are temporal continuation of the same motion, not independent generalization.}
-\label{fig:matched}
-\end{figure*}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.96\textwidth]{parameter_history.pdf}
-\caption{Accepted objective and parameter history for the  five-variable differentiable run. The orange ring marks the best saved state. }
+\includegraphics[width=0.96\textwidth]{parameter_history.png}
+\caption{Accepted-state objective and parameter history for the preliminary five-parameter run. The orange ring marks the lowest-loss saved state; all 16 retained states are shown without smoothing.}
 \label{fig:parameters}
 \end{figure*}
 
-Figs.~\ref{fig:matched} and~\ref{fig:parameters} show the camera-matched sequence and differentiable optimization history.
+The stored Episode~18 diagnostics use distinct fixed configurations, so their losses and parameter values are not pooled across runs. Figure~\ref{fig:parameters} reports the preliminary five-parameter history, whereas Fig.~\ref{fig:matched} shows outputs from a separate strictly evaluated run.
 
-% \subsection{Metric Initialization}
-% The metric calibration aggregates 384 moving-tag correspondences and fixes the camera, mocap scene, and floor in metres. 
-% At the initial frame, 3970 observed points are compared with 25,495 virtually visible points without fitted translation, scale, or post-hoc registration. On a 3\,mm top-view grid, the reconstructed footprint obtains IoU $0.8306$, extent ratios $1.077$ and $1.106$, and an area ratio of $1.191$. The centroid error is $(-0.98,1.25)$\,mm, while median and 95th-percentile absolute depth errors are $0.148$ and $1.155$\,mm. This supports the initial observation-to-simulation alignment, not the constitutive law.
+\subsection{Preliminary Five-Parameter Fitting}
 
-\subsection{Static and Differentiable Fitting}
-
-Differentiable run jointly adjusts $E$, $\nu$, viscosity $\eta$, and the two principal-stretch bounds. Seventeen objective evaluations and fifteen accepted updates reduce the partial-view training objective from $0.42455$ to $0.16229$. The best saved state is
+The saved history contains the initial state and 15 accepted updates. The dimensionless partial-view training objective decreased from $0.42455$ to $0.16229$, a reduction of $61.8\%$. Most of the reduction occurred by update 7; updates 10--15 changed the objective from $0.16322$ to $0.16229$, a further $0.57\%$, indicating a late-stage plateau in the saved history. The lowest-loss saved state is
 \begin{equation}
 \begin{split}
-E&=8.803\ \mathrm{kPa},\quad \nu=0.48708,\quad
-\eta=30.37\ \mathrm{Pa\,s},\\
-\sigma_{\min}&=0.86262,\qquad \sigma_{\max}=1.06714.
+E&=8.80\ \mathrm{kPa},\quad \nu=0.487,\quad
+\eta=30.4\ \mathrm{Pa\,s},\\
+\sigma_{\min}&=0.8626,\qquad \sigma_{\max}=1.0671.
 \end{split}
+\label{eq:preliminary_parameters}
 \end{equation}
-% Evaluation 18 ended with a keyboard interruption, so no final selected-parameter record was produced. The saved full-prefix reverse evaluation spans 9839 steps and 59 observations using 155 host checkpoints of length 64. Recomputed segments record 2879 mismatches: 192 endpoint-state arrays and 2687 per-step contact/yield summaries. Maximum endpoint differences are $99.12\,\mu$m in position, $0.1843$\,m/s in velocity, $0.02916$\,s$^{-1}$ in $C$, and $1.506\!\times\!10^{-4}$ in $F$, although the maximum observation-loss difference is only $3.58\!\times\!10^{-7}$. The small scalar loss discrepancy does not verify the derivative because states and piecewise contact decisions differ. The curve therefore shows that the returned approximate gradient reduced its declared objective; it does not demonstrate convergence, unique recovery, or the exact derivative of the recorded forward trajectory.
+The variables move together during optimization: viscosity increases, both stretch limits shift downward with little change in interval width, and $\nu$ approaches the upper part of its allowed range. This coordinated change is consistent with compensation among constitutive effects under one trajectory. The values in~\eqref{eq:preliminary_parameters} are therefore a preliminary effective-parameter result, not final material calibration.
 
-% \subsection{Frozen Strict Evaluation}
-% A separate completed corrected-physics run exports its selected state to the independent strict evaluator. Its mean four-component score is $0.2821$ on frames 1--60, compared with $0.3416$ for frozen initial geometry. On frames 61--97 the selected rollout scores $0.3939$, compared with $0.8265$ for frozen geometry. All expected frames are valid. Mean post-initial pixel IoU is $0.4586$ in the fitting interval and $0.4659$ over the complete replay report; mean depth-change errors are $4.59$ and $5.90$\,mm for the corresponding training and later-frame scores.
+\subsection{Visible-Geometry Evaluation}
 
-% This result shows that deformation under the prescribed replay predicts visible geometry better than leaving the object fixed. It is not a clean validation of identified physical parameters: $E$ reaches its $300$\,kPa upper bound, viscosity reaches zero, and the run also permits replay mismatches. The later interval uses the same dough, camera, calibration, and recorded manipulation after replay from frame zero. We therefore call it temporal continuation rather than generalization.
+A separate five-parameter run with 20 accepted updates supplies Fig.~\ref{fig:matched}. Its selected state reached the $E=300\,$kPa upper bound and the $\eta=0$ lower bound. A strict full-resolution evaluator equally averages normalized depth-change error, one minus mask intersection-over-union, directed observed-to-simulation distance, and a missing-coverage penalty. Its mean score, for which lower is better, was $0.2821$ compared with $0.3416$ for frozen initial geometry on frames 1--60. On frames 61--97 of the same replay, the corresponding scores were $0.3939$ and $0.8265$; all 60 fitting frames and 37 continuation frames were valid. The run therefore improves visible-geometry prediction relative to a static-object baseline during the recorded motion, but the parameter bounds prevent interpreting it as calibrated physical recovery.
 
-Figure~\ref{fig:matched} compares frames from the recorded experiment (top row) with the corresponding MPM particle renderings (bottom row). The simulation closely reproduces the observed dough deformation during the first second, but the agreement deteriorates by (t=2,\mathrm{s}), after which the simulated dough exhibits little further deformation.
+Figure~\ref{fig:matched} shows qualitative agreement in gross visible geometry through $1.00\,$s. By $2.00\,$s, the simulated visible geometry differs markedly from the recording, and little subsequent deformation is apparent in the simulation. This comparison is descriptive because the rows show different modalities and simulated depth does not include tool occlusion.
 
-\subsection{Limitations for Single-View Identification}
-A single depth view leaves hidden volume and occluded contact unmeasured, and the evaluator does not render the spatulas into the simulated depth image. Material estimates are consequently conditional on reconstructed volume, mass/density, floor pose, tool registration, contact law and friction, numerical resolution, and loss smoothing. A separate diagnostic also finds an observed table plane about $47.6$\,mm above the configured floor with approximately $5^{\circ}$ tilt, which can be absorbed incorrectly by material or contact parameters. Near-incompressible $\nu$, elasticity, viscosity, and stretch clipping may compensate for one another under a single monotonic trajectory. The present evidence therefore supports an implemented observation-conditioned fitting pipeline and measurable prediction improvement, but not camera-only rheometry or universal dough constants.
+\subsection{Limitations}
 
-\subsection{Limitations of no force measurements}
-...
+A single depth view leaves hidden volume and occluded contact unmeasured, and the evaluator does not render the spatulas into simulated depth. Both reported runs use the fixed table-aligned calibration described in Sec.~\ref{sec:method}; the estimates nevertheless remain conditional on residual camera, floor, and tool-registration uncertainty, reconstructed volume and density, contact law and friction, numerical resolution, and loss smoothing. Near-incompressible $\nu$, elasticity, viscosity, and stretch clipping can also compensate for one another under a single trajectory.
+
+No tool force or torque measurements were recorded. The optimizer therefore distinguishes contact and constitutive effects only through visible motion and geometry, although different combinations can produce similar depth trajectories while implying different contact forces. With one sequence and no comparison against competing systems on common data, the experiment does not establish state-of-the-art identification accuracy or uncertainty across repeated preparations. It demonstrates end-to-end fitting and measurable improvement over frozen geometry in the same recorded replay.
 
 \FloatBarrier

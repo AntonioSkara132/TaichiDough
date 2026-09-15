@@ -7,7 +7,7 @@
       "sha256": "d09103c547d50496ddbe607d7c5658b9546d40cae6aaa9e47a098db91e9350ea"
     },
     {
-      "path": "docs/icra2026_submission/figures/recorded_rgb_frames.json",
+      "path": "article/askara_icra2026_overleaf_20260914/source_revised/figures/recorded_rgb_frames.json",
       "sha256": "2a444db4b43c7d670312533b56feb33904d251c3fb5791d6c2737fad22ac580d"
     },
     {
@@ -15,7 +15,7 @@
       "sha256": "2721bb5362005dc121e5f5387d352fe5e6b161bcfb87990941d3ad562be713ae"
     },
     {
-      "path": "docs/icra2026_submission/figures/recorded_rgb_frame_000000.png",
+      "path": "article/askara_icra2026_overleaf_20260914/source_revised/figures/recorded_rgb_frame_000000.png",
       "sha256": "b1e837a266246fcece2ae1727ebee8edd2db0c6b9e5d718e5ad7f4f3b205cc56"
     },
     {
@@ -23,7 +23,7 @@
       "sha256": "17b1ba29a59f30da234d76758b2186d2dfe876e6e4a94f42710e3eb99f6b794c"
     },
     {
-      "path": "docs/icra2026_submission/figures/recorded_rgb_frame_000030.png",
+      "path": "article/askara_icra2026_overleaf_20260914/source_revised/figures/recorded_rgb_frame_000030.png",
       "sha256": "853abf8fd3fcdc18a05941b4482b5d4b0f5cc8a5d521d6a62eba9930de0bfcea"
     },
     {
@@ -31,7 +31,7 @@
       "sha256": "b7c96388a456786647f3374db7ed58cbe6ab7c03acfc7ec7d3afbd23298eac90"
     },
     {
-      "path": "docs/icra2026_submission/figures/recorded_rgb_frame_000060.png",
+      "path": "article/askara_icra2026_overleaf_20260914/source_revised/figures/recorded_rgb_frame_000060.png",
       "sha256": "221c467348eeebe61e9ecb970b5b15c53f672c9edfcc581d027565d3566d001a"
     },
     {
@@ -39,7 +39,7 @@
       "sha256": "2c320ddee1945e8d9617b52dabdaf8cd58a9fe1505f2afa56cd2ffcb29e2a6f2"
     },
     {
-      "path": "docs/icra2026_submission/figures/recorded_rgb_frame_000075.png",
+      "path": "article/askara_icra2026_overleaf_20260914/source_revised/figures/recorded_rgb_frame_000075.png",
       "sha256": "f52b71bdae99e2531ecfb8916f0260ed805249e141bac8054fa6cdbbeed91b34"
     },
     {
@@ -47,7 +47,7 @@
       "sha256": "11a957b03debcd1260815bb8d4270321b9302b499ddd12f0a6c0b15d06ff81da"
     },
     {
-      "path": "docs/icra2026_submission/figures/recorded_rgb_frame_000097.png",
+      "path": "article/askara_icra2026_overleaf_20260914/source_revised/figures/recorded_rgb_frame_000097.png",
       "sha256": "454c605d4a3bc88f5a8da1b2644106ddf014acfd74aaf0b995441cb339b8c51f"
     }
   ],
@@ -90,8 +90,9 @@
     0.48795061439275744
   ],
   "limitations": [
-    "Top row uses exact-timestamp RGB frames extracted from the original Rosbag.",
+    "Top row uses exact-timestamp RGB frames extracted from the original ROS 2 bag.",
     "Simulated depth contains dough only; simulated tool occlusion is not modeled.",
     "Frames 61-97 are temporal continuation in the same episode, not independent-motion validation."
-  ]
+  ],
+  "display": "No internal figure title; panel timestamps and phase labels retained."
 }

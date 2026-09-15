@@ -1,35 +1,30 @@
 \section{Introduction}
 \label{sec:introduction}
 
-Robotic manipulation of dough and other elasto-plastic materials is challenging because each action alters both the observable geometry and the latent mechanical state of the material. This makes bimanual tool-based shaping particularly difficult: a controller must account for large deformations, complex contact interactions, rate-dependent behavior, and irreversible deformation that persists after unloading. Data-driven approaches can learn such behaviour from demonstrations or interaction data, but collecting broad physical datasets with robots is expensive. A calibrated simulator could instead generate controlled synthetic trajectories and support model-based action selection, provided that its predictions are tied to measurements of the real material.
+Robotic manipulation of dough and other elasto-plastic materials is difficult because every action changes both the visible geometry and the latent mechanical state. Tool contact can cause large deformation, rate-dependent response, adhesion, and irreversible shape change, while a single RGB-D camera observes only the exposed surface. These effects make broad physical data collection expensive and allow errors in reconstruction, contact, and constitutive response to produce similar image-space discrepancies \cite{sanchez2018robotic,arriola2020modeling,yin2021modeling,yazar2023doughreview,ghorbel2014adhesion}. A calibrated simulator can support controlled data generation and model-based action selection, but its predictions must first be tied to real measurements.
 
 \begin{figure*}[t]
     \centering
-    \includegraphics[width=0.6\textwidth]{figures/figure1_t0p5004.pdf}
-
-    \captionsetup{width=0.6\textwidth}
-    \caption{Simulation setup with both watertight spatula SDFs and reconstructed dough}
-    \label{fig:simiulation}
+    \includegraphics[width=0.60\textwidth]{figures/figure1_t0p5004.pdf}
+    \caption{Simulation scene with the reconstructed dough and registered watertight signed-distance-field collision geometries of the two spatulas.}
+    \label{fig:simulation}
 \end{figure*}
 
-In this work we introduce \textbf{TaichiDough}, a real-to-sim pipeline intended for future bimanual deformable object manipulation practices. A calibrated RGB-D camera records the dough while motion capture system (Mocap) provides the poses of both tools. The initial visible shape is reconstructed into a volumetric particle model, measured tool motion is replayed in a three-dimensional Material Point Method (MPM) simulator, and material parameters are adjusted to reduce disagreement between rendered and recorded depth observations. The same forward model supports a derivative-free Young's-modulus search and reverse-mode differentiation through complete trajectories.
+This paper studies observation-conditioned fitting of a specified three-dimensional simulator. TaichiDough reconstructs the initially visible dough surface into a volumetric particle model, replays two motion-captured rigid spatulas in MLS-MPM, renders the resulting particles in the calibrated camera, and adjusts material-model variables to reduce disagreement with recorded depth. Figure~\ref{fig:simulation} shows the reconstructed object and registered tool geometries. The present experiment uses two spatulas, while the rigid signed-distance-field representation can accommodate other registered rigid tools; deformable end effectors would require an additional deformation model.
 
-
-% The central question is deliberately narrower than camera-based rheometry: what \emph{effective simulator parameters} can one calibrated view and known tool motion constrain? Absolute camera scale does not remove ambiguity among hidden volume, mass, contact, constitutive response, and numerical discretization. We therefore report parameter estimates only for the declared model and setup, and separate training loss from a frozen full-resolution evaluation. The robot execution and synthetic-data learning experiments are future work; the present study establishes and examines the identification pipeline that they require.
-
-
+The fitted values are effective parameters of the declared reconstruction, contact law, constitutive model, discretization, and recorded motion rather than universal dough constants \cite{raue2011identifiability,brynjarsdottir2014discrepancy}. Robot execution and learned shaping policies are not evaluated here. The current emphasis is the calibrated sensing, replay, simulation, and fitting procedure that such downstream applications require.
 
 The contributions are:
 \begin{itemize}
-    \item a metric single-camera pipeline that combines floor-aware volumetric initialization;
-    \item a differentiable MLS-MPM formulation for partial depth observations, including bounded optimizer coordinates for elastic, viscous, and principal-stretch parameters; and
+    \item a metric single-view reconstruction and tool-replay pipeline combining calibrated RGB-D observations, motion-captured dual-tool motion, and mass-preserving particle initialization;
+    \item a differentiable partial-view objective and bounded parameterization for fitting elastic, viscous, and principal-stretch variables in a three-dimensional MLS-MPM rollout; and
+    \item an experimental analysis on one recorded sequence that quantifies objective reduction and visible-geometry improvement while documenting the resulting observation, calibration, and identifiability limitations.
 \end{itemize}
-
 
 \begin{figure*}[t]
     \centering
-    \includegraphics[width=0.98\textwidth]{figures/pipeline_overview.pdf}
-    \caption{TaichiDough pipeline. A single calibrated RGB-D camera and recorded poses of two spatulas provide the initial geometry, observations, and boundary motion. A corrected MLS-MPM rollout is projected into the camera and compared with measured depth. Robot execution and synthetic-data learning are intended downstream uses rather than experiments reported here.}
+    \includegraphics[width=0.98\textwidth]{figures/pipeline_overview.png}
+    \caption{TaichiDough pipeline. A calibrated RGB-D camera and recorded poses of two spatulas provide the initial geometry, observations, and boundary motion. An MLS-MPM rollout is projected into the camera and compared with measured depth. Robot execution and synthetic-data learning are downstream applications rather than experiments reported here.}
     \label{fig:pipeline}
 \end{figure*}
 
@@ -37,67 +32,13 @@ The contributions are:
 \label{sec:related}
 
 \textbf{Deformable object manipulation.}
-Deformable object manipulation (DOM) spans linear, sheet-like, and
-volumetric objects, including ropes, cloth, and dough
-\cite{sanchez2018robotic,arriola2020modeling,yin2021modeling}.
-To fit the simulator from the available single RGB-D view and measured
-dual-tool trajectories, TaichiDough uses floor-aware volume
-reconstruction and a depth-based objective, without requiring
-multi-view appearance reconstruction. Physics-based approaches predict deformation
-for planning \cite{jimenez2012survey}, whereas adaptive visual servoing
-estimates motion--deformation relationships online
-\cite{navarroalarcon2016automatic}. Learning-based methods train
-policies or predictive models from demonstrations and interaction data
-\cite{yin2021modeling}. G-DOOM combines learned latent graph dynamics
-with model-predictive control for rope and cloth manipulation
-\cite{ma2022learning}, showing that learned dynamics and model-based
-control are compatible.
+Deformable object manipulation includes linear, sheet-like, and volumetric objects such as ropes, cloth, food materials, and elasto-plastic media \cite{sanchez2018robotic,arriola2020modeling,yin2021modeling}. Their state is only partially observable and evolves through contact, deformation history, and material response. Existing approaches include model-based planning \cite{jimenez2012survey}, adaptive visual servoing that estimates local motion--deformation relationships online \cite{navarroalarcon2016automatic}, and learned predictive models or policies trained from demonstrations and interaction data \cite{yin2021modeling}. G-DOOM combines learned graph dynamics with model-predictive control for rope and cloth manipulation \cite{ma2022learning}. The present work instead concerns physics-based real-to-simulation fitting for a volumetric material.
 
 \textbf{Deformable simulation and differentiable physics.}
-Simulation methods include mass--spring systems, finite-element
-methods, position-based dynamics, smoothed particle hydrodynamics,
-and the Material Point Method (MPM)
-\cite{arriola2020modeling,yin2021modeling,jiang2016mpm}.
-Mass--spring models are simple but depend on network parameterization;
-finite-element methods discretize continuum models, while
-position-based dynamics enforces geometric constraints
-\cite{arriola2020modeling}. MPM accommodates large deformations
-without a persistently deforming mesh while retaining constitutive
-material models, motivating our choice for volumetric elasto-plastic
-simulation \cite{jiang2016mpm}.
-ChainQueen and DiffTaichi enable gradient-based optimization through
-simulation \cite{hu2019chainqueen,hu2020difftaichi}, while PlasticineLab
-applies differentiable physics to elasto-plastic manipulation
-\cite{huang2021plasticinelab}. We use this capability in MLS-MPM to
-fit material parameters to partial depth observations.
+Simulation approaches include mass--spring systems, finite-element methods, position-based dynamics, smoothed particle hydrodynamics, and the Material Point Method (MPM) \cite{arriola2020modeling,yin2021modeling,jiang2016mpm}. MPM is well suited to large volumetric deformation because material points retain state while computation is transferred through a background grid, avoiding a permanently deforming mesh \cite{jiang2016mpm}. MLS-MPM and APIC provide the transfer formulations used here \cite{hu2018mlsmpm,jiang2015apic}. ChainQueen and DiffTaichi demonstrate gradient computation through physical simulation \cite{hu2019chainqueen,hu2020difftaichi}, while PlasticineLab applies differentiable simulation to elasto-plastic manipulation \cite{huang2021plasticinelab}. TaichiDough uses these ideas to fit a prescribed simulator against partial depth observations.
 
-\textbf{Visual real-to-sim identification.}
-Visual identification methods differ in sensing and geometric
-assumptions. DiffCloud fits simulations to point clouds, whereas
-Differentiable Depth uses a single depth camera and known reference
-geometry \cite{sundaresan2022diffcloud,arnavaz2023diffdepth}.
-PAC-NeRF jointly estimates geometry and physical parameters using
-multi-view video and differentiable MPM \cite{li2023pacnerf};
-PhysTwin reconstructs spring--mass digital twins from interaction
-videos \cite{jiang2025phystwin}. DPSI identifies elasto-plastic material
-and contact parameters from real interactions and incomplete point
-clouds \cite{yang2025dpsi}, while EMPM combines multi-view RGB-D
-reconstruction with online MPM parameter refinement
-\cite{chen2026empm}. Within this literature, TaichiDough studies a
-calibrated single-view setting with floor-aware volume reconstruction,
-measured dual-tool trajectories, and depth-based fitting.
+\textbf{Visual real-to-simulation fitting.}
+Visual fitting methods differ primarily in observation and geometry assumptions. DiffCloud fits deformable simulations to point clouds, whereas Differentiable Depth uses a single depth camera with known reference geometry \cite{sundaresan2022diffcloud,arnavaz2023diffdepth}. PAC-NeRF jointly estimates geometry and physical parameters from multi-view video \cite{li2023pacnerf}, and PhysTwin reconstructs spring--mass digital twins from interaction videos \cite{jiang2025phystwin}. DPSI fits elasto-plastic material and contact parameters from real interactions and incomplete point clouds \cite{yang2025dpsi}, while EMPM combines multi-view RGB-D reconstruction with online MPM refinement \cite{chen2026empm}. TaichiDough examines a more restricted measurement setting: one calibrated depth view, a floor-filled initial volume, and measured dual-tool motion. This reduces sensing requirements but leaves hidden geometry, contact, and material effects mutually ambiguous.
 
 \textbf{Robotic shaping and dough mechanics.}
-RoboCraft and RoboCook learn predictive dynamics for goal-directed
-shaping and manipulation with diverse tools
-\cite{shi2022robocraft,shi2023robocook}, while DoughNet predicts
-geometric and topological changes \cite{bauer2024doughnet}.
-Complementary food-engineering studies estimate dough rheology through
-controlled mechanical measurements; Fabbri and Cevoli combine
-finite-element model inversion with extrusion measurements
-\cite{fabbri2015dough}. Dough response depends on formulation,
-loading, preparation, and adhesion
-\cite{yazar2023doughreview,ghorbel2014adhesion}.
-Accordingly, our fitted parameters characterize the selected
-constitutive and contact model over the recorded manipulation,
-rather than providing a complete rheological characterization.
+RoboCraft and RoboCook learn predictive dynamics for goal-directed elasto-plastic shaping with diverse tools \cite{shi2022robocraft,shi2023robocook}, while DoughNet predicts geometric and topological changes during dough manipulation \cite{bauer2024doughnet}. Food-engineering studies instead estimate dough rheology from controlled mechanical measurements; Fabbri and Cevoli invert a finite-element model using extrusion measurements \cite{fabbri2015dough}. Dough response also depends on formulation, preparation, loading history, and adhesion \cite{yazar2023doughreview,ghorbel2014adhesion}. In contrast, the present experiment fits simulator parameters from visual motion without force measurements. Its values characterize the selected model and recorded sequence, not the complete rheology of the dough.

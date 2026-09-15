@@ -17,6 +17,7 @@ DEFAULT_BASE_CONFIG = EXPERIMENT / "configs" / "episode18_registered_adhesive_fi
 DENSITY_KG_M3 = 1200.0
 REFERENCE_VOLUME_M3 = 0.000113832
 CONSTANT_MASS_KG = DENSITY_KG_M3 * REFERENCE_VOLUME_M3
+TOOL_CONTACT_PADDING_M = (1.0 / 48.0) / 16.0
 
 INITIAL = {
     "youngs_modulus": 17000.0,
@@ -152,6 +153,7 @@ def finalize(temporal: Path, base_config_path: Path) -> Path:
             config["simulation"]["use_jp"] = False
             config["simulation"]["jp_hardening"] = 0.0
             config["simulation"]["tool_collision"] = "sdf"
+            config["simulation"]["tool_contact_padding"] = TOOL_CONTACT_PADDING_M
             config["simulation"]["tool_contact_model"] = "coulomb-adhesive-v1"
             config["simulation"]["tool_contact_absorption"] = 0.0
             config["simulation"]["tool_friction_coefficient"] = INITIAL["tool_friction_coefficient"]

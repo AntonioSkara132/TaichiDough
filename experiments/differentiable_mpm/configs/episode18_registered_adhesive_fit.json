@@ -34,7 +34,7 @@
     "jp_min": 0.5,
     "jp_max": 2.0,
     "tool_collision": "sdf",
-    "tool_contact_padding": 0.0026041666666666665,
+    "tool_contact_padding": 0.0013020833333333333,
     "tool_contact_absorption": 0.0,
     "tool_stickiness": 0.0,
     "floor_absorption": 0.0,

@@ -10,5 +10,10 @@
     "bounded parameter optimization"
   ],
   "future_stage": "bimanual robot policy learning and execution",
-  "note": "The dashed future block denotes planned work, not a completed experiment."
+  "note": "The dashed future block denotes planned work, not a completed experiment.",
+  "local_revision": {
+    "title": "TaichiDough fitting pipeline",
+    "method": "title-only raster edit; plotted data unchanged",
+    "date": "2026-09-15"
+  }
 }

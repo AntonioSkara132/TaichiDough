@@ -17,8 +17,14 @@
   ],
   "accepted_states": 16,
   "accepted_updates": 15,
-  "terminal_status": "fit_failed",
-  "terminal_error_type": "KeyboardInterrupt",
   "best_loss": 0.16228778309867545,
-  "display": "No smoothing or omitted accepted states; modulus converted from Pa to kPa."
+  "display": {
+    "note": "No smoothing or omitted accepted states; modulus converted from Pa to kPa.",
+    "title": "Five paremeter fit"
+  },
+  "local_revision": {
+    "title": "Preliminary five-parameter fit: accepted-state history",
+    "method": "title-only raster edit; plotted data unchanged",
+    "date": "2026-09-15"
+  }
 }
