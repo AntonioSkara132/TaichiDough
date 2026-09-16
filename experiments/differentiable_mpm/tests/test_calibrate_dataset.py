@@ -292,10 +292,14 @@ class DatasetCliTests(unittest.TestCase):
 
     def test_episode_minibatch_fit_updates_after_each_independent_training_episode(self):
         output = self.root / 'minibatch-fit'
-        with self.environment():
+        with self.environment() as runner:
             self.assertEqual(self.run_cli(
                 'fit', output, '--iterations', '2', '--no-evaluate',
                 '--episode-batch-size', '1'), 0)
+            text = runner.stdout.getvalue()
+        self.assertIn('batch start 1: batch=1/2; workers=1; episodes=train_a;', text)
+        self.assertIn('batch update 1: batch=1/2; loss=', text)
+        self.assertIn('grad_physical[dL/dviscosity=', text)
         objective_calls = [call for call in self.calls if call['action'] == 'objective']
         self.assertEqual([(call['episode_id'], call['compute_grad']) for call in objective_calls],
                          [('train_a', True), ('train_b', True), ('train_a', False), ('train_b', False)])

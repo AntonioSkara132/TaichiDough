@@ -20,7 +20,7 @@ from .multi_episode import (DatasetObjective, EpisodeExecutionError, EpisodeProc
 from .optimize import AdamOptions, ObjectiveValue, ProjectedAdam
 from .results import RUN_ROOT, RunStore, canonical_hash, source_identity
 from .run_logging import (format_optimizer_boundary, format_optimizer_evaluation,
-                          stability_settings)
+                          named_values, number, parameter_text, stability_settings)
 from .state import InvalidStateError, P2G_MODES, PHYSICS_VERSIONS
 
 SELECTION_SCHEMA = "taichidough/dataset-material-selection/v1"
@@ -167,6 +167,16 @@ def progress(event, mode="detailed"):
               f"weight={event['normalized_weight']:.6g}; elapsed={event['elapsed_s']:.2f}s", flush=True)
     elif kind == "dataset_objective_finished":
         print(f"Dataset loss={event['value']:.9g}; gradient={event['gradient']}", flush=True)
+    elif kind == "episode_batch_started":
+        action = "gradient" if event.get("compute_grad") else "loss"
+        print(f"Batch started: mode={action}; workers={event['max_workers']}; "
+              f"episodes={','.join(event['episode_ids'])}", flush=True)
+    elif kind == "episode_batch_member_finished":
+        print(f"Batch episode {event['episode_id']}: loss={event['value']:.9g}; "
+              f"weight={event['normalized_weight']:.6g}", flush=True)
+    elif kind == "episode_batch_finished":
+        print(f"Batch finished: loss={event['value']:.9g}; gradient={event['gradient']}; "
+              f"elapsed={event['elapsed_s']:.2f}s", flush=True)
 
 
 def _runner(dataset, args, options, output_root, source, *, event=progress, prepared=None, runtimes=None):
@@ -429,9 +439,16 @@ def _run_minibatch_fit(dataset, args, adam_options, store, runner_factory, event
     history = []
     successful = 0
     mismatches = 0
+    fit_names = tuple(dataset.fit_parameters)
     for iteration in range(1, args.iterations + 1):
-        batch = batches[(iteration - 1) % len(batches)]
+        batch_index = (iteration - 1) % len(batches)
+        batch = batches[batch_index]
         shared = space.physical(u)
+        if args.fit_log != "quiet":
+            fitted = {name: shared[name] for name in fit_names}
+            print(f"batch start {iteration}: batch={batch_index + 1}/{len(batches)}; "
+                  f"workers={min(batch_size, len(batch))}; episodes={','.join(ep.id for ep in batch)}; "
+                  f"params[{parameter_text(fitted)}]", flush=True)
         result = _evaluate_episode_batch(dataset, batch, shared, compute_grad=True,
                                          runner_factory=runner_factory, max_workers=batch_size,
                                          event=event)
@@ -449,8 +466,9 @@ def _run_minibatch_fit(dataset, args, adam_options, store, runner_factory, event
         old_u = u.copy()
         u = space.project(u + step)
         step_norm = float(np.linalg.norm(u - old_u, ord=np.inf))
+        parameters_after = space.physical(u)
         record = {"type": "minibatch_step", "iteration": iteration,
-                  "batch_index": (iteration - 1) % len(batches),
+                  "batch_index": batch_index,
                   "episode_ids": [ep.id for ep in batch],
                   "value_before_update": result.value,
                   "physical_gradient": dict(result.gradient),
@@ -459,7 +477,7 @@ def _run_minibatch_fit(dataset, args, adam_options, store, runner_factory, event
                   "step_norm": step_norm,
                   "learning_rate": learning_rate,
                   "parameters_before": shared,
-                  "parameters_after": space.physical(u),
+                  "parameters_after": parameters_after,
                   "diagnostics": result.diagnostics}
         history.append(record)
         store.append_event({"event": "optimizer_minibatch_step", **record})
@@ -470,10 +488,16 @@ def _run_minibatch_fit(dataset, args, adam_options, store, runner_factory, event
                                                             "coordinates": u.tolist(),
                                                             "first_moment": m.tolist(),
                                                             "second_moment": v.tolist(),
-                                                            "physical_parameters": space.physical(u),
+                                                            "physical_parameters": parameters_after,
                                                             "history": history}})
-        print(f"batch update {iteration}: loss={result.value:.9g}; episodes={','.join(ep.id for ep in batch)}; "
-              f"step={step_norm:.4g}; params={space.physical(u)}", flush=True)
+        if args.fit_log != "quiet":
+            physical = {f"dL/d{name}": result.gradient[name] for name in fit_names}
+            coordinate = {f"dL/du_{name}": value for name, value in zip(fit_names, gradient, strict=True)}
+            fitted_after = {name: parameters_after[name] for name in fit_names}
+            print(f"batch update {iteration}: batch={batch_index + 1}/{len(batches)}; "
+                  f"loss={number(result.value)}; grad_physical[{named_values(physical)}]; "
+                  f"grad_optimizer[{named_values(coordinate)}]; step={number(step_norm)}; "
+                  f"params[{parameter_text(fitted_after)}]", flush=True)
     final = _evaluate_all_training_batches(dataset, batches, space.physical(u),
                                            runner_factory=runner_factory, max_workers=batch_size,
                                            event=event)
