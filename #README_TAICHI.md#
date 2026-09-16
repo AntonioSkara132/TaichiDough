@@ -1,0 +1,69 @@
+# Preprocessing data
+
+
+
+
+
+# Validation calibration run
+```python
+python -m experiments.differentiable_mpm.calibrate -h                                                                    
+
+pytho@!#$%$^*(*)_(_*()&^(*&^%#$!$!@$;KL><ML:"l;.,;l.kl;op'
+[Taichi] version 1.7.4, llvm 15.0.4, commit b4b956fd, linux, python 3.10.12
+usage: calibrate.py [-h] [--config CONFIG] [--path NAME=PATH] [--backend {cpu,cuda,vulkan}] [--precision {f32,f64}] [--p2g-mode {atomic,serial}] [--physics-version {corrected-v1,legacy-v1}]
+                    [--cpu-threads CPU_THREADS] [--debug] [--reference-policy {strict,frozen}] [--segment-length SEGMENT_LENGTH] [--ignore-recompute-mismatch] [--end-frame END_FRAME]
+                    [--split {training,validation}] [--output-dir OUTPUT_DIR] [--parameters PARAMETERS] [--iterations ITERATIONS] [--learning-rate LEARNING_RATE]
+                    [--learning-rate-policy {persistent-v1,recover-v1}] [--learning-rate-growth LEARNING_RATE_GROWTH] [--max-evaluations MAX_EVALUATIONS]
+                    [--parameter-stability-updates PARAMETER_STABILITY_UPDATES] [--parameter-stability-rtol PARAMETER_STABILITY_RTOL] [--parameter-stability-atol NAME=VALUE]
+                    [--fit-log {concise,detailed,quiet}] [--resume] [--no-evaluate] [--no-runtime] [--finite-difference] [--sensitivity-step SENSITIVITY_STEP] [--strict-perturbations]
+                    {validate,gradient,fit,replay,evaluate,sensitivity}
+
+CLI for verified replay, reverse-mode gradients and joint material calibration.
+
+positional arguments:
+  {validate,gradient,fit,replay,evaluate,sensitivity}
+
+options:
+  -h, --help            show this help message and exit
+  --config CONFIG
+  --path NAME=PATH      Explicit input path override; content hashes are still checked
+  --backend {cpu,cuda,vulkan}
+  --precision {f32,f64}
+  --p2g-mode {atomic,serial}
+                        Override particle-to-grid transfer: atomic (default) or fixed-order serial; serial can be slower
+  --physics-version {corrected-v1,legacy-v1}
+                        Override solver physics: corrected-v1 (default) or legacy-v1 for old-run reproduction
+  --cpu-threads CPU_THREADS
+  --debug
+  --reference-policy {strict,frozen}
+                        strict checks live originals; frozen explicitly targets verified snapshots and records live changes
+  --segment-length SEGMENT_LENGTH
+  --ignore-recompute-mismatch
+                        Continue through finite replay mismatches with warnings; gradients may be approximate
+  --end-frame END_FRAME
+                        Shorter endpoint inside the configured scoring window
+  --split {training,validation}
+  --output-dir OUTPUT_DIR
+  --parameters PARAMETERS
+                        Frozen best_parameters result, or complete physical parameter JSON
+  --iterations ITERATIONS
+                        Additional optimizer attempts, not objective calls
+  --learning-rate LEARNING_RATE
+  --learning-rate-policy {persistent-v1,recover-v1}
+                        Optional bounded recovery of proposal rates; accepted trials still require backtracking checks
+  --learning-rate-growth LEARNING_RATE_GROWTH
+                        Proposal-rate growth factor for recover-v1; capped at the initial learning rate
+  --max-evaluations MAX_EVALUATIONS
+  --parameter-stability-updates PARAMETER_STABILITY_UPDATES
+  --parameter-stability-rtol PARAMETER_STABILITY_RTOL
+  --parameter-stability-atol NAME=VALUE
+  --fit-log {concise,detailed,quiet}
+  --resume              Resume an exactly matching fit run
+  --no-evaluate         Skip final independent training/held-out evaluation
+  --no-runtime          Validate inputs only; no backend qualification
+  --finite-difference   Check gradient against coordinate perturbations
+  --sensitivity-step SENSITIVITY_STEP
+                        Latent-coordinate finite-difference step for sensitivity analysis
+  --strict-perturbations
+                        Also export and strictly evaluate every sensitivity sample
+```python

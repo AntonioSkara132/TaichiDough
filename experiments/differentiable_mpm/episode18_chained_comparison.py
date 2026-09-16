@@ -593,8 +593,11 @@ def pair_index(records: list[dict[str, Any]]) -> dict[str, dict[str, str]]:
     return result
 
 
+NOT_APPLICABLE = {"kind": "not_applicable", "label": "N/A — begins at C2"}
+
+
 def figure_cells(rgb: list[dict[str, Any]], rendered: dict[str, list[dict[str, Any]]]) \
-        -> list[list[dict[str, str] | None]]:
+        -> list[list[dict[str, str]]]:
     rgb_index = pair_index(rgb)
     chain_a_index = pair_index(rendered[CHAIN_A])
     independent_index = pair_index(rendered[INDEPENDENT_C2])
@@ -602,9 +605,13 @@ def figure_cells(rgb: list[dict[str, Any]], rendered: dict[str, list[dict[str, A
     return [
         [rgb_index[episode] for episode in EPISODE_IDS],
         [chain_a_index[episode] for episode in EPISODE_IDS],
-        [None, *[independent_index[episode] for episode in EPISODE_IDS[1:]]],
-        [None, *[replay_index[episode] for episode in EPISODE_IDS[1:]]],
+        [NOT_APPLICABLE, *[independent_index[episode] for episode in EPISODE_IDS[1:]]],
+        [NOT_APPLICABLE, *[replay_index[episode] for episode in EPISODE_IDS[1:]]],
     ]
+
+
+def is_not_applicable(cell: dict[str, str]) -> bool:
+    return cell.get("kind") == "not_applicable"
 
 
 def make_figure(output: Path, rgb: list[dict[str, Any]], chains: dict[str, list[dict[str, Any]]],
@@ -614,10 +621,16 @@ def make_figure(output: Path, rgb: list[dict[str, Any]], chains: dict[str, list[
     import matplotlib as mpl
     mpl.use("Agg")
     import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyArrowPatch
     from PIL import Image
 
+    ink = "#29323a"
+    muted_ink = "#59656f"
+    panel_rule = "#c7cfd5"
+    neutral_fill = "#eef1f3"
+    accent = "#2a78d6"
     mpl.rcParams.update({
-        "font.family": "DejaVu Sans", "font.size": 7,
+        "font.family": "DejaVu Sans", "font.size": 7.5,
         "pdf.fonttype": 42, "ps.fonttype": 42,
     })
     cells = figure_cells(rgb, rendered)
@@ -626,32 +639,52 @@ def make_figure(output: Path, rgb: list[dict[str, Any]], chains: dict[str, list[
     pdf = figure_dir / "episode18_chained_comparison.pdf"
     png = figure_dir / "episode18_chained_comparison.png"
     manifest_path = figure_dir / "episode18_chained_comparison.json"
-    fig = plt.figure(figsize=(7.05, 3.55), facecolor="white")
+    fig = plt.figure(figsize=(7.15, 3.95), facecolor="white")
     outer = fig.add_gridspec(
-        5, 5, width_ratios=[0.82, 1, 1, 1, 1],
-        height_ratios=[0.12, 1, 1, 1, 1], wspace=0.09, hspace=0.10,
-        left=0.01, right=0.995, bottom=0.015, top=0.985,
+        5, 5, width_ratios=[1.42, 1, 1, 1, 1],
+        height_ratios=[0.28, 1, 1, 1, 1], wspace=0.075, hspace=0.17,
+        left=0.012, right=0.995, bottom=0.020, top=0.982,
     )
+
     for column in range(4):
         axis: Any = fig.add_subplot(outer[0, column + 1])
         axis.axis("off")
-        axis.text(0.5, 0.5, f"C{column + 1}", ha="center", va="center", weight="bold")
+        axis.text(0.5, 0.73, f"C{column + 1}", ha="center", va="center",
+                  fontsize=9, weight="bold", color=ink)
+        axis.text(0.5, 0.16, "start  →  end", ha="center", va="center",
+                  fontsize=6.8, color=muted_ink)
+
     row_labels = (
-        "Recorded\nRGB",
-        "Chain A\nC1–C4",
-        "Independent C2\nC2–C4",
-        "C1-end replay\nC2–C4",
+        ("Recorded RGB", "observed reference"),
+        ("Continuous rollout", "C1 → C4; carry full state"),
+        ("Restart at C2", "independent reconstruction"),
+        ("Replay from C1 terminal state", "C2 → C4 controls"),
     )
+    row_axes: list[Any] = []
     for row, row_cells in enumerate(cells):
         label_axis: Any = fig.add_subplot(outer[row + 1, 0])
         label_axis.axis("off")
-        label_axis.text(0.98, 0.5, row_labels[row], ha="right", va="center", weight="bold")
+        title, detail = row_labels[row]
+        label_axis.text(0.98, 0.60, title, ha="right", va="center", fontsize=7.9,
+                        weight="bold", color=ink, wrap=True)
+        label_axis.text(0.98, 0.29, detail, ha="right", va="center", fontsize=6.35,
+                        color=muted_ink, wrap=True)
+        row_axes.append(label_axis)
         for column, paths in enumerate(row_cells):
-            if paths is None:
+            if is_not_applicable(paths):
                 axis: Any = fig.add_subplot(outer[row + 1, column + 1])
-                axis.axis("off")
+                axis.set_facecolor(neutral_fill)
+                axis.set_xticks([])
+                axis.set_yticks([])
+                axis.text(0.5, 0.61, "N/A", ha="center", va="center", fontsize=8,
+                          weight="bold", color=muted_ink)
+                axis.text(0.5, 0.38, "begins at C2", ha="center", va="center", fontsize=6.4,
+                          color=muted_ink)
+                for spine in axis.spines.values():
+                    spine.set_color(panel_rule)
+                    spine.set_linewidth(0.55)
                 continue
-            pair = outer[row + 1, column + 1].subgridspec(1, 2, wspace=0.035)
+            pair = outer[row + 1, column + 1].subgridspec(1, 2, wspace=0.018)
             for panel, role in enumerate(("start", "end")):
                 axis: Any = fig.add_subplot(pair[0, panel])
                 image = Image.open(resolve_path(output, paths[role])).convert("RGB")
@@ -659,12 +692,28 @@ def make_figure(output: Path, rgb: list[dict[str, Any]], chains: dict[str, list[
                 axis.set_xticks([])
                 axis.set_yticks([])
                 axis.set_aspect("equal")
-                axis.set_title(role.capitalize(), fontsize=5.5, pad=1.0, color="#47515a")
                 for spine in axis.spines.values():
-                    spine.set_color("#d9dee2")
+                    spine.set_color(panel_rule)
                     spine.set_linewidth(0.45)
-    fig.savefig(pdf)
-    fig.savefig(png, dpi=300)
+
+    # These short arrows make the initialization difference readable without obscuring data.
+    annotations = (
+        (1, "carry {x, v, C, F, Jp}", "-"),
+        (2, "independent reconstruction", "--"),
+        (3, "C1 terminal state", "-"),
+    )
+    for row, label, style in annotations:
+        left = row_axes[row].get_position()
+        y = (left.y0 + left.y1) / 2
+        arrow = FancyArrowPatch((left.x1 + 0.002, y), (left.x1 + 0.040, y),
+                                transform=fig.transFigure, arrowstyle="->", mutation_scale=7,
+                                linewidth=0.8, linestyle=style, color=accent)
+        fig.add_artist(arrow)
+        fig.text(left.x1 + 0.021, y + 0.017, label, ha="center", va="bottom",
+                 fontsize=5.8, color=muted_ink)
+
+    fig.savefig(pdf, facecolor="white")
+    fig.savefig(png, dpi=600, facecolor="white")
     plt.close(fig)
     with Image.open(png) as image:
         png_dimensions = list(image.size)
@@ -672,14 +721,17 @@ def make_figure(output: Path, rgb: list[dict[str, Any]], chains: dict[str, list[
         "schema": SCHEMA + "/figure",
         "parameters": {**parameters, "tool_retention": 1.0},
         "layout": {
-            "figure_size_inches": [7.05, 3.55], "logical_grid": [4, 4],
-            "rows": ["recorded RGB C1-C4", "connected Chain A C1-C4",
+            "figure_size_inches": [7.15, 3.95], "logical_grid": [4, 4],
+            "rows": ["recorded RGB C1-C4", "continuous rollout C1-C4 carrying full MPM state",
                      "independent C2 reconstruction, C2-C4",
-                     "Chain A C1 terminal-state replay, C2-C4"],
+                     "C1 terminal-state replay using C2-C4 controls"],
             "columns": ["chunk01", "chunk02", "chunk03", "chunk04"],
             "cell_content": "equal square start and end panels",
-            "empty_cells_zero_based": [[2, 0], [3, 0]],
-            "png_dimensions_pixels": png_dimensions, "png_dpi": 300,
+            "not_applicable_cells_zero_based": [[2, 0], [3, 0]],
+            "state_transfer_annotations": [
+                "carry {x, v, C, F, Jp}", "independent reconstruction", "C1 terminal state",
+            ],
+            "png_dimensions_pixels": png_dimensions, "png_dpi": 600,
         },
         "chains": chains, "replay_comparison": replay_metrics,
         "rgb": rgb, "rgb_crop": crop, "topviews": rendered, "camera": camera,
@@ -699,7 +751,6 @@ def make_figure(output: Path, rgb: list[dict[str, Any]], chains: dict[str, list[
     write_new_json(manifest_path, manifest)
     return {**manifest, "path": relative_path(manifest_path, output),
             "sha256": sha256(manifest_path)}
-
 
 def load_run_records(output: Path) -> tuple[dict[str, list[dict[str, Any]]], dict[str, Any]]:
     manifest_path = output / "run_manifest.json"

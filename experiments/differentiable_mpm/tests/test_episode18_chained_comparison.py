@@ -346,7 +346,7 @@ def test_topview_renderer_records_mirror_and_omits_tools(tmp_path: Path):
     assert camera["transform_order"] == "rotate_-90_then_mirror_left_right"
 
 
-def test_four_row_layout_has_three_simulation_rows_and_two_empty_cells():
+def test_four_row_layout_marks_unavailable_c1_cells_explicitly():
     rgb = image_records(subject.EPISODE_IDS)
     rendered = {
         subject.CHAIN_A: grouped_records(subject.EPISODE_IDS),
@@ -356,7 +356,9 @@ def test_four_row_layout_has_three_simulation_rows_and_two_empty_cells():
     cells = subject.figure_cells(rgb, rendered)
     assert len(cells) == 4 and all(len(row) == 4 for row in cells)
     assert [(row, column) for row in range(4) for column in range(4)
-            if cells[row][column] is None] == [(2, 0), (3, 0)]
+            if subject.is_not_applicable(cells[row][column])] == [(2, 0), (3, 0)]
+    assert cells[2][0]["label"] == "N/A — begins at C2"
+    assert cells[3][0]["label"] == "N/A — begins at C2"
     assert cells[2][1]["start"].endswith("chunk02_start.png")
     assert cells[3][1]["start"].endswith("chunk02_start.png")
 
@@ -393,6 +395,11 @@ def test_article_export_writes_pdf_png_and_finite_manifest(tmp_path: Path):
         metadata = manifest["outputs"][extension]
         path = tmp_path / metadata["path"]
         assert path.is_file() and subject.sha256(path) == metadata["sha256"]
+    assert manifest["layout"]["png_dpi"] == 600
+    assert manifest["layout"]["not_applicable_cells_zero_based"] == [[2, 0], [3, 0]]
+    assert manifest["layout"]["state_transfer_annotations"] == [
+        "carry {x, v, C, F, Jp}", "independent reconstruction", "C1 terminal state",
+    ]
     with Image.open(tmp_path / manifest["outputs"]["png"]["path"]) as image:
         assert image.size == tuple(manifest["layout"]["png_dimensions_pixels"])
 

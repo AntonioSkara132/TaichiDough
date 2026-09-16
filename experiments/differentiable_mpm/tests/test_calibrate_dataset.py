@@ -290,6 +290,32 @@ class DatasetCliTests(unittest.TestCase):
         self.assertAlmostEqual(selected['training_value'], expected)
         self.assertLess(expected, 0.25 * 0.5 * 0.7 ** 2 + 0.75 * 0.5 * 0.1 ** 2)
 
+    def test_episode_minibatch_fit_updates_after_each_independent_training_episode(self):
+        output = self.root / 'minibatch-fit'
+        with self.environment():
+            self.assertEqual(self.run_cli(
+                'fit', output, '--iterations', '2', '--no-evaluate',
+                '--episode-batch-size', '1'), 0)
+        objective_calls = [call for call in self.calls if call['action'] == 'objective']
+        self.assertEqual([(call['episode_id'], call['compute_grad']) for call in objective_calls],
+                         [('train_a', True), ('train_b', True), ('train_a', False), ('train_b', False)])
+        self.assertNotEqual(objective_calls[0]['shared']['viscosity'],
+                            objective_calls[1]['shared']['viscosity'])
+        state = self.json(output, 'optimizer_state.json')
+        self.assertEqual(state['schema'], 'taichidough/minibatch-adam-state/v1')
+        history = state['state']['history']
+        self.assertEqual([row['episode_ids'] for row in history], [['train_a'], ['train_b']])
+        self.assertEqual(state['state']['accepted_updates'], 2)
+        selected = self.json(output, 'selected_parameters.json')
+        self.assertEqual(selected['objective']['version'], 'independent-episode-minibatch-v1')
+        self.assertEqual(selected['objective']['episode_batch_size'], 1)
+        self.assertTrue(selected['independent_heldout_episodes_declared'])
+        result = self.json(output)
+        self.assertEqual(result['optimization']['accepted_updates'], 2)
+        self.assertEqual(result['optimization']['final_training_evaluation']['episodes'][0]['episode_id'], 'train_a')
+        self.assertEqual(result['optimization']['final_training_evaluation']['episodes'][1]['episode_id'], 'train_b')
+        self.assertEqual(result['objective']['episode_batch_size'], 1)
+
     def test_selection_contains_shared_only_and_actual_per_episode_floors(self):
         output = self.root / 'selection'
         with self.environment():
