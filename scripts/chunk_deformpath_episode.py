@@ -128,6 +128,7 @@ def update_metadata(source: dict[str, Any], *, input_dir: Path, chunk_dir: Path,
 def parse_ranges(path: Path, original_indices: list[int], frame_count: int) -> list[tuple[int, int, int | None, int | None]]:
     document = json.loads(path.read_text(encoding="utf-8"))
     raw_ranges = document.get("ranges") if isinstance(document, dict) else document
+    allow_omitted_edges = bool(document.get("allow_omitted_edges", False)) if isinstance(document, dict) else False
     if not isinstance(raw_ranges, list) or not raw_ranges:
         raise ValueError("Ranges file must contain a nonempty list or an object with a ranges list")
     result = []
@@ -153,10 +154,20 @@ def parse_ranges(path: Path, original_indices: list[int], frame_count: int) -> l
         result.append((aligned_start, aligned_end, start, end))
         previous_end = end
     selected_all = [local for start, end, _, _ in result for local in range(start, end)]
-    if selected_all != list(range(frame_count)):
-        missing = sorted(set(range(frame_count)) - set(selected_all))
+    if len(selected_all) != len(set(selected_all)):
         overlap = len(selected_all) - len(set(selected_all))
-        raise ValueError(f"Ranges must cover every aligned frame exactly once; missing={missing[:5]}, overlap={overlap}")
+        raise ValueError(f"Ranges overlap in aligned frame space; overlap={overlap}")
+    expected = list(range(frame_count))
+    if selected_all != expected:
+        if allow_omitted_edges:
+            selected_set = set(selected_all)
+            omitted = sorted(set(expected) - selected_set)
+            prefix = list(range(selected_all[0]))
+            suffix = list(range(selected_all[-1] + 1, frame_count))
+            if omitted == prefix + suffix:
+                return result
+        missing = sorted(set(expected) - set(selected_all))
+        raise ValueError(f"Ranges must cover every aligned frame exactly once; missing={missing[:5]}, overlap=0")
     return result
 
 
