@@ -204,7 +204,8 @@ def render(run_dir: Path, output: Path, zoom: float, ffmpeg=None, ffprobe=None) 
         raise RuntimeError("Simulation or prepared inputs changed during rendering")
     write_new_json(output / "render_manifest.json", {
         "schema": "taichidough/dataset-forward-render/v2", "source_run": str(run_dir),
-        "simulation_status": result["status"], "frames": details, "parameters": config["parameters"],
+        "simulation_status": result["status"], "control_source": result.get("control_source", {"kind": "recorded"}),
+        "frames": details, "parameters": config["parameters"],
         "mass_kg": config["mass_kg"], "density_kg_m3": config["density_kg_m3"],
         "camera_zoom": zoom, "particle_volume_m3": particle_volume,
         "input_sha256": before, "inputs_unchanged": True,

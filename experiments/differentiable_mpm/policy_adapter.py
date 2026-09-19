@@ -7,6 +7,7 @@ simulator execution can be tested separately.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 import json
 from pathlib import Path
 
@@ -181,6 +182,87 @@ class ConditionControls:
         if not 0 <= index < len(self):
             raise IndexError(index)
         return ToolControl(self.poses[index].astype(np.float32), self.velocities[index].astype(np.float32), index * self.dt)
+
+
+def _sha256(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for block in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def load_condition_archive(archive, condition, *, expected_dt=None, expected_steps=None,
+                           expected_duration=None):
+    """Load one validated condition archive for simulator execution."""
+    if condition not in CONDITIONS:
+        raise ValueError(f"Unknown condition {condition}; choose from {CONDITIONS}")
+    archive = Path(archive).expanduser().resolve()
+    root = archive if archive.is_dir() else archive.parent
+    manifest_path = archive / "manifest.json" if archive.is_dir() else archive
+    if not manifest_path.is_file():
+        raise ValueError(f"Condition archive manifest was not found: {manifest_path}")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"Could not read condition archive manifest: {manifest_path}") from error
+    if manifest.get("schema") != "taichidough/mpm-policy-controls/v1":
+        raise ValueError("Unsupported policy-control archive schema")
+    rows = manifest.get("conditions")
+    if not isinstance(rows, dict) or condition not in rows or not isinstance(rows[condition], dict):
+        raise ValueError(f"Condition archive has no metadata for {condition!r}")
+    row = rows[condition]
+    filename = row.get("file")
+    if not isinstance(filename, str) or not filename:
+        raise ValueError(f"Condition archive has no file for {condition!r}")
+    data_path = (root / filename).resolve()
+    if not data_path.is_relative_to(root) or not data_path.is_file():
+        raise ValueError("Condition archive file must exist inside the archive directory")
+    dt = manifest.get("control_dt_s")
+    duration = manifest.get("duration_s")
+    times = np.asarray(manifest.get("control_times_s"), dtype=np.float64)
+    if not isinstance(dt, (int, float, np.integer, np.floating)) or not np.isfinite(dt) or dt <= 0:
+        raise ValueError("Condition archive control_dt_s must be finite and positive")
+    if not isinstance(duration, (int, float, np.integer, np.floating)) or not np.isfinite(duration) or duration < 0:
+        raise ValueError("Condition archive duration_s must be finite and nonnegative")
+    if times.ndim != 1 or not len(times) or not np.isfinite(times).all() or abs(float(times[0])) > 1e-8:
+        raise ValueError("Condition archive control_times_s must be finite and start at zero")
+    if len(times) > 1:
+        deltas = np.diff(times)
+        if np.any(deltas <= 0) or not np.allclose(deltas, float(dt), rtol=1e-5, atol=1e-8):
+            raise ValueError("Condition archive control_times_s must use the declared regular timestep")
+    if float(times[-1]) > float(duration) + 1e-8:
+        raise ValueError("Condition archive duration_s is shorter than its control times")
+    if expected_dt is not None and not np.isclose(float(dt), float(expected_dt), rtol=1e-5, atol=1e-8):
+        raise ValueError(f"Condition archive dt {float(dt):g} does not match simulator dt {float(expected_dt):g}")
+    with np.load(data_path, allow_pickle=False) as loaded:
+        if set(loaded.files) != {"poses", "velocities"}:
+            raise ValueError("Condition archive must contain exactly poses and velocities")
+        poses = np.asarray(loaded["poses"], dtype=np.float64)
+        velocities = np.asarray(loaded["velocities"], dtype=np.float64)
+    if poses.ndim != 3 or poses.shape[1:] != (2, 7) or len(poses) != len(times) or len(poses) == 0:
+        raise ValueError("Condition archive poses must have shape [N,2,7] matching control times")
+    if velocities.shape != (len(poses), 2, 6):
+        raise ValueError("Condition archive velocities must have shape [N,2,6]")
+    if row.get("pose_shape") != list(poses.shape) or row.get("velocity_shape") != list(velocities.shape):
+        raise ValueError("Condition archive manifest dimensions do not match the selected arrays")
+    controls = ConditionControls(poses, velocities, float(dt))
+    if expected_steps is not None and len(controls) < int(expected_steps):
+        raise ValueError("Condition archive does not contain enough controls for the simulation")
+    horizon = (len(controls) - 1) * float(dt)
+    if expected_duration is not None and float(duration) + 1e-8 < float(expected_duration):
+        raise ValueError("Condition archive duration does not cover the simulation horizon")
+    if expected_duration is not None and len(controls) * float(dt) + 1e-8 < float(expected_duration):
+        raise ValueError("Condition archive controls do not cover the simulation horizon")
+    return controls, {
+        "kind": "policy_archive", "archive_dir": str(root),
+        "manifest": str(manifest_path), "manifest_sha256": _sha256(manifest_path),
+        "condition": condition, "file": str(data_path), "file_sha256": _sha256(data_path),
+        "pose_shape": list(poses.shape), "velocity_shape": list(velocities.shape),
+        "control_dt_s": float(dt), "duration_s": float(duration),
+        "control_count": len(controls), "control_horizon_s": horizon,
+        "control_times_s": times.tolist(),
+    }
 
 
 def save_conditions(output, conditions):

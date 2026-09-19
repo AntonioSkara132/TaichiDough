@@ -22,6 +22,7 @@ if str(REPO) not in sys.path:
 from experiments.differentiable_mpm.dataset_config import MATERIAL_NAMES, load_dataset
 from experiments.differentiable_mpm.parameters import PhysicalParameterSpace
 from experiments.differentiable_mpm.reference_adapter import get_reference_modules, reference_policy
+from experiments.differentiable_mpm.policy_adapter import CONDITIONS, load_condition_archive
 
 
 def sha256(path: Path) -> str:
@@ -205,6 +206,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--precision", choices=("f32", "f64"), default="f32")
     result.add_argument("--cpu-threads", type=int, default=1)
     result.add_argument("--reference-policy", choices=("strict", "frozen"), default="frozen")
+    result.add_argument("--controls-archive", type=Path)
+    result.add_argument("--condition", choices=CONDITIONS)
     result.add_argument("--end-frame", type=int)
     result.add_argument("--simulation-python", default=sys.executable)
     result.add_argument("--render-python", default=sys.executable)
@@ -223,6 +226,11 @@ def main(argv=None) -> int:
             raise ValueError("cpu-threads must be positive")
         if not math.isfinite(args.camera_zoom) or not 0.25 <= args.camera_zoom <= 4:
             raise ValueError("camera-zoom must be in [0.25,4]")
+        if (args.controls_archive is None) != (args.condition is None):
+            raise ValueError("--controls-archive and --condition must be supplied together")
+        archive_provenance = None
+        if args.controls_archive is not None:
+            _, archive_provenance = load_condition_archive(args.controls_archive, args.condition)
         overrides = path_overrides(args.path)
         dataset = load_dataset(args.dataset, path_overrides=overrides, backend=args.backend,
                                precision=args.precision)
@@ -273,6 +281,9 @@ def main(argv=None) -> int:
             "backend": args.backend, "precision": args.precision, "reference_policy": args.reference_policy,
             "simulation_python": str(sim_python), "render_python": str(render_python),
             "camera_zoom": args.camera_zoom, "path_overrides": overrides,
+            "control_source": "policy_archive" if archive_provenance else "recorded",
+            "control_condition": args.condition,
+            "control_archive": archive_provenance,
             "simulation_requested": not args.prepare_only, "calibration_requested": False,
             "backward_requested": False,
         }
@@ -294,6 +305,9 @@ def main(argv=None) -> int:
                    "--output-dir", simulation, "--backend", args.backend,
                    "--precision", args.precision, "--cpu-threads", str(args.cpu_threads),
                    "--reference-policy", args.reference_policy]
+        if args.controls_archive is not None:
+            forward.extend(["--controls-archive", args.controls_archive.expanduser().resolve(),
+                            "--condition", args.condition])
         code = execute(forward, output / "forward_stdout.log")
         if not (simulation / "simulation_result.json").is_file():
             raise RuntimeError(f"Forward process exited {code} without simulation_result.json")

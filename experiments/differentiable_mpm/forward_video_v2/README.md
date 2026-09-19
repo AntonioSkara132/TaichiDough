@@ -64,6 +64,29 @@ python3 experiments/differentiable_mpm/forward_video_v2/run.py \
 
 Fixed floor and tool contact values still come from the dataset. Explicit material arguments do not replace them.
 
+## Policy control archive
+
+A policy-control archive can replace the recorded tool controls without changing the
+recorded replay or the frame-zero particle state:
+
+```bash
+python3 experiments/differentiable_mpm/forward_video_v2/run.py \
+  --dataset DATASET.json --episode-id EPISODE_ID \
+  --parameters PARAMETERS.json \
+  --controls-archive /workspace/runs/mpm_policy_test/conditions_episode18_diagnostic \
+  --condition predicted_xyz_recorded_orientation \
+  --simulation-python /path/to/simulation/python \
+  --render-python /path/to/render/python
+```
+
+The archive must contain `manifest.json` with schema
+`taichidough/mpm-policy-controls/v1` and a condition `.npz` containing `poses`
+`[N,2,7]` and `velocities` `[N,2,6]`. The loader checks finite values, unit
+quaternions, regular control times, timestep compatibility, and sufficient duration
+before simulation. The prepared Episode 18 archive currently uses a diagnostic
+camera-frame fit; a completed simulation from it is a plumbing test, not evidence
+that the physical frame calibration is correct.
+
 ## Preparation check
 
 `--prepare-only` verifies the dataset, parameter source, episode, recording length, interpreter paths, and derived configuration. It does not initialize Taichi, simulate, or render:

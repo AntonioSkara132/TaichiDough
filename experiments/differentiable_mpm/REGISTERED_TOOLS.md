@@ -56,6 +56,52 @@ No MPM simulation, backward pass, CUDA qualification or material fit was run for
 - Total mass 0.25 kg, volume 113.832 mL, density 2196.21898938787 kg/m³. The unusually high density is preserved; check the measured mass and reconstructed volume before interpreting fitted parameters physically.
 - Registration uncertainty remains, particularly for UR5e's alternative fits. The accepted transforms are fixed inputs, not parameters fitted here.
 
+## Policy adapter controls for Episode18
+
+Use `configs/episode18_table_aligned_registered_tools.json` (relative to this document's directory) for this comparison. Raw recorded poses and policy predictions must both be in the source mocap frame. The configured `scene_calibration_v2.json` has a nonidentity `scene_from_source`; do not omit this transform or replace it with identity. For SDF tools, use `tool_geometry.json` entries `tools[*].marker_from_mesh` in UR5e, Gen3 order, not `marker_from_collider`.
+
+From the TaichiDough repository root, extract the matrix arrays required by the exporter. Its matrix arguments accept JSON arrays, not complete calibration or geometry objects. Set `CONTROL_INPUTS` to a new directory for these files:
+
+```bash
+export CONTROL_INPUTS=/workspace/runs/policy_control_inputs_episode18
+python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+source = Path("experiments/differentiable_mpm/data/episode18_registered_tools_v1")
+calibration = json.loads((source / "scene_calibration_v2.json").read_text())
+geometry = json.loads((source / "tool_geometry.json").read_text())
+assert [tool["name"] for tool in geometry["tools"]] == ["UR5e_spathla", "gen3_spathla"]
+output = Path(os.environ["CONTROL_INPUTS"])
+output.mkdir(parents=True, exist_ok=False)
+(output / "scene_from_source.json").write_text(
+    json.dumps(calibration["scene_from_source"], indent=2) + "\n"
+)
+(output / "marker_from_tool_frames.json").write_text(
+    json.dumps([tool["marker_from_mesh"] for tool in geometry["tools"]], indent=2) + "\n"
+)
+PY
+```
+
+Before exporting controls, select the exact Episode18 query from the checkpoint's dataset snapshot and check the policy export manifest against the source sequence and retained segment timestamps. Prepare raw source-frame recorded poses `[N,2,7]` in UR5e, Gen3 order and relative recorded times `[N]` in seconds for that segment. Set `RECORDED_POSES`, `RECORDED_TIMES`, and `SEGMENT_DURATION_S` to those verified inputs; do not use a full-episode duration for a segment prediction.
+
+```bash
+python -m experiments.differentiable_mpm.export_policy_controls \
+  --recorded-poses "${RECORDED_POSES:?Set the segment poses file}" \
+  --recorded-times "${RECORDED_TIMES:?Set the segment times file}" \
+  --policy-export /workspace/runs/policy_export_episode18 \
+  --control-dt 0.0002 \
+  --duration "${SEGMENT_DURATION_S:?Set the verified segment duration}" \
+  --scene-from-source "$CONTROL_INPUTS/scene_from_source.json" \
+  --marker-from-tool-frames "$CONTROL_INPUTS/marker_from_tool_frames.json" \
+  --output /workspace/runs/policy_controls_episode18
+```
+
+This exports five conditions: `recorded_full_pose`, `recorded_xyz_fixed_orientation`, `predicted_xyz_fixed_orientation`, `hold_position`, and `predicted_xyz_recorded_orientation`. The adapter applies the transforms and recomputes linear and angular velocities without moving the first predicted waypoint to the recorded start. These are control arrays, not simulation results. A forward comparison must consume them through `ToolControl` using a shared initial state, without applying the scene or marker transforms a second time.
+
+The supplied CUDA paths are `/workspace/data/relocated_episode18` and `/workspace/runs/history_deformpath_full_1000_seed7/seed_7/full/cartesian_residual/checkpoint.pt`; the dataset snapshot is `checkpoint.parent.parent / "dataset.pt"`. These paths, the exact query ID, and CUDA access still require verification before running this comparison.
+
 ## Transfer without overwriting existing work
 
 The archive is created locally at:
