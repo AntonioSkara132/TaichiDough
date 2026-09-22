@@ -277,3 +277,27 @@ def save_conditions(output, conditions):
                                          "velocity_shape": list(velocities.shape)}
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest
+
+
+def gym_actions_from_controls(controls):
+    """Convert ``ConditionControls`` velocities to ``DifferentiableMPMEnv`` actions."""
+    velocities = _finite("control velocities", controls.velocities)
+    if velocities.ndim != 3 or velocities.shape[1:] != (2, 6):
+        raise ValueError("Control velocities must have shape [T,2,6]")
+    actions = velocities[:, :, :3].reshape(len(velocities), 6).astype(np.float32)
+    return actions
+
+
+def replay_controls_in_gym(env, controls, *, max_steps=None):
+    """Replay policy controls through a Gymnasium differentiable MPM environment."""
+    actions = gym_actions_from_controls(controls)
+    if max_steps is not None:
+        actions = actions[:int(max_steps)]
+    observations, info = env.reset()
+    trajectory = [(observations, 0.0, False, False, info)]
+    for action in actions:
+        result = env.step(action)
+        trajectory.append(result)
+        if result[2] or result[3]:
+            break
+    return trajectory

@@ -4,6 +4,9 @@ This is the current working pipeline for taking a DeformPath ROS bag through
 mocap-frame export, interpolation, chunking, materialization, calibration, and
 forward simulation video.
 
+For a reusable, episode-by-episode preparation recipe with explicit provenance
+checks, see [`docs/DEFORMPATH_TAICHI_DATA_PREPARATION_RECIPE.md`](docs/DEFORMPATH_TAICHI_DATA_PREPARATION_RECIPE.md).
+
 The commands below assume:
 
 - TaichiDough repo: `/home/antonio/diplomski_antonio/diplomski/TaichiDough`

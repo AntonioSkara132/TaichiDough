@@ -1,4 +1,5 @@
 """Shared NumPy state and fixed numerical settings for the experimental solver."""
+from __future__ import annotations
 from dataclasses import dataclass, fields
 from typing import Mapping
 
