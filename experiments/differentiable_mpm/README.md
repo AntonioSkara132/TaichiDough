@@ -20,6 +20,14 @@ The synthetic example explicitly uses a 10 mm prediction visibility temperature 
 
 Reference policy and physics version are independent. `--reference-policy frozen` permits verified helper snapshots when live sources differ; it does not select legacy physics. Use `--physics-version legacy-v1` explicitly when reproducing the historical numerical results. The updated defaults select corrected physics, whose qualification status is stated above.
 
+## Learned reduced-order dynamics
+
+A separate fixed-particle POD model learns full-state updates conditioned on tool
+motion and material parameters. Collection, training, differentiable inference and
+held-out evaluation commands are in [REDUCED_ORDER.md](REDUCED_ORDER.md).
+The first check uses small synthetic Taichi contact trajectories; calibrated
+real-dough accuracy and long-horizon stability are not established.
+
 ## What is differentiated
 
 The state is particle position `x`, velocity `v`, affine velocity `C`, deformation `F`, and plastic-volume history `Jp`. The solver separates material update, P2G, grid response, G2P, and particle contact into forward/reverse stages. Polar rotation and principal-stretch projection use composite spectral adjoints that remain well-defined at repeated positive stretches.
