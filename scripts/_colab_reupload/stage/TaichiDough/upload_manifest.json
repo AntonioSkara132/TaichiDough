@@ -1,0 +1,1888 @@
+{
+  "files": [
+    {
+      "path": "experiments/differentiable_mpm/__init__.py",
+      "sha256": "e5c5752cef795c6f268797351433225fe682131ec478db840cb280cd2a88b010"
+    },
+    {
+      "path": "experiments/differentiable_mpm/backend_check.py",
+      "sha256": "9b05588dec21b63751d72764c869f5b1a72f37fa638828e14e111ee22c34da27"
+    },
+    {
+      "path": "experiments/differentiable_mpm/calibrate.py",
+      "sha256": "8994f0bb299afa8cfd56a13b6f8d0d3b976454c6e7e05d4841328fead168b97b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/calibrate_dataset.py",
+      "sha256": "e9b58ae0e8b6cd2f76e4afc73dfa236eda6609aca65744f07565ba9d5fc41295"
+    },
+    {
+      "path": "experiments/differentiable_mpm/calibrate_dataset_attempts.py",
+      "sha256": "84621879d603529fad3365a999d96952388d95dda8ea82e6a864d3cd94b86646"
+    },
+    {
+      "path": "experiments/differentiable_mpm/check.py",
+      "sha256": "9e1e59d440289239a9a74f88112b834799c09b3b973381bb8fe8544db269a2b8"
+    },
+    {
+      "path": "experiments/differentiable_mpm/checkpoint.py",
+      "sha256": "de435654002b0e86087426691a054fb2f582991f00a443bdcd798be971815ba9"
+    },
+    {
+      "path": "experiments/differentiable_mpm/config.py",
+      "sha256": "a07016bdf2d7bcf2fa125a708784a23cab223b1b93819e2a6e49c46d8c0243e1"
+    },
+    {
+      "path": "experiments/differentiable_mpm/create_loss_examples.py",
+      "sha256": "70ec5430e9de994b019b50abf51740d1cb5e435332656c712a3ec93f41b491f6"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/accepted_temporal_annotations.json",
+      "sha256": "4079631b641cf0414841594fa52157401456e86b2e91720293076444c9b9f14b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk02_stretch_clamp_v1.json",
+      "sha256": "0999fc1514b759ab9c6b5ef32f2ea34200ed8afa326450b04bc3142d14ab86c4"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk03_stretch_clamp_v1.json",
+      "sha256": "b2ba605215a122123c86e3f16ff16f56060d5bb0a926597a33d73a045b539324"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk04_stretch_clamp_v1.json",
+      "sha256": "a39388d1c448f1c55ef9f930ae3dfa22bd391f8a71ef59cd741bdbce4582c847"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk05_stretch_clamp_v1.json",
+      "sha256": "ce7ebba90ebf9004628be5fd82b0845bb21a1fb1f5bb781edddf25747c727fdf"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk06_stretch_clamp_v1.json",
+      "sha256": "e30538a47cf7b9f1625d8b2cd63d77478339c3fdf49f4db8bb9380096240d65f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk07_stretch_clamp_v1.json",
+      "sha256": "af1ad13e25675e4d3b32656f668223a5c8abbd9776866c11c2b35ff4a99a7e6f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk08_stretch_clamp_v1.json",
+      "sha256": "8c5ad3a73fb65827295dbd21e011567aba7ff3d4e58b039dc6488ffd88882555"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk09_stretch_clamp_v1.json",
+      "sha256": "7f1ced178ac34dbf5e04be443566e6b79e288ada75905cef8dfaafa5bc85c1f9"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk10_stretch_clamp_v1.json",
+      "sha256": "68a85d4a2d6a1a8828b25c090eb684ef6e77b208a3b526648cf2e5888de8f72e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk11_stretch_clamp_v1.json",
+      "sha256": "0c649850efa5bba15ba3b5f1ce30e3d0e3a046251d298c382e6ccf67a3642a91"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk12_stretch_clamp_v1.json",
+      "sha256": "58052656fa5d261916f87c9ae5fa73e57fc4260af7f82f11e4db9346e68e7f16"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk13_stretch_clamp_v1.json",
+      "sha256": "d7650e367074cf4b525ee1c53bd589a993cccbd3f0c78eeca1d2866d999da32f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk14_stretch_clamp_v1.json",
+      "sha256": "aa993f2b79f586a660576d73384b7511f71f72fac7420cc3f323ef900949baef"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk15_stretch_clamp_v1.json",
+      "sha256": "602f13e64b5854d0cb00dd45d2dff9f3bf159aedda7ec9ae87f0fd5e9e93e85c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk16_stretch_clamp_v1.json",
+      "sha256": "52da2ec51ac722952b7b29a4dde6ec0de3e8ab29f45af7b1aa8102c62eef2136"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk17_stretch_clamp_v1.json",
+      "sha256": "860698d7d8373ebcd588a230c4b880c20b61cbd24a227463eedbf7702bd23bb4"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk18_stretch_clamp_v1.json",
+      "sha256": "5c6db8bceaffdf930aeb46aa8045a86f72cd0ef1b9e2c715583e883ca30be22b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk19_stretch_clamp_v1.json",
+      "sha256": "247203e6a28665d31d3591720c4343dbbb3efd724e13d2b577505a48c63abebb"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk20_stretch_clamp_v1.json",
+      "sha256": "3771f2cd007de57401f4b413162a30388e73ce3d9b3f0aeb1ac523ba2bff8710"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk21_stretch_clamp_v1.json",
+      "sha256": "156501f568a429d87ee712894a8fa699b56c213fc22c9ea06b3f17fb0af91668"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk22_stretch_clamp_v1.json",
+      "sha256": "d71cfa3f4815b26e6dc1f85849c50b2a21702d51f0700ff8877b4d0ed8aa1568"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk23_stretch_clamp_v1.json",
+      "sha256": "b2d458bdfabb0545a93692e01e666267cf5317e31c315e2fb6c06663dbbc6f70"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk24_stretch_clamp_v1.json",
+      "sha256": "d7a71c5b8f78d37e0495900c5ac30a481013388f70eb6c96298aef1bb5411097"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk25_stretch_clamp_v1.json",
+      "sha256": "4c22618a762c7d4b4f04fde7470309ee3d76241579b056ebd989be6bd36fcf72"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk26_stretch_clamp_v1.json",
+      "sha256": "7b9408b9856e3c47a923f17f6cce7aabf4b3071e8b585fd2fda88b85f7973126"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/configs/episode18_dynamics_chunk27_stretch_clamp_v1.json",
+      "sha256": "5ad3ced7ba80b49205ffe0697dcd266a36ea0910b17029f3caaf6950608109d2"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/dataset_episode18_dynamics_chunk20_neighbor_smoke_v1.json",
+      "sha256": "59e8b461cdb4c1895d294b01d18d6bf05197169b3f8b1a021e9d97b89175fecb"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/dataset_episode18_dynamics_temporal_exclude_chunk20_v1.json",
+      "sha256": "049b277f579665b1eff2151ca48e7fc53b9063536affb6c57d6823b284f09415"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/dataset_episode18_dynamics_temporal_exclude_chunk20_v1_provenance.json",
+      "sha256": "f1546da1c3bb2657fd42a36f1a2bb09036c94507387a15c10a1801f520dbf471"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/dataset_episode18_dynamics_temporal_v1.json",
+      "sha256": "301d719007f048f342f038cd6f77cd48936d45b9afa0b5a355e4a77e37427573"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/dataset_validation.json",
+      "sha256": "dfe6db17c1d0d5eabeb4a70fd32a4d9a986fff5a5f472f5bfef65e57d1140bba"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk02/initialization_metadata.json",
+      "sha256": "8e94031867336d154011a29b59b6ddb1939eb4daadee972c3b0883956c640c00"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk02/pointclouds_interpolated.pt",
+      "sha256": "d5eec9faf26b9d3314aa3e7f9c9e3b17a32c519032465f622cba830cf1f9ff82"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk02/reconstruction.log",
+      "sha256": "c92ff92bfad4fe0a62738aa9bcbe96ea503d3accd1575d2540021c34526478cc"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk03/initialization_metadata.json",
+      "sha256": "bed6f46355d0151abdb45b0e4e7f7d21bc2e6d5acb87540a43ec3d8ce5d838f7"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk03/pointclouds_interpolated.pt",
+      "sha256": "cbc8bbf9968ff53b0102d4eb5bd9c975aba43e5a905a6ba72879cf5e447f8cdf"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk03/reconstruction.log",
+      "sha256": "d7a2ed5e41891c1917836a85a9e59a556a1687da3cc3ac1149df48ab3a4365d1"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk04/initialization_metadata.json",
+      "sha256": "dfcdc347593b60162a2d5ddb96f2c2e18f804ae9cc27ec364c116f9f94b117f9"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk04/pointclouds_interpolated.pt",
+      "sha256": "73061b0973da845c1b45cc82a176cbf3f24e9fd3c4dbd2d816e9243d4c057adb"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk04/reconstruction.log",
+      "sha256": "47c8d8be97a475a3639d83aa28bd1201ed55f1ee239f6a1c6fa07ef377ab937b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk05/initialization_metadata.json",
+      "sha256": "c6096e2cf20c6c34b7d7b935eecceeeb68351456f81a0efc0a09bd74b14b3a13"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk05/pointclouds_interpolated.pt",
+      "sha256": "006e3d991890732249676bcc0436c256e3465c44be1471cd9f5ae52313aa6f9d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk05/reconstruction.log",
+      "sha256": "b3e282a74cdeea87292f60d284bfce0b400cce1ff6a5104f6e7f04b52db72f39"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk06/initialization_metadata.json",
+      "sha256": "cb72ae39d1b5a607ba51d33189cc33e2393b843e57195dda7aa1a8f0406c5851"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk06/pointclouds_interpolated.pt",
+      "sha256": "639558344d01e945ac3c69b62f380d82881fa22d09cd584fe510a2491d55cd59"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk06/reconstruction.log",
+      "sha256": "996675a2d3f63b9d6fb91a9886c1e286e4c32209ab3ac5121b64640da59a6d16"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk07/initialization_metadata.json",
+      "sha256": "5961a9fe394ee9e85009d57fb4d631a544f91b0a8cd0985763b5afa91362d876"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk07/pointclouds_interpolated.pt",
+      "sha256": "309915652f9b3af5ad43d64cc1886fcf40c8188ce5f1df3a9bc506d636f59931"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk07/reconstruction.log",
+      "sha256": "8a64c02f75e873d6c2eea207826cfe8e2489670323b7d574cf3d45e4367f626f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk08/initialization_metadata.json",
+      "sha256": "bc1a802d69e12627ed4dde11ef8c5d637f6579ec1c83a10f6c2fff7cc2219f4c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk08/pointclouds_interpolated.pt",
+      "sha256": "4a0b36e98c39f8ed2be3271a0884775ec1402cf8c0f0a7b8aacfa1e80085a9de"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk08/reconstruction.log",
+      "sha256": "15a5fb44d1c09dd2adf3b1cce55eb91969889611ee73bce57ba74e32a721bc4d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk09/initialization_metadata.json",
+      "sha256": "8c21696efaec459fa525003caf0509e86c4f1b6fe342a927996a9680846f7f3d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk09/pointclouds_interpolated.pt",
+      "sha256": "85c0f0bfcb942aeac094f42e5482cdaa1474102d747fcaeebca374a2699e92af"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk09/reconstruction.log",
+      "sha256": "bcee082fa14473fdad2b1a39897dfd76d9a1f2e78e272f6e195287f0b2ebbc5d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk10/initialization_metadata.json",
+      "sha256": "883a13c79c4b4cf13d3af4c97ac9b9408dd05f95e029714f42b0d4540ff061b7"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk10/pointclouds_interpolated.pt",
+      "sha256": "e500bcf6212aa94fa236a969e367d5ff2ba56be7aebb65be584d4b5b6ee4ae05"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk10/reconstruction.log",
+      "sha256": "6925fb8aeb88bbb03b8bcfca376d18666be1f557374316d5b7b26ca253e5158f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk11/initialization_metadata.json",
+      "sha256": "cd345581f895ce73819087d7417a3b363f54bae99e98299da1cfe55370b22f25"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk11/pointclouds_interpolated.pt",
+      "sha256": "a11fa3825bf48b21b471699f1567e296ea05cb18aab588c2297237d62a4904ce"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk11/reconstruction.log",
+      "sha256": "517acfdd18f47d341497490b1d7b78cd4729fc452b82c0bd5c862aa711092b0d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk12/initialization_metadata.json",
+      "sha256": "303324588ff21905ac4838c57b56dfd947c7de4ba6f37ea2b48f51f826c45bdf"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk12/pointclouds_interpolated.pt",
+      "sha256": "5fb94b2587f0895cfdff39e1aea785b4e2b91612f9c9db9ff175f567a0311467"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk12/reconstruction.log",
+      "sha256": "13072fa1aa2413b34df7a97cd0a78b1cbc07d1b25f0e3ca2f38d3585ea3a7392"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk13/initialization_metadata.json",
+      "sha256": "dc8a7b7626290d91344dee54fd0840e58a365018172f2850815589e8a02a73ed"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk13/pointclouds_interpolated.pt",
+      "sha256": "49833a2505f497ba16fb3300439b8be5178c620cb82ac9da921de700fc8fa60b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk13/reconstruction.log",
+      "sha256": "aa91ef6ff32c7e24f3e473e650290f7ea0fbc979ef5d91553f9d08b7650a3caf"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk14/initialization_metadata.json",
+      "sha256": "b23c23d7905eab8b9940379fb7fd18293baaaf06e031f1c1be17c06fc888fde8"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk14/pointclouds_interpolated.pt",
+      "sha256": "fd232b6680920db4365fbeb6a94c4ffc92654820f301da2c9f63a62cd1944cda"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk14/reconstruction.log",
+      "sha256": "0fab75a917d047d78274360b7bd6b2f326e8a9d9a1f7a69c47a440385a6152ee"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk15/initialization_metadata.json",
+      "sha256": "8d170e04ee97d103e8e715266b71d0acd873672940c916690bd2bd566a65406f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk15/pointclouds_interpolated.pt",
+      "sha256": "66efce90d43e0d6922ad9fb7e389576ab9b32738b66418fafc7d73766c429da8"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk15/reconstruction.log",
+      "sha256": "28926c6f4e29d2340fea558c7c65315f3d97fc3b5edc51d52b903c0ac204adbd"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk16/initialization_metadata.json",
+      "sha256": "43429a57844009349ec97e4981f711e26cfc925a65aa14a8e20c8f97f7dc3cd4"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk16/pointclouds_interpolated.pt",
+      "sha256": "cc1f581ac411e14194bfa0aac8727da251a643744c0a094d43ef99cdd7e38bd4"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk16/reconstruction.log",
+      "sha256": "e82250d3bdb34cca122c7d9b36fdafe198dc686e1b553f4ce64a580ec620b8df"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk17/initialization_metadata.json",
+      "sha256": "557a9c3fb2d7ad3b000703fc50130edab2f2cc8f2cce46c4fc51140cd7216a0c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk17/pointclouds_interpolated.pt",
+      "sha256": "309c15b1599de2e842bf8a0241fa6f9a22907a6190ebccb638c01a4803a97ba6"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk17/reconstruction.log",
+      "sha256": "57a1cdb18a4c068093fd5855acf942f0390b628f1e188ab308a175c3877e10aa"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk18/initialization_metadata.json",
+      "sha256": "5ba14bd3025eaaa05f824e66e24e8c12d2623462c887f8fba7addd6454fe24f1"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk18/pointclouds_interpolated.pt",
+      "sha256": "856d7e11fd884d112b6bcd8e188599d539a6736f4b9ecc93d4c5d121606282b0"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk18/reconstruction.log",
+      "sha256": "4ed911cefb1f97903cc49c5eace9886584c79df091428378de097457b1d23b89"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk19/initialization_metadata.json",
+      "sha256": "bd4d45ece6277d4e1b13781ff51e533572ec62ba0385f525abe69122bed350e7"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk19/pointclouds_interpolated.pt",
+      "sha256": "e6506ba04d5cc7740bd3274ac015741e3e6dc4ff4581e5e7d6716bfa110c14b3"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk19/reconstruction.log",
+      "sha256": "f9c315cec02ec0e9988da2cc646b11fc11ad2f74343465ba6689c11bee71e772"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk20/initialization_metadata.json",
+      "sha256": "cc6ed79f0d77d1436e49e697a52986084d1576d496b474fd0af56272f111bc58"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk20/pointclouds_interpolated.pt",
+      "sha256": "473f8fc4501165823becb33de62d64386139748743f1457d70f084f2772edd14"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk20/reconstruction.log",
+      "sha256": "9b824c9b5eed6404219012d562e4bf2d56e48bcd711288fc9017a8013fe5ffdb"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk21/initialization_metadata.json",
+      "sha256": "2a255ba0f38c5ab3e7d9fb9e41c70529577fa1da543e0df23b9c798409384a79"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk21/pointclouds_interpolated.pt",
+      "sha256": "dbe6afb9e78e676de14290fbd73af1950e6405ec49945a0928b4cce1f818b68d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk21/reconstruction.log",
+      "sha256": "50cf9fd7f3b1541d91b98d4b263c11bbc8ba1e98927fe105e096a42e6fa2b2da"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk22/initialization_metadata.json",
+      "sha256": "0f04fbde35307769d7172307cf1e4256aaa6d3afef294c770f11428f2a8c3caf"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk22/pointclouds_interpolated.pt",
+      "sha256": "cc5d162209627f37f2955a37398107f0bd31947cb8a7a9ad9c33447c2365541a"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk22/reconstruction.log",
+      "sha256": "4268c336ac8d9619d5d914f3173aa353357aa9905675192e8834a4e008b85962"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk23/initialization_metadata.json",
+      "sha256": "e6687f458d6f8811307523b01dff872cdd06623f7741cb9d63b06779b1a364bf"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk23/pointclouds_interpolated.pt",
+      "sha256": "bbb89f4d63a5362fe9a060bd90622f36464cdf456ca3a06e2ceea900286fe396"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk23/reconstruction.log",
+      "sha256": "d5591748d67f62a2d274e398de1b87cf3bd439ff41aca154d253812cae88f46b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk24/initialization_metadata.json",
+      "sha256": "f67db7ad0608f2863c2da0e63ee53968126dfc10d30c3ceb3203e17b099d2b33"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk24/pointclouds_interpolated.pt",
+      "sha256": "96e241a9e1cdb536ed8ba46ab3538a63d4e94edc2745d92fb2934320dd5061be"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk24/reconstruction.log",
+      "sha256": "d070f90970bc9c2f495eed4655faef7c02b2543f09ae881ce1159211ceee0c95"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk25/initialization_metadata.json",
+      "sha256": "d409207218852ac4659d2de2a8f643c577c35c51823d0e1f1b56d1c728146dcc"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk25/pointclouds_interpolated.pt",
+      "sha256": "459f5a96a4305780f8788f1af4c37b461eb15afed4be55e57bc28109d5b12008"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk25/reconstruction.log",
+      "sha256": "fa4e2f0acd83c79c4f54e47e48ae9adb2a2d663e69c911a0295b6d5eaeb8d47a"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk26/initialization_metadata.json",
+      "sha256": "80c615f34e99fa36495df16de5f08f1fef75befe13f9566fe59f5c28a915cf92"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk26/pointclouds_interpolated.pt",
+      "sha256": "e9ede78b2f938ff6a2c1c92d3dca2d1adc15f81f8c98c75f0fef35fe20bdcf5e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk26/reconstruction.log",
+      "sha256": "9ec39024ed0785720c53efafb968d1dd15b07cbd6cd4a208900baa0212647665"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk27/initialization_metadata.json",
+      "sha256": "ea7ebdcb74786eac5de2b842c99ae98231dec58aa1d75e46364b65a939af96e0"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk27/pointclouds_interpolated.pt",
+      "sha256": "13a605af071ab75726c76a61030f25b50602c63520ae5db9c20bb9128c2cf070"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/initialization/episode18_dynamics_chunk27/reconstruction.log",
+      "sha256": "d5fcb55913d31862a5223864b473a6ea7a775b20e72f1ad048c249e9285399b9"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/range_selection.json",
+      "sha256": "d841d06c3cbb9ca2c3720c085e3adc55df6fb7769f71bea4b8f3c13c6bbfeea5"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk02/frame_0000/real_points_xyz.npy",
+      "sha256": "5f587bf6e5c5bf878f36a408cfe832e995f6d47961e212fbb20abe827becfa90"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk02/frame_0000/reconstruction_metadata.json",
+      "sha256": "5add68f49199353504dfb4bbab32e88b58ca6f51b369aff4e8abd0566e8420c8"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk02/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "a22e3f1f63724b47b8ee5bc53204198082be31922c6175d0453aa2baceefa52f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk02/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "5f587bf6e5c5bf878f36a408cfe832e995f6d47961e212fbb20abe827becfa90"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk02/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "8c1ab910ee0b4fb5d2ff1c03386449183a364fd1d412a5673b2917150308ad85"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk02/frame_0000/surface_particles_xyz.npy",
+      "sha256": "f2f31154995e02bd31273bddbb73b38a16f3ac3dbdb8a6c3f571044c03f424bb"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk02/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "89ad4ef737957f1cf7a7ff917d2ad922db1713b8d48de43d9cd316ffafd2ea8c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk03/frame_0000/real_points_xyz.npy",
+      "sha256": "4dbcdfdc5e36be23782607a9b1c226a704636c9d0ab5763b7b4eb870caaecc08"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk03/frame_0000/reconstruction_metadata.json",
+      "sha256": "986f107e7a291c5ddeda9a48b77cc2c250f891f58b2706baea46c5596dcf8d27"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk03/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "7a0ad8bb3f13463c7db4f495627296e1f0966729cdc0b9bc70734a4c9893549b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk03/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "4dbcdfdc5e36be23782607a9b1c226a704636c9d0ab5763b7b4eb870caaecc08"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk03/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "0e6c68953d660d20199a3fb639467ccec2eef76ab535b3488fb83a980fa2b389"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk03/frame_0000/surface_particles_xyz.npy",
+      "sha256": "b0a089553da4f252adc2e258a9a320b478320403ce27888224478d3b4849c0c6"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk03/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "292cce4bfc9d2d827cc9b04723b18a6759e8617857b930bb340e38ce3fcb2c23"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk04/frame_0000/real_points_xyz.npy",
+      "sha256": "48a5fa5ddd928c48deb0986076448e6df892e9a16f79077cd661bd2a782fb4f9"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk04/frame_0000/reconstruction_metadata.json",
+      "sha256": "c300e412ac910f6064c45291f26d5dff00c85f6c94aa853fbb75d2674c9b65b2"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk04/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "c8f5931febff5169bfe51fef78fc02ffd9925f6af793ec134590eba6e74cd8f3"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk04/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "48a5fa5ddd928c48deb0986076448e6df892e9a16f79077cd661bd2a782fb4f9"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk04/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "abd851338685f8816e553784f857cc46506aadfba0594ce7ae0ca1afafeeaf06"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk04/frame_0000/surface_particles_xyz.npy",
+      "sha256": "8328ff0798e577157762abe20c175d9071eb9d74ad2a9da35e685b2a9bdb22d7"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk04/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "6574ac001b8b856b85daa80df86ef8bc6994da30b0edd0e450ca4645b9d13aca"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk05/frame_0000/real_points_xyz.npy",
+      "sha256": "1493c3ab1c0d4409de1b886cef62a9e975b1eabd4d762781873fff7c405b2420"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk05/frame_0000/reconstruction_metadata.json",
+      "sha256": "f4352a02524f89e0409799d47bda31ab068e315f2e25d961b96cb0d58f24ed34"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk05/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "09af57b19c177470867110cba95db3d9cea151c8dd777b624208863bbf5691bb"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk05/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "1493c3ab1c0d4409de1b886cef62a9e975b1eabd4d762781873fff7c405b2420"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk05/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "4468ac396456f2d79cf56e1dc7ba79bf71061a104e1588848bda6c2a184c7abd"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk05/frame_0000/surface_particles_xyz.npy",
+      "sha256": "24e74059c072561ab31c10cfbc96396a62ffed0bec4993e3314537fa14a67403"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk05/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "ebaaebaf15bb7cbd74fa0a6e8d8568abd67fc24cc5b4bd38048a8bbbb40e732e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk06/frame_0000/real_points_xyz.npy",
+      "sha256": "b671e6791feb69fa34dff756904df18a699d26ced53d4d95130be251667b53ea"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk06/frame_0000/reconstruction_metadata.json",
+      "sha256": "0f83bac6750242d9857cfdc5546f23c925fc5139b4850ddb89b9a81ff9a8f041"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk06/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "4a92490384d415eda482218cc5c999ee7b277024b9c238c893059a7d070aa7b5"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk06/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "b671e6791feb69fa34dff756904df18a699d26ced53d4d95130be251667b53ea"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk06/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "cf2fdd2ce79c0fe841b980b9ac7e7c7e9c7c782be96e739e08d570ab13dec518"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk06/frame_0000/surface_particles_xyz.npy",
+      "sha256": "8fba2edb337d26e2a7665fa7b620d251ad5242ff280f65380e4e10278d012043"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk06/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "eafda7346c6337b2782eaff37d8afc84d2317bc7faea66b4b75763729cfa2d67"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk07/frame_0000/real_points_xyz.npy",
+      "sha256": "2def21bbf8f908e52acee6c96aa07da76d436918c1a1a7be4d00d7c3784d8f9c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk07/frame_0000/reconstruction_metadata.json",
+      "sha256": "45a12f787c10ea9a7d32b36dfe6cfa23bcca9e8419b8c8f217c24d889bf9014f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk07/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "aa3e2731f1a407dfc0ef3e2776112009254d50ea889b9e82a7891396ebbc9e21"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk07/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "2def21bbf8f908e52acee6c96aa07da76d436918c1a1a7be4d00d7c3784d8f9c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk07/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "a1dfe0d8f7839af8b8c2c24f4efeae2a71e8dc807ac49dd5e3ffa3bf9283dc2b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk07/frame_0000/surface_particles_xyz.npy",
+      "sha256": "96b46194b0fd03983f2f53f5f58326638dd58baf301f7a854abad4294e0cf040"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk07/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "de36a2724e495e7697aeae89126f3e42e2576027ef45479b55e0098417d906c8"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk08/frame_0000/real_points_xyz.npy",
+      "sha256": "981dceca910b194cb8fb08675d4acf1410a90b68bde3757ce4147bf7ac7f4fdd"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk08/frame_0000/reconstruction_metadata.json",
+      "sha256": "70baed0b91385cd4c66f32ccea6227d8fd3c5e062d6da875f3c00808acab4830"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk08/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "051afce90dcd4fe98ab8a36562df6cfad84fbc5ee749f694f4c247f48d7d100e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk08/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "981dceca910b194cb8fb08675d4acf1410a90b68bde3757ce4147bf7ac7f4fdd"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk08/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "6d7b94352c91439977b45c25d85a7826e26d6a119fab7c1505c1c098b4a0ee40"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk08/frame_0000/surface_particles_xyz.npy",
+      "sha256": "fc6644620ee68fae9a9f3e099dccc5b01d0b60e217addaac58704fe6c5311c25"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk08/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "4f1cb27359a58b6ac1a9587eb9c30c87ddd0593028b95c50d40bbf8a917263be"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk09/frame_0000/real_points_xyz.npy",
+      "sha256": "024a4acb1f056507e93b8dc68691632bcf2de7531b0bac0f5acf3fbbcf24d691"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk09/frame_0000/reconstruction_metadata.json",
+      "sha256": "eb4a9f3875bdd07051e64bdefd68e736799139cb42a486f83bbfc183c242145d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk09/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "4d975e2c1abb15094cb26d38f881590307178b9e4c9706852a6f79178be19eff"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk09/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "024a4acb1f056507e93b8dc68691632bcf2de7531b0bac0f5acf3fbbcf24d691"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk09/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "155a2709c9564cd1a3ef8f5f1ab3302ce693acd0d3c24ea2f85ac9b3082c7a02"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk09/frame_0000/surface_particles_xyz.npy",
+      "sha256": "69b71791ee4a99c611d6ef7435dbb7c1f0aadc9a16b6b3c8f47a026a1c4cc210"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk09/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "f7f433a484945c04966efe6fd77dd7d5d9b805dad5001eb89bec1fca72f599f7"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk10/frame_0000/real_points_xyz.npy",
+      "sha256": "392580b6125ef9430fddbfb820213c66b28b56fee1bfc33a87e9b9ec640f8587"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk10/frame_0000/reconstruction_metadata.json",
+      "sha256": "cc21a341947b255e23e280574a56174aaf3f6e8fa98efc2eeb88da661ac5b83e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk10/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "9f297ecfbfac53b5cca2cd043fc8f697b67e58dc09dd6f635d0c42732bf9f5d3"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk10/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "392580b6125ef9430fddbfb820213c66b28b56fee1bfc33a87e9b9ec640f8587"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk10/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "42875910765f387b214bed2a0b5b5749684d0863f58079496fe4b4e0a78954fe"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk10/frame_0000/surface_particles_xyz.npy",
+      "sha256": "6875d2cb75d4f0a94edaf69ef04e8e5f51aef158c444c5a5d49ecb230d9a94e8"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk10/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "a06fcd7d9020037d1c7bad566fdeeb52c1d807bd034433756567fc3df9e71708"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk11/frame_0000/real_points_xyz.npy",
+      "sha256": "7ee2e07eeb5e3d7fec390aee6299b0e132b60207a331ad3698f00e82779e921e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk11/frame_0000/reconstruction_metadata.json",
+      "sha256": "3777b3e561a0b18d3b63a18901934f0ca9b0c42756b4ddb41ad2c0a3b427c5c7"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk11/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "17eece667d878a00fad173c5f8b3b224b8e88123c11c539a0aae376f4f7b0500"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk11/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "7ee2e07eeb5e3d7fec390aee6299b0e132b60207a331ad3698f00e82779e921e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk11/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "d58dc43486f294e0250cad3e4eaa28b3fb0021e01399dc803782a107a9de4796"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk11/frame_0000/surface_particles_xyz.npy",
+      "sha256": "ef9895bd88dc6af7b37648a72292615b2c6b5ae8cd45e8fa9d2bbd81cd028c16"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk11/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "21e99a64e2536b899618f28581206b2f0996274506153761527531163d2d96a4"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk12/frame_0000/real_points_xyz.npy",
+      "sha256": "eee6f4f35ba97add722dedf65a8c9159064e2fe06e69c43abb5df7d5ce90cc22"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk12/frame_0000/reconstruction_metadata.json",
+      "sha256": "27dc687adba6b4ad3c5ec188f4dacc21a0789ebd79f7ba5693c5cd3de24148d6"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk12/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "96473a06daebe4bc9aaa3736f64fb6349fcc1482fc8746d7f1769c7606fbfb87"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk12/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "eee6f4f35ba97add722dedf65a8c9159064e2fe06e69c43abb5df7d5ce90cc22"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk12/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "7d4a870dfe4d6f517ac27a4b6e28bd9c50d2633a335e2ff1357333b7516e5822"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk12/frame_0000/surface_particles_xyz.npy",
+      "sha256": "cccea13267ce9fdd4de407f0b3a7e6da60201206908779edb2434ae94e3cab87"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk12/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "b297d34cb991dfa6f9683162fa7c7d8691ecc885308f91f8504bad85d3b16867"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk13/frame_0000/real_points_xyz.npy",
+      "sha256": "9138e8a66d876a19010c051b00b341ea8142c8bc4c1b3b2c0fde6b0bfedb6442"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk13/frame_0000/reconstruction_metadata.json",
+      "sha256": "65dfd1f0ad8b3275da93e104a8bdc0860bdc43f9677fc1b2760ba8a60ebfd065"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk13/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "46b4f21e4791430efbeae0adec79fd7c4aa8f38e3c4738b4f2b3d51e19b4aa58"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk13/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "9138e8a66d876a19010c051b00b341ea8142c8bc4c1b3b2c0fde6b0bfedb6442"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk13/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "050aa46d64bde1ef8be1c9c18faf99c60387b06cbb35b764c29a7275e9595086"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk13/frame_0000/surface_particles_xyz.npy",
+      "sha256": "d2c2fe49814f0705937f24a7f6975082463f26a6cbea4de9ce3944143753f0b9"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk13/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "c88d720115fe908d04b74e5ffe6fd636cae32d2bc823a89210519e4e9595060e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk14/frame_0000/real_points_xyz.npy",
+      "sha256": "3969064980944392cd1774f1aa6fe55a6a0b6adb58862eb3eefb22a8675d4961"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk14/frame_0000/reconstruction_metadata.json",
+      "sha256": "2d01428bc15a8dde9e56116ca267ee131700658838753f4bd374e89af2fef94c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk14/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "ae3323ae45f3483f0afd6b1c5ba986ca9199f5c04d95b3666302b7f5ca9ce293"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk14/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "3969064980944392cd1774f1aa6fe55a6a0b6adb58862eb3eefb22a8675d4961"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk14/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "d117e7a6a2f174ea7a15029f029d33cca17784a263ceed0513e2994bc001dd98"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk14/frame_0000/surface_particles_xyz.npy",
+      "sha256": "8917ff99e2ee8306bbd2e32bb8636c5b19eef63b0703ea91265550acbe998ba0"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk14/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "698f0a20979997de1a245a890e2bb6d50b4429926d0dd682d58730e94cd1cfab"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk15/frame_0000/real_points_xyz.npy",
+      "sha256": "271928de19926a078d28c77063e7fac19afaa0dc0b537385c55f41ffd0ac0b94"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk15/frame_0000/reconstruction_metadata.json",
+      "sha256": "0feaaecd0baa3d45babed5bfc223315e588c318abb8a6f0e35d660f4d4bc4e02"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk15/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "6942f691b275eff563a498cb8bbe6a5a46de0c542e88b64fb8d06c785c91b144"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk15/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "271928de19926a078d28c77063e7fac19afaa0dc0b537385c55f41ffd0ac0b94"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk15/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "a43b8781ce14d88af180f7f877eecc6a48c40b615b6d150365b0b31d6c5ae1d0"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk15/frame_0000/surface_particles_xyz.npy",
+      "sha256": "3f50a78814b6f23820e10a1f5f69f4303a4b7bb8147f2a1931b981c40de1919d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk15/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "96a6909b824e1eb136ce0e523b33916f5d51cf21049ce592edd649a6e8c1c6f0"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk16/frame_0000/real_points_xyz.npy",
+      "sha256": "ca8c88102f06253b04d515443972c6d86f6e31fe5b79f88b6c45eef1592bb618"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk16/frame_0000/reconstruction_metadata.json",
+      "sha256": "03fc65b8e8ae9b570e395dc3b9069fe7315a681838c566a47276a61b5a2bd7c3"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk16/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "e537f103db7160acc2221f8dee5459302afa9294adbf3142c09719f494d5ef63"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk16/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "ca8c88102f06253b04d515443972c6d86f6e31fe5b79f88b6c45eef1592bb618"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk16/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "1b95c272a243a7934b6ee2fe6838bb1e7d309c7ddecdd593f62834ef29f1ed2c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk16/frame_0000/surface_particles_xyz.npy",
+      "sha256": "b74084459119206afcdfff188cb25a76f14ba02885687e7752779285de68db9b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk16/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "ac53d4050e8b6a92d3af615eb0d114b3c16258f921c4a6f91dee8d8a4548e9b5"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk17/frame_0000/real_points_xyz.npy",
+      "sha256": "f4a10801f684a56438f0761bd94bac9da4ca3c0086584818e0013fd05f54546f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk17/frame_0000/reconstruction_metadata.json",
+      "sha256": "7e687b1d7519187d8a5128bf0899d626cb954d16fd70041ef166008c9bc12a8d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk17/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "ee2204acf29d508bbe701a386caf3a24c0bc5b404e23ba796e32be4b27164fa3"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk17/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "f4a10801f684a56438f0761bd94bac9da4ca3c0086584818e0013fd05f54546f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk17/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "4dc134eac535292f57c64a15942c83486f5c63bed8ecf839c59da3aae130509a"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk17/frame_0000/surface_particles_xyz.npy",
+      "sha256": "0c01dd8cc68b3978d5158314a89dc4b408561df516e0d06b976b0d2a3968a646"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk17/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "6a621a067f9a12b0527c2b7100d1cc8abbef25edd04749acfa3c9be1e84ebb94"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk18/frame_0000/real_points_xyz.npy",
+      "sha256": "2039e940820c409a0189c085c985c2ab992e004d8e21cf689fc9b1ad03910607"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk18/frame_0000/reconstruction_metadata.json",
+      "sha256": "a9fd002232326ca93e749e1686d363f856e0f90f56bcb313e0b1a69d2dc7e2b0"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk18/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "1a1a0c66a7dd49353b417b62e305d979336cf830c04e2e215ec758deacadd289"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk18/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "2039e940820c409a0189c085c985c2ab992e004d8e21cf689fc9b1ad03910607"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk18/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "a9729fc1f7ceeba0e6ee789f90fe0e3bf9df3b83a7a7ac642292e2d8d74705b5"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk18/frame_0000/surface_particles_xyz.npy",
+      "sha256": "9034ff0a40cd944cd64605acfe096ee4cf5d1fac29440ca0c289f7f15e8204b6"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk18/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "ee52eb65ddb7b23d880ec979c0769bb406b809c88c0280d3a65732ec9da204a9"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk19/frame_0000/real_points_xyz.npy",
+      "sha256": "a8e2ca4a52116a98324ace45741479ae04bcc928ed2d92b8ffecf6faebaef8b3"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk19/frame_0000/reconstruction_metadata.json",
+      "sha256": "fa22192bb2c4f67c4dd9ceaa2c7d73cd9b69bfa6ea8554a5ff26983e1669f846"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk19/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "cf4273c3eb36a4116a6a8bbdd269cd34589944a8bf55052bcd941df5983bcd2c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk19/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "a8e2ca4a52116a98324ace45741479ae04bcc928ed2d92b8ffecf6faebaef8b3"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk19/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "4a66494748bc0375c77efad9c14e8993a46ee979734c4cfc86f994b54ff14477"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk19/frame_0000/surface_particles_xyz.npy",
+      "sha256": "6e85b50726829a40d82d8e8d5c63ae754c0d6fbd9c4683e52035b9686d4ad31d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk19/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "04107bb68e6d99c90795c8e8154938890fbdec6befae9a8c00880d5121f550e0"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk20/frame_0000/real_points_xyz.npy",
+      "sha256": "13cb04125568b78a3b0277ff03e55f77a72164d28bd54d1d316f7ffaa86335ae"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk20/frame_0000/reconstruction_metadata.json",
+      "sha256": "358c2312102f857beab34d93955bede2ffa857289700e67c54ca60f53bb9010f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk20/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "6c1b2e42ca6a3c61a7bfe52bc0a2f9d32885136582e92b498f93deff5f8f0622"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk20/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "13cb04125568b78a3b0277ff03e55f77a72164d28bd54d1d316f7ffaa86335ae"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk20/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "726715e065190762606ec28db3673b3a9ddec68bec8ce596de7ff56087faac77"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk20/frame_0000/surface_particles_xyz.npy",
+      "sha256": "038583f076e64adbd393d671bff01f0f244c8691644b3d4fffbb1537bd4e318d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk20/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "9ba7caa56f531636aa186c96d12e5efe4a05925ec84a73c048c3da6ebfd573fd"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk21/frame_0000/real_points_xyz.npy",
+      "sha256": "17098eb594bcdc2e63cb29134b24afd8cc7cba7f2018843db129e5c0215b5025"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk21/frame_0000/reconstruction_metadata.json",
+      "sha256": "4cbf46a39859a0da54d0999b1ad085b3402bb86c4c0f322e204c769da5de0351"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk21/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "f5ab7bbdd1ad9cbb35a3434a8cc11777ad72a9c0826fd5b85188c4118df8e12d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk21/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "17098eb594bcdc2e63cb29134b24afd8cc7cba7f2018843db129e5c0215b5025"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk21/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "371c147f5aae54a46c7029d7ccff6a875b58e19ab04f7d86766b131d5ee2bc44"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk21/frame_0000/surface_particles_xyz.npy",
+      "sha256": "912710b0c3cb17bcbb9882d2cf979375c55f79ddb207796583e2966e78ed8035"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk21/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "c953f259e079bba54b4df6ee6fc555548d5f3f8ef063b4c28244587cacff5b7e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk22/frame_0000/real_points_xyz.npy",
+      "sha256": "7f4f6a4219071b5aaa2105757d05bda91556fc4a92b976dcbd7f2514b0edcea2"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk22/frame_0000/reconstruction_metadata.json",
+      "sha256": "27cffe4c48a02abb3d62fe060692d9619eb123b3a40fb6ed20d1eb5feeaab1a2"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk22/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "04f3df51366ee6ff2ede77dcb9b9a424d9cb656d9a05c90f8002c441fa06888e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk22/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "7f4f6a4219071b5aaa2105757d05bda91556fc4a92b976dcbd7f2514b0edcea2"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk22/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "6ed116c4362906e28110e149388ae2e8a736f8a01f52e4da2b089968471fe018"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk22/frame_0000/surface_particles_xyz.npy",
+      "sha256": "f3951ac1dc6fc30a36b3f60a1e8616c26c041ab322b2f6cf6ad19a14e37eda77"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk22/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "9c575fa24c99dd35ac95b7f0628a6fdf6f8870647b5d418b62cc7a20acb0d2ba"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk23/frame_0000/real_points_xyz.npy",
+      "sha256": "585e86f2cdb095a007c0a2d80f41b01f72528b390f7770707a5adfaff766e0db"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk23/frame_0000/reconstruction_metadata.json",
+      "sha256": "e22657f921594fac3497eb497d1e55150c9ee9f6df22a68dba73de307812c838"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk23/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "8c783cc655c118fd17645aea35e0b079febe6f4ac51417bca1258cc124ec8ee8"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk23/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "585e86f2cdb095a007c0a2d80f41b01f72528b390f7770707a5adfaff766e0db"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk23/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "1adcebfd0c6db2676572f4773275ea03ec5092f743eb098a1c0ac99db2849e50"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk23/frame_0000/surface_particles_xyz.npy",
+      "sha256": "f3549ae086d56c186b78b6cf7b47841e57d00d33062c67107529956da670f4ae"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk23/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "4a452924f97c5f7d16d26ea233b9a8c980bf8478039ab411da9448fe81809c55"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk24/frame_0000/real_points_xyz.npy",
+      "sha256": "46b545d66c09e444cf2e194d38673ab2914a84c3dc81a6b6e651c06dacb5a1e5"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk24/frame_0000/reconstruction_metadata.json",
+      "sha256": "939b5c4f496de01f803c34db6dede374b9f4284ed413c8cf558f5c2422a1d6a9"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk24/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "10706015f90eae4cffcf25f4fd62179c9f7f4f377017c1970add040f968bd24c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk24/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "46b545d66c09e444cf2e194d38673ab2914a84c3dc81a6b6e651c06dacb5a1e5"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk24/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "7990c6af783459dbe84df19c882ba6d02c7167a414982c9a67f180345df5c519"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk24/frame_0000/surface_particles_xyz.npy",
+      "sha256": "29bc1b401a8090cf9124ecbd012982f9b319106c44cd1b708de35b3d108ef062"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk24/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "3baa48b3c8bffcf8c706fe4506bad827c12cef1c21fa3e9ec19c90ebe55897f2"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk25/frame_0000/real_points_xyz.npy",
+      "sha256": "49f6b6c54b5393c8bdcf4a42ef510f728699fb5b366903b581fd60f79e2fbeb3"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk25/frame_0000/reconstruction_metadata.json",
+      "sha256": "43afc25b64d43f9eaa88ed2691aaa7ab4d0cb748214022bbafdfa40b6576e195"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk25/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "f43c53ee362f71f9f0a61a6d10a7c4690b5e189421bc6f6a1394b70676ae0ab2"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk25/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "49f6b6c54b5393c8bdcf4a42ef510f728699fb5b366903b581fd60f79e2fbeb3"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk25/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "33677d9e214f095f7db30de63ab70720b4b074eec923ce5f08414d662b0f2822"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk25/frame_0000/surface_particles_xyz.npy",
+      "sha256": "c4d6732c3b14660b8cf83e9df4629473b2082dbedc5a090a9d238269838c15d9"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk25/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "78cb5f2725c4fc646060987231ed311306c5f837be576e93ee60b02debdf8c14"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk26/frame_0000/real_points_xyz.npy",
+      "sha256": "32029de50ba933094c9a81eb625e4766d734e5904ca6ceceb6968ca7f1faf826"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk26/frame_0000/reconstruction_metadata.json",
+      "sha256": "931ae8c7a66abfd20f20a0c2bd4b3243ca6d38d1e29ee4a657bfc6676408d971"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk26/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "afcb12836d93a0aceeb41d3b1a356bada40587a73ae584f3ae20086edf4b06ab"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk26/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "32029de50ba933094c9a81eb625e4766d734e5904ca6ceceb6968ca7f1faf826"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk26/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "9fc020b3502ad59518d56876673643436a057c2371b62edf0ddfc567fc1853ce"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk26/frame_0000/surface_particles_xyz.npy",
+      "sha256": "ff315ca15a1ba2b5bd8616f6c942dab8b80a8b91c931f9507b523f83488c745d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk26/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "2e02df92372443732f12de831862d27515c57f84b7c8c31a0dd1116a0eba929e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk27/frame_0000/real_points_xyz.npy",
+      "sha256": "bd8d0c2db346ebd69a01030a919b4e2d9de17d0d64cab3c6def3f10b2f590bda"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk27/frame_0000/reconstruction_metadata.json",
+      "sha256": "d8ca1f61d961597de98430d9f3a5a347184b4be2395126c4e9fa3e608906274d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk27/frame_0000/sampled_particles_xyz.npy",
+      "sha256": "b16b254078fe462956b40cd1af3a88bde52fafdfcfea8ec093e94ba3cc80f607"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk27/frame_0000/scene_transformed_points_xyz.npy",
+      "sha256": "bd8d0c2db346ebd69a01030a919b4e2d9de17d0d64cab3c6def3f10b2f590bda"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk27/frame_0000/source_filtered_points_xyz.npy",
+      "sha256": "f1efcb032324b3ebef59d6bc7df258be15e8533d44f8e89486810eaf4a142394"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk27/frame_0000/surface_particles_xyz.npy",
+      "sha256": "930728b19b8caf0aaa524b5aa9179c9bcf90984551ae304fa946e5dfac87a1df"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/reconstructions/episode18_dynamics_chunk27/frame_0000/voxel_centers_xyz.npy",
+      "sha256": "fa1758c6e232f950ac930f41ff89f3e49da1f700905b9b0281a19959d0012e00"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk02/paths_interpolated.pt",
+      "sha256": "8ecdeb3fb503133feb373547da98f6767a9466ee80952e58ea58d86eb07e0b6a"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk02/pointclouds_interpolated.pt",
+      "sha256": "6d9c0355b99470974aaae51c6d90233a44106240a926dbe0defd7d90eb797736"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk02/sequence_metadata.json",
+      "sha256": "1273d22375599706eb7c9c677ccb053f0299cffe9ab431df5348956f5ff5b7e8"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk03/paths_interpolated.pt",
+      "sha256": "7896523b0086b3e310ec0374d3727711c667b8e464209775c615fc928d447497"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk03/pointclouds_interpolated.pt",
+      "sha256": "5eb6d861a636972067a936bdfd64f9e4e2b32649a8be22b38269541b38b15663"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk03/sequence_metadata.json",
+      "sha256": "f232913753559142a267038c2c5aad4095bf076174c2499e9bf0ee50001eba4c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk04/paths_interpolated.pt",
+      "sha256": "bef20f4f366a3ec42033ce712d9df07f7670ea78855824482f46b7ac0230f0e0"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk04/pointclouds_interpolated.pt",
+      "sha256": "e1974a582aec3eaf1a4cdc1e95d5ea5d9c947982151fffdf157d904b00bc0d27"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk04/sequence_metadata.json",
+      "sha256": "a653041e14f3b0c93cf02e90e60f1ab180ec338352743c6a79efcda8938d65ab"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk05/paths_interpolated.pt",
+      "sha256": "d6a811296cb5f444876692494499cade495f8aff935ad26a4e7a29c34447fb65"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk05/pointclouds_interpolated.pt",
+      "sha256": "124cb4b6e3129b20c71a01ecffcba31fd6a3d3cf08043c0f9580dc780411e9d2"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk05/sequence_metadata.json",
+      "sha256": "919f7f75f3284cb55670cfedb98ef56211fa286ca80d24642bc690ad4c2d2c57"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk06/paths_interpolated.pt",
+      "sha256": "0d83df588e9d83ebaba04c46e0d0b7ef1af2c8e8c5320825db44e46def0ad9f8"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk06/pointclouds_interpolated.pt",
+      "sha256": "dbdf275e5a3a080fbe1ecb6fcd49634052c56d911e725f92827a7a82c58576f1"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk06/sequence_metadata.json",
+      "sha256": "7222e0b94fa4b9feef23f9730e3834441cc4431c16fd93313f422e1a46bcb3ad"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk07/paths_interpolated.pt",
+      "sha256": "f46d995355cefc2a06a6fa804ff57b7a44ee1d49519f511ad25a3a9c6ef8aaa8"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk07/pointclouds_interpolated.pt",
+      "sha256": "5b95b7592e23aaffab9b35dab85dbead2a21dacc07ae8d5a34edcc9826fd4d59"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk07/sequence_metadata.json",
+      "sha256": "df7d017a03c13d1db10595f492689ca4bdf225d2dec03c89a37a372012f10408"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk08/paths_interpolated.pt",
+      "sha256": "a88070bab0aacb46b1a16ac910aa282151cdc29ef2c62fd418615782229efd26"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk08/pointclouds_interpolated.pt",
+      "sha256": "1be7b4f3f79b13ca3fc1aaf3417980d2cff96f63dbf779cce614405b5e9deb15"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk08/sequence_metadata.json",
+      "sha256": "e7bd2f37fc36f149a1508cc01ce9f6f0d04705e8e009b0f6c91b53dd525d58fb"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk09/paths_interpolated.pt",
+      "sha256": "2a91f1278b41c8606298d24bb6897aa0cecfe2df489b3d23537bef0e396b706a"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk09/pointclouds_interpolated.pt",
+      "sha256": "8b214caf07a28d8dcdd5219f4f6bf24b8147600cadcf025bc1eac945cc6304eb"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk09/sequence_metadata.json",
+      "sha256": "9c929b71308087a782f163f84f7817488ed06c4183745e6c6e6f63b523c93a44"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk10/paths_interpolated.pt",
+      "sha256": "96ad346757c6a45996e0998ca3ef0585ef05e459d4ba82cf0388ce59bfa867b0"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk10/pointclouds_interpolated.pt",
+      "sha256": "38338a3e03904c9e4501734ea4a4da8e56fdc8da0a4c7f14c14ea959e6c78344"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk10/sequence_metadata.json",
+      "sha256": "b962b356dde30b0a3d0ffcfeca0257b2226029cd03f3e68f4e971dba82a4283f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk11/paths_interpolated.pt",
+      "sha256": "76a52077fb46b9ba7cb567355746e6d54f69f21d948a2330368ea6a7e9a69bfb"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk11/pointclouds_interpolated.pt",
+      "sha256": "85d0047734fdcb36b5b9c3c64fac19c47b5ea86b6959140df67c4c15a819b387"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk11/sequence_metadata.json",
+      "sha256": "a2c5abf9c3bbbfec272cccd7717f7224298097d6be7a9ed32d5321509442f121"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk12/paths_interpolated.pt",
+      "sha256": "2c90e6676d14a4cc9194e3a2f6814f628ebc26483313dc8144924156fe44feb0"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk12/pointclouds_interpolated.pt",
+      "sha256": "7a6cc27396c5bb534c905638f0880fb53fb21a3e17510a4a600eb27e0966f431"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk12/sequence_metadata.json",
+      "sha256": "a54f11c1953135bb2f647fd99765e4029acfcd77ecf80e27ac94966f4a274592"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk13/paths_interpolated.pt",
+      "sha256": "a101e6734bd6ac97f61b701cceb6dd7de5603b5364d91f5370af263264806dfe"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk13/pointclouds_interpolated.pt",
+      "sha256": "90af0b3defd2b53408e1807ace4a0e4df7cae508512f1dd6db4194a6d1dc9a9b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk13/sequence_metadata.json",
+      "sha256": "c47057962f33ca600227f52aa46cdc2f5ce1b43794e1f40c9f8774eb4e8171d8"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk14/paths_interpolated.pt",
+      "sha256": "b7a681cf5dd07d547d1e425cfe78db81833e0978b130f184b4cd9053354ec4c5"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk14/pointclouds_interpolated.pt",
+      "sha256": "66ba60565e6835382671cb9ce6cbf6141777af195a8fee67dfa8d382cfedc4dc"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk14/sequence_metadata.json",
+      "sha256": "72fc9aab651557d7a03935ab135a0e106da9c263b3bcce2c5213cf2a593a6568"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk15/paths_interpolated.pt",
+      "sha256": "4c7de8d2cef19bc2caf33f7d30dc09a6782a887d06abf999d2e721a4e638abfb"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk15/pointclouds_interpolated.pt",
+      "sha256": "63c34f426b17ee701859c76f3fe265aaaa110b0a5bcc60422401a23a7566efaa"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk15/sequence_metadata.json",
+      "sha256": "d82501575cba82d509da9dfec8e5d2d90800a43b07b7fd2e15d99ef8bf6e5de8"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk16/paths_interpolated.pt",
+      "sha256": "f39f895e010fec6aeaddf9b3c77d239a9fd8d45186362897e24b531d58f0c912"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk16/pointclouds_interpolated.pt",
+      "sha256": "9412507f82075ac68a0e269efaa4b64a8f5018703cf4b660f5b295e7e7719c08"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk16/sequence_metadata.json",
+      "sha256": "479c027ec4f4f377fb002a88d787a82f4a52c00c10f0ce406e73f79eb68770a4"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk17/paths_interpolated.pt",
+      "sha256": "524a09da6e5ba9b1a401d41db563f9f2211704b130bd9253ca8536b1cbde8d8e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk17/pointclouds_interpolated.pt",
+      "sha256": "955ee5fe2ddbf9aaf308602bd7097cf8f6871ba0c55e379faf35007759e9451b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk17/sequence_metadata.json",
+      "sha256": "3caaa329e0cb3f8f555fcf851430ef421737a4e759af476af3a5da3b2212748d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk18/paths_interpolated.pt",
+      "sha256": "585140d54e71dff457a434ab51cfa761abb26897bc71f7bec67bafccb3f15ab4"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk18/pointclouds_interpolated.pt",
+      "sha256": "db070deb55c48d94ab844d731102b158aa1d5fc9dbe692954b648b82cfa06682"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk18/sequence_metadata.json",
+      "sha256": "afa829b9de309894a1509fd2e1d1bc340ee33c33de4f6c099d7d9e1448f7bb9d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk19/paths_interpolated.pt",
+      "sha256": "9cc32b23ef3d57e3e5d5e2b16931141f9bbd23021aa8c0971c2414eda75e0860"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk19/pointclouds_interpolated.pt",
+      "sha256": "79846e8bbe37bc6e892b5102019ef72e0c1f81f53b6676ea85c9abd4121f8dbc"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk19/sequence_metadata.json",
+      "sha256": "c0e07140bcef3e026eda583a7b6cc3d521f5f9635ca536f0889ae1605b9af3b3"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk20/paths_interpolated.pt",
+      "sha256": "fdd1ae34238504a4ddd2f95f7c2fcbb6c18a071cbcf92ddc80f3b7a614056676"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk20/pointclouds_interpolated.pt",
+      "sha256": "fcaa6362d603164aebfc16dccc1c7d07f0fa1bdbef19cedead2bd773b303c404"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk20/sequence_metadata.json",
+      "sha256": "378f40aaa01483c8173a3482df64259c220805f500211cb128f248eb8f72a78f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk21/paths_interpolated.pt",
+      "sha256": "7dce59bb37f17d744d6cd849a91e156aed1a17a2f4a107fb24213b23045c9576"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk21/pointclouds_interpolated.pt",
+      "sha256": "7d213b945adfd4ed84321e57785c6679624bce2d3bd80f4e4af46725afe8ea0f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk21/sequence_metadata.json",
+      "sha256": "30afd3ee1a6d1ef5cadeb95fb3304fcda7117421b58bebdf6e77039787b3c279"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk22/paths_interpolated.pt",
+      "sha256": "9efbbfa6ddfe5b7662a33548e36afc7682030315b07588ef4252e3f6ec32692a"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk22/pointclouds_interpolated.pt",
+      "sha256": "76c2728c405fdfc3520e044698c2488c9d90abc22ef2d8bc4403e299d287a8e5"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk22/sequence_metadata.json",
+      "sha256": "ade4ed7cb87dadb8c7e029aadbca2e486904c25bfd45b00111e8999989974438"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk23/paths_interpolated.pt",
+      "sha256": "bc46a19c2384234278bd7aef635524d9d9fda08010eb9dc2ff38aa958ad15e63"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk23/pointclouds_interpolated.pt",
+      "sha256": "7d71c06d6692dd88770edaa76fc6a3928014d171118d2a5340c9d43e0e83c7c3"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk23/sequence_metadata.json",
+      "sha256": "14172f735eb53850eedcde2248d448f1c929ebbb2ff7ae91950794f2febf0c5e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk24/paths_interpolated.pt",
+      "sha256": "4730decb5e8a5bb128ae88f3721ee9e495a306949d2e4c8cce27b06fc8726003"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk24/pointclouds_interpolated.pt",
+      "sha256": "13e0c84cbd22f13ea18d5e740bc2ad1e9aa87941d8603f54da963014a79b7ab6"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk24/sequence_metadata.json",
+      "sha256": "c1bec4ff7bdd394dd52c0714f62e2945e444203e4dac3abb5ad1aaf4fe751478"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk25/paths_interpolated.pt",
+      "sha256": "5fe342aee9206d3b27746329a9bf2967ed95eb61ff894e321cf0af0ae20f69fc"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk25/pointclouds_interpolated.pt",
+      "sha256": "37d4c423825288d91bf8cd88d32ee584e4782b442fcd700761557422d5f22129"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk25/sequence_metadata.json",
+      "sha256": "9fc3dbf8a592205f2cddebd50f5c3348fe7510ed6255f308e5f0ca580575a1ad"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk26/paths_interpolated.pt",
+      "sha256": "b04b39cd36fee74d4a0fb3a537d0bb3960deb22e4750feda0d4dab4340205290"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk26/pointclouds_interpolated.pt",
+      "sha256": "56099fb032db8175f7774396ed3be874694d435a03728cf0b459fd9dec992ae5"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk26/sequence_metadata.json",
+      "sha256": "4a0051a634cbdf29b84f18b39b889338f147c5a009e359a4d6579b9f9725da94"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk27/paths_interpolated.pt",
+      "sha256": "83d7074934875d457b9b9316b20940643b7f2a6674828e18e35e351645710bbb"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk27/pointclouds_interpolated.pt",
+      "sha256": "1a0b9e47e395d87d2cf751b019e8433be1760fec7bae9c2f50425608b1797152"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/recordings/episode18_dynamics_chunk27/sequence_metadata.json",
+      "sha256": "2e8612ba92ae257f7a9e2a50aa5cbced54de8b4580a3c62a41bdf3b5d15b6eb5"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data/episode18_dynamics_icp_dough4096_temporal_v1/validation.json",
+      "sha256": "245a350fb5f341bf7b5a040e23f6dca6086af631b5ee93d4d1cfaf1ea48bf67c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/data.py",
+      "sha256": "80c3248b7734f404299408b89bc0856f234e4c8f1cd24c33558f99f3dc0200d4"
+    },
+    {
+      "path": "experiments/differentiable_mpm/dataset_config.py",
+      "sha256": "972a9db27c385c161d5b223ae686d82f785829855a16c15fa174bf04b4157401"
+    },
+    {
+      "path": "experiments/differentiable_mpm/dataset_inventory.py",
+      "sha256": "e0ff277e567e1ebf5323c353102920ebe849918bc3ea00c4d9d1d97cf2ad1f34"
+    },
+    {
+      "path": "experiments/differentiable_mpm/dom_retrieval_adapter.py",
+      "sha256": "da012301189437f2050606f6bca1b77c393abbc816d1be5ecc5518f7fe20d170"
+    },
+    {
+      "path": "experiments/differentiable_mpm/episode18_chained_comparison.py",
+      "sha256": "1ad572818dffea46fed12dec4f9139cb1c783bab146e4fb91948385287140ec3"
+    },
+    {
+      "path": "experiments/differentiable_mpm/episode18_temporal_rgb_topview.py",
+      "sha256": "288bb86440fbe615560241d89e3d10697acdd84f3d4a3b4c06f8f66483155920"
+    },
+    {
+      "path": "experiments/differentiable_mpm/episode3_blender_pose_scene.py",
+      "sha256": "5d7d5c6e447ca95ae2edf41591654808d42ae1ebc39cb102b93e97310b144edd"
+    },
+    {
+      "path": "experiments/differentiable_mpm/episode3_tool_identity.py",
+      "sha256": "0768cfa1de748180a53d71a406422b45faa583ea125b594e6f4478cf5a7dc9fc"
+    },
+    {
+      "path": "experiments/differentiable_mpm/episode_worker.py",
+      "sha256": "880686e3799af635a94d6baaf6fc309c3d463acade9491e198471dccd05a7398"
+    },
+    {
+      "path": "experiments/differentiable_mpm/estimate_episode18_dynamics_table_plane.py",
+      "sha256": "deb64b94b2c6e138fc155b713c00249707936a19c375420e3fc7288925a90c14"
+    },
+    {
+      "path": "experiments/differentiable_mpm/estimate_episode20_table_plane.py",
+      "sha256": "c97a1bd931d55c9cb34bada4f25129de0af19e5448a1443546edb0b72d3646f6"
+    },
+    {
+      "path": "experiments/differentiable_mpm/estimate_table_plane.py",
+      "sha256": "67aab59f28e2b730a7447b50280804e8b05792b77c1e95ba68266dd25678013d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/evaluate.py",
+      "sha256": "fb47106a67ef63f9610c14ff0b56f04e94065ce46f6bba7025ba819bfb136595"
+    },
+    {
+      "path": "experiments/differentiable_mpm/export_policy_controls.py",
+      "sha256": "6d498dac419bb9ec7de39aee1a20ff8f65c640c795da3444e8f72448594884f7"
+    },
+    {
+      "path": "experiments/differentiable_mpm/finalize_episode18_kugla_temporal.py",
+      "sha256": "401c5e564ea5507c556c2878aa695cb7e6d4674f542758d1501859640d3dfec1"
+    },
+    {
+      "path": "experiments/differentiable_mpm/finalize_episode20_kugla_temporal.py",
+      "sha256": "874186f3ed76e22d551c658de963f47ef7aa81190421c6703887145472ba6fbf"
+    },
+    {
+      "path": "experiments/differentiable_mpm/gym_env.py",
+      "sha256": "e55b54f97d25278f1d00f449d559e7827432bae1dd5d66b603aa925c90104400"
+    },
+    {
+      "path": "experiments/differentiable_mpm/loss.py",
+      "sha256": "62f2d3e0c56423502ac7139a17348b227f5ded230149a3a9ef8c75f4528cf3ab"
+    },
+    {
+      "path": "experiments/differentiable_mpm/loss_options.py",
+      "sha256": "49758c20c36d10dc40a98ac8212e53a8bfd4e57941f363e0ce15b2ec7c25d9f3"
+    },
+    {
+      "path": "experiments/differentiable_mpm/loss_targets.py",
+      "sha256": "d09c770f5a1fc3e38359ff6c879fb7e9e429f8c2aaa95d43bc1870c55c0880e1"
+    },
+    {
+      "path": "experiments/differentiable_mpm/materialize_deformpath_ranges.py",
+      "sha256": "ed4f6308c8147603b9c2287fbcd0b53f02df008b5a056cdb71e26b0ee5b23d9f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/multi_episode.py",
+      "sha256": "f6428909f43db5c75569ffc69fe6c4b30172b4b619ebe08890ecc65688f8f8fb"
+    },
+    {
+      "path": "experiments/differentiable_mpm/optimize.py",
+      "sha256": "53844f7215842a797bd4afdfe1462b7417991a6c7bb412fa322e7c4f02ac7f0a"
+    },
+    {
+      "path": "experiments/differentiable_mpm/parameters.py",
+      "sha256": "f4832d0f9649fae1f1a86fb7dbbd793e8c43cc080d95df06b7c9310619dd93ac"
+    },
+    {
+      "path": "experiments/differentiable_mpm/partial_view_icp.py",
+      "sha256": "24aba35bdb1f1207d6cbd1febfb06a39664c24abc2909c7a7be2791981f491f2"
+    },
+    {
+      "path": "experiments/differentiable_mpm/plot_parameter_history.py",
+      "sha256": "e54ddaa0a762df42f811b39ca19b1a5c35d0cd3428af05b785a460df7cac0f9a"
+    },
+    {
+      "path": "experiments/differentiable_mpm/point_set_loss.py",
+      "sha256": "db50c293c91ad7afb7a2935896f61ccc360135428f0d21e131e85aaf99da8084"
+    },
+    {
+      "path": "experiments/differentiable_mpm/policy_adapter.py",
+      "sha256": "cac2f6fd58e0b35acf82678f1f9712bca57691363a4f8e5453f34692ca76add1"
+    },
+    {
+      "path": "experiments/differentiable_mpm/prepare_episode18_blender_pose.py",
+      "sha256": "709e92c58746b69763363c57b11debfcbcdb0ba792d1206ded7233d688df0195"
+    },
+    {
+      "path": "experiments/differentiable_mpm/prepare_episode18_dynamics_inputs.py",
+      "sha256": "79fe63570a6c392f3650ef64f77cdb54a45ca3344b982c95b4af28032e0e3711"
+    },
+    {
+      "path": "experiments/differentiable_mpm/prepare_episode18_dynamics_temporal.py",
+      "sha256": "863c7b0df15fc31bb09875d07c224d4ca1614f9820bab3feb769f45419b81aae"
+    },
+    {
+      "path": "experiments/differentiable_mpm/prepare_episode18_kugla_temporal.py",
+      "sha256": "5c6e76c4091245a0e398b2a8700d036c5545db65ed32addf3d04397159fa6341"
+    },
+    {
+      "path": "experiments/differentiable_mpm/prepare_episode20_kugla_temporal.py",
+      "sha256": "5d0d7dccf8680b8c8c328ee23c7d596cac0164b8cc78ca8ddb179dcfb42ca1f9"
+    },
+    {
+      "path": "experiments/differentiable_mpm/prepare_episode20_reconstructions.py",
+      "sha256": "c554c335ca7f33ddd9e1d0611c1826ba0b6ba311936038731894f0896cca4239"
+    },
+    {
+      "path": "experiments/differentiable_mpm/prepare_episode20_scene_calibration.py",
+      "sha256": "4a156ee48a97c3b29b2d42f8520093ad83f799eda7a5a07e7b22900276530cab"
+    },
+    {
+      "path": "experiments/differentiable_mpm/prepare_episode3_blender_pose.py",
+      "sha256": "f4275af56cb87553f9dabd50f401d60770fb74ed69b73b98209f7d12ac61f9d6"
+    },
+    {
+      "path": "experiments/differentiable_mpm/prepare_episode3_blender_pose_direct_mocap.py",
+      "sha256": "cd9e7a4da100445a9e867a2209e1908a052ac608abb7456b2698cfcf54432058"
+    },
+    {
+      "path": "experiments/differentiable_mpm/prepare_registered_tools.py",
+      "sha256": "abbd421d92fbac1bd1866a1010409be5a922f90fd81d8bbcfa37bb120ec8e4f8"
+    },
+    {
+      "path": "experiments/differentiable_mpm/prepare_table_aligned.py",
+      "sha256": "dbb06ef7540b45cbce19a454cc1dbf3d877ca0ad345297063ce8c6d6332ef96c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/real_parity.py",
+      "sha256": "e6af8f7b0e285a504a8e8609df4ad296368adb11f9f12ae42fe86b52d464a27b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/recompute_check.py",
+      "sha256": "a24b37337f40a8bef147aef00550028b78b08139678ad6e1585265a80c06275a"
+    },
+    {
+      "path": "experiments/differentiable_mpm/reduced_order.py",
+      "sha256": "2326916eb6058b4992ec12d81db1afcea633f9e2f9af6e9bb0bae50b732750cd"
+    },
+    {
+      "path": "experiments/differentiable_mpm/reduced_order_data.py",
+      "sha256": "e3822c1b969646cc89e7417da1d6f70055f6e59c02198c4fb243824bfb897bc4"
+    },
+    {
+      "path": "experiments/differentiable_mpm/reference/calibrate_youngs_modulus.py",
+      "sha256": "82a3e22dd7fd3b59dd0fe399127ecddc7e4516066364bcbb6cf74cfae9a6d931"
+    },
+    {
+      "path": "experiments/differentiable_mpm/reference/deformpath_dynamics.py",
+      "sha256": "69a64c4e812df0e1b033c19bcdc2375c8a3b24d0c3b66578d8b18914aa19c2f7"
+    },
+    {
+      "path": "experiments/differentiable_mpm/reference/deformpath_topview.py",
+      "sha256": "df39c8169f808ac9341b06a23528e66ff96f55bf0912b4727348f314571281b1"
+    },
+    {
+      "path": "experiments/differentiable_mpm/reference/evaluate_dynamic_topview_match.py",
+      "sha256": "d29a4704b184b959c47d80db88f3dd4401b12a9dbb9aa92e67366378d459c2ed"
+    },
+    {
+      "path": "experiments/differentiable_mpm/reference/material_calibration.py",
+      "sha256": "4165bfa9b5ca4362257d69a9e26af16e6eefa8979a46c4740d4b968a48f4dcb4"
+    },
+    {
+      "path": "experiments/differentiable_mpm/reference/sweep_episode18_tool_friction.py",
+      "sha256": "209d6acd1a8131a113b2c3ce69d127454e06f6cb56df8a28d5057b5d8d19938c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/reference/sweep_episode18_viscosity.py",
+      "sha256": "2f9e92a78bb3f986bc346c10c46be2b1f3937bf34eec052267e64f45adf8782f"
+    },
+    {
+      "path": "experiments/differentiable_mpm/reference/taichi_viscoelastic_mpm_scene.py",
+      "sha256": "6653543ac16c8fcbdc111c73ebaa2c5e2d8c1cdc899e3750dce539b2730a2f07"
+    },
+    {
+      "path": "experiments/differentiable_mpm/reference_adapter.py",
+      "sha256": "32620eaba830060d797db3160b5357fe9d15184136e86a8394e97b8cba3abaa7"
+    },
+    {
+      "path": "experiments/differentiable_mpm/reference_corrected/taichi_viscoelastic_mpm_scene.py",
+      "sha256": "d33f0aec3952fa72282cd181757f678b2e2a48e5b51016c23d40fd05d6a3ac3e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/register_episode3_tools.py",
+      "sha256": "9ccbb1e6dbeaf06817b8b8e9b896deda25d1afd19b8f3eaa7d350e75bcc05919"
+    },
+    {
+      "path": "experiments/differentiable_mpm/register_tool_clouds.py",
+      "sha256": "d0f382bce0ba47a9fb06382c5bb63270d57fdc6e21e1ec5acf2f9fa9bbf030a5"
+    },
+    {
+      "path": "experiments/differentiable_mpm/register_ur5e_collision.py",
+      "sha256": "cb1b2a52015785e81816b4307c6fed36fb3e255f96fce67ae1024bda3994e2e8"
+    },
+    {
+      "path": "experiments/differentiable_mpm/render_chunk01_mid_side.py",
+      "sha256": "afab82e34d77d0816144fd013f52d310b478fdedc25cf9cec97c80ab4885ecc6"
+    },
+    {
+      "path": "experiments/differentiable_mpm/render_episode18_endpoint_sideviews.py",
+      "sha256": "ca77e93ed78fd51f02d87bea827ad034c4f298e73245a880e52009fdaa45daa4"
+    },
+    {
+      "path": "experiments/differentiable_mpm/render_episode18_tool_overlay.py",
+      "sha256": "be41fb0dd9802843ae731b7b4d79101d025f7b950d01cda576d9fe448337b2ab"
+    },
+    {
+      "path": "experiments/differentiable_mpm/render_floor_settling.py",
+      "sha256": "aa4f9a8e11abc908d1ac7d9b446442b58d020addb9ed53c794fb9a051c550b12"
+    },
+    {
+      "path": "experiments/differentiable_mpm/render_initial_table_views.py",
+      "sha256": "4ccca1c03760a57a708bc9dd3f009c43c6e212f883cc676173ad1bf740df588c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/render_last_recorded_frame.py",
+      "sha256": "774e4e7584659e330b2ec06235bdfedf67fa8d400cfb9b6be1d094bfda3e9b51"
+    },
+    {
+      "path": "experiments/differentiable_mpm/render_last_recorded_side.py",
+      "sha256": "1a1ceef1dc55ea5fd74ff335288e0af2cc1c5199111a98d30163032cc1c4fb8b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/render_last_recorded_side_tools.py",
+      "sha256": "1f94052f4ffe27662eab0f70464b051bee87b14a328dfa91d6ab9c31c1a5aa4a"
+    },
+    {
+      "path": "experiments/differentiable_mpm/render_raw_depth_cross_section.py",
+      "sha256": "6ca7c5da582368cd892f157aed7038374b2bc175726ad0baebfb82be00027a76"
+    },
+    {
+      "path": "experiments/differentiable_mpm/render_table_floor_simulation.py",
+      "sha256": "99d3f8ef6138fef6c17a099c17e469546600c3fe3449a977133d7072c2c37b95"
+    },
+    {
+      "path": "experiments/differentiable_mpm/render_tool_registration.py",
+      "sha256": "cbb75f92bf43ab5f4731186cf1cdd37404c259c35f70db59ad438f54557dae15"
+    },
+    {
+      "path": "experiments/differentiable_mpm/render_ur5e_collision_registration.py",
+      "sha256": "1d08191cbb59a5dc0491d22f666121e9d789415967841ec5ff39b447d1bb7922"
+    },
+    {
+      "path": "experiments/differentiable_mpm/renderer.py",
+      "sha256": "c1ad93ae6b5a6c3552c9905dec37bb76056398d9e1ba23c08ce9a352ddce9b3b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/replay.py",
+      "sha256": "148439466cd660f7662f400f2de27a830b526697de1be01c07ba053f4181383b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/results.py",
+      "sha256": "418131f52005eeca6c5b2d0185d4c92f9370a3f20c9146de8696534eae6b4774"
+    },
+    {
+      "path": "experiments/differentiable_mpm/run_logging.py",
+      "sha256": "228b7ebdc6d86aeb3858df7903cd7ca8568ed98df73b5494cb7f16d97997fe82"
+    },
+    {
+      "path": "experiments/differentiable_mpm/runtime.py",
+      "sha256": "89797764b55e882de59e485bc8d91ff0bc628efd0ffa326a6426e7153c5c4a06"
+    },
+    {
+      "path": "experiments/differentiable_mpm/sdf_cache.py",
+      "sha256": "adee2beb4b063dcaaac3ed2fdefd0d56d482497d566c86804bf385afbe10fe5d"
+    },
+    {
+      "path": "experiments/differentiable_mpm/simulate_floor_settling.py",
+      "sha256": "1f3a08834e046e23e368ecf9f59208c9928da784ff894fbd7542c9a61f87fc8e"
+    },
+    {
+      "path": "experiments/differentiable_mpm/simulate_table_floor.py",
+      "sha256": "547adfb78e3ba1647ebad852185652afb21dcd702166ca3a9e6574f771fa1598"
+    },
+    {
+      "path": "experiments/differentiable_mpm/solver.py",
+      "sha256": "7b9f4d2b90ad4d428c24a6f1e575be075674d7b3517910f70dcb01291a1d2d87"
+    },
+    {
+      "path": "experiments/differentiable_mpm/spectral.py",
+      "sha256": "e02890d88580e05815fab6ab2411f97055cea12e877ba0bb6a4f494cb5dacfc4"
+    },
+    {
+      "path": "experiments/differentiable_mpm/state.py",
+      "sha256": "9c992cc89291fa8c285bc336ff24e98c4a80feaf8409971d892d90e93bfb4d7c"
+    },
+    {
+      "path": "experiments/differentiable_mpm/synthetic.py",
+      "sha256": "1eab6605aca37cf310aa347aeffe1d3fcfa07d187cf2c97d9b7119eb67b92ccc"
+    },
+    {
+      "path": "experiments/differentiable_mpm/table_alignment.py",
+      "sha256": "665d91cf3d6981d5d9ee336c03a2445e71fc439f70c0048c53b97851c689cec5"
+    },
+    {
+      "path": "experiments/differentiable_mpm/test_dom_retrieval_adapter.py",
+      "sha256": "cd2485c612abe59b98bffdd6bfa24fcc726fa9e63019b7a4f2f743fff8b83acc"
+    },
+    {
+      "path": "experiments/differentiable_mpm/tests/test_sdf_cache.py",
+      "sha256": "5260d510acb30958a85723246b196bbc957a791eda5e8703f1b0906589ac01f3"
+    },
+    {
+      "path": "experiments/differentiable_mpm/train_reduced_order.py",
+      "sha256": "91d69fbc21ea6974011f6ee3bf9b2aa996b2cf9d1d48836aebfb6190df502bcb"
+    },
+    {
+      "path": "experiments/differentiable_mpm/validate_registered_tools.py",
+      "sha256": "2377b1efa3cb554e19f49e1afb2c0a6f01868ac918cd13cca2288502b44d512b"
+    },
+    {
+      "path": "experiments/differentiable_mpm/visualization_report.py",
+      "sha256": "ae3e1865c2845336921039c1efd2d519a281d11b6b8da55e0487318d4ea71027"
+    },
+    {
+      "path": "experiments/differentiable_mpm/visualize_run.py",
+      "sha256": "5525ac636603b0b88746902db4d506d849966ffe45870b4371fa1b908ae22a9e"
+    },
+    {
+      "path": "scripts/continue_minibatch_fit.py",
+      "sha256": "e6c2ad2844b2b860abb199c9a07cd690930c78da62eac22781a0c08328c587dd"
+    },
+    {
+      "path": "scripts/test_continue_minibatch_fit.py",
+      "sha256": "1137d2a7dd294648a9d47df5a13806041c859131b6955bcf924a9afc914b968c"
+    },
+    {
+      "path": "scripts/verify_colab_checkpoint_download.py",
+      "sha256": "01a28d4ff2031ce0745ed97a721397f91b0888d345d64c196950c5e03b7c8115"
+    }
+  ]
+}

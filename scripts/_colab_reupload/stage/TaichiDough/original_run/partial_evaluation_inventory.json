@@ -1,0 +1,152 @@
+{
+  "completed_count": 24,
+  "evaluations": [
+    {
+      "episode_id": "episode18_dynamics_chunk24",
+      "membership": "training",
+      "request_sha256": "b7da56551cd2ac415b4f479b0de5e9f6dc6567886976384deeb1a4a442143d39",
+      "result_sha256": "75f3044df9f3905982683f24a317cadbf77867f9bbd2515774e607cf4adab7e8"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk22",
+      "membership": "training",
+      "request_sha256": "90953088474f8f23eababf30c100bacc1259bd592df30dbced8a400a82120170",
+      "result_sha256": "252f4a691db1031a47b77a2f96f00ca1e974c90885d5d5c3f3e0da90c47a1f40"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk11",
+      "membership": "validation",
+      "request_sha256": "5a290e871c4fbbcc24abe31db4aa3c8ff54476adc3c08a2b4a26aff1b175ab04",
+      "result_sha256": "76ade0b8dc5774e8468e12bd5c0dfa48be06e34cb85e1053604cbca289b980a5"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk02",
+      "membership": "training",
+      "request_sha256": "71133cb17b28ba869870401a21167ba81bc25e0db4472c7e384ddcb0ccb9d8dc",
+      "result_sha256": "501146ba6140b08739837aa8eb2803808f3c4753bcab686464b07fa135a14b0e"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk13",
+      "membership": "training",
+      "request_sha256": "0a093245bb62be29e1c268065c3430d530213d4d809d2cf0b9fdf9bff3706cc7",
+      "result_sha256": "b85acaffda59216f6a5e7733e4a4651f6a705428151416641b0a84f98cf52a6a"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk16",
+      "membership": "validation",
+      "request_sha256": "69931834841c1ede3621906212663fc13e35c36926a934bd4596f9822f513f04",
+      "result_sha256": "fb95c799bc6191bfb320c1f21c4d0760df9e94cbb90f88c47f94b7992da83ad6"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk14",
+      "membership": "training",
+      "request_sha256": "7a48131099bf8add872b47d14d8a178af19fc7dc676647463936ccba6cca10d6",
+      "result_sha256": "389bfb349c78cb09bd882b72bffec63e0840fb44fb8403acb5dba9349c26cb98"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk19",
+      "membership": "training",
+      "request_sha256": "12cea715ff781730eed3ffd38bd3098c3fc5b02c5f39f69fe46e6ce5f131625f",
+      "result_sha256": "7d8584fdb9f42e69912b0bfe4e30d60a06f47dca2c3ee96e1cb7d84a806ff0f3"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk10",
+      "membership": "training",
+      "request_sha256": "d299e4675e4557cefca68a58bd78fadaeed22c0e6cfbb9081690e69b4d1569ec",
+      "result_sha256": "0902b749f514b5af67eacb984fc2722cd8e6ccbf095bc2bd280ed99da3b24af2"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk15",
+      "membership": "training",
+      "request_sha256": "11205489cee36fa860c54fc5ce52004a4fd967c78b9daf53d4e5200e932a2444",
+      "result_sha256": "a127198fea7d60cee2517a821105be42900ea0ced22d6910475910f06d08a0e0"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk06",
+      "membership": "validation",
+      "request_sha256": "680a55064b19b2cf973fd35d8a651d774d1259edbbbb5699e162636710ede873",
+      "result_sha256": "cd1e1fe062a54c7d6d90d99bb47ddfc2964a9d988c5140feb8851bcdbe48e4f2"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk05",
+      "membership": "training",
+      "request_sha256": "13d4884e0bff258e76af327b09bd53ac02960abc2aae442b46bcd811010ccde8",
+      "result_sha256": "2eb016ef666847d930acfd628fae8eb3266e25333c5edf1c640e535e83f5805a"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk17",
+      "membership": "training",
+      "request_sha256": "9c216faa0bcbdbb7f36ffb501e3abde7a3f5e2789c5478da559cdcdd993c0e44",
+      "result_sha256": "5ee546c956e1e04e62f0318342879c61f1aa1c4837aac2cf42e73f7aa76ac262"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk03",
+      "membership": "training",
+      "request_sha256": "14abe85976730beec7f3f4b25f8fe300f3e114616f5cf9b443b01eb025e45c48",
+      "result_sha256": "aa0297a37682ec193e6774defa63927ae2efc8a0ebf3fee6bfa492a8074f53fa"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk12",
+      "membership": "training",
+      "request_sha256": "804875d55f34a2dae34f142426eaf43711b56d1f6ddcd2e9e8b7202c22b48f8a",
+      "result_sha256": "e0dfb5243770464e08978985d8f2eae84b0f257727c5b7f4a736833e9e1afbd0"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk09",
+      "membership": "training",
+      "request_sha256": "2cadc205acf3d73fddb065521503bc9be37007604b501f19f2d1eb6336ba0dd3",
+      "result_sha256": "3ab93145259aa6c09825d750fba80015d7625eaad15ae84f70c1a24f9a93086d"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk26",
+      "membership": "validation",
+      "request_sha256": "e568e3a74e79c67c2a70db133ba863479be3300dda20481a1ccb4c0a16d55e30",
+      "result_sha256": "3528126a3aeb6f4c1f39f6230f4617960b8577442554c7a47b9b76ae7dba636a"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk08",
+      "membership": "training",
+      "request_sha256": "fade95f766ef7fec3e364f48bfb4486a8413376f4ec0ecf3d18d9d4ba943d2b3",
+      "result_sha256": "d5fa6a1388ee6974b3296252d64108df0b4b8a29583a390a964f8b7e4d7d9059"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk07",
+      "membership": "training",
+      "request_sha256": "d8f42d0d68a94a06de8348005c00f61c7b2b5c5970e02c211fd7c8fc55d2cb50",
+      "result_sha256": "5c49a4059bc74b4c21d408afc1a45dcdc37c9611b92f6a76da95d94c6e93d2f9"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk21",
+      "membership": "validation",
+      "request_sha256": "8052292376516474d58e12bb38d2d0a6fca4ea98d8840744e144155a9b45e7f2",
+      "result_sha256": "f9278a8ea0d5c3c7d89918fabd334339605c1f67783db660575059c8473de4ed"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk25",
+      "membership": "training",
+      "request_sha256": "29e819662658316d77849a012f4f8fd4dc2f163c29a51620d185cc992217364c",
+      "result_sha256": "10e406995f0dffb250859a2e057422291feaeb9beb094b2765f2b1a46931e087"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk18",
+      "membership": "training",
+      "request_sha256": "678b135f47ffae457f983b32c0c153d8cc930a844f5a2e5fa33de074e0552175",
+      "result_sha256": "02af6bb203feafe660cf897f1aa9d7c6ee31c2bbb5bd22552942788a800cca7b"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk04",
+      "membership": "training",
+      "request_sha256": "2e0cd5625a880e702fd773a6254fe1efbf78594244855122351b79839c165b17",
+      "result_sha256": "f957a9071a9c0fcdfd03275fcf6a1426bb6c07cbef3e720ef300ab3ee4d5acde"
+    },
+    {
+      "episode_id": "episode18_dynamics_chunk23",
+      "membership": "training",
+      "request_sha256": "6d2b96e38d5fde1b14009b7fb950552d6c5603c752b0732add4b4a95163c7461",
+      "result_sha256": "ccfd4478f9e1eb3f406cd59c6476c0b1bd08a5f4d8c7ce15c584ff417239267c"
+    }
+  ],
+  "original_identity_sha256": "7cb3f505af381311fa9914ff1eedf6e71303b407251b6e040f438f8b826ffcf9",
+  "original_optimizer_checkpoint_sha256": "c626e1f38d45a715d68e5a016cc0f5fdd1470dd0fde1b954f79c916a79d2ae57",
+  "schema": "taichidough/partial-strict-evaluation-inventory/v1"
+}
