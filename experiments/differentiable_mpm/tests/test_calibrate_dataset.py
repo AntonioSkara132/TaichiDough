@@ -295,7 +295,7 @@ class DatasetCliTests(unittest.TestCase):
         with self.environment() as runner:
             self.assertEqual(self.run_cli(
                 'fit', output, '--iterations', '2', '--no-evaluate',
-                '--episode-batch-size', '1'), 0)
+                '--episode-batch-size', '1', '--fixed-batch-order'), 0)
             text = runner.stdout.getvalue()
         self.assertIn('batch start 1: batch=1/2; workers=1; episodes=train_a;', text)
         self.assertIn('batch update 1: batch=1/2; loss=', text)
@@ -319,6 +319,24 @@ class DatasetCliTests(unittest.TestCase):
         self.assertEqual(result['optimization']['final_training_evaluation']['episodes'][0]['episode_id'], 'train_a')
         self.assertEqual(result['optimization']['final_training_evaluation']['episodes'][1]['episode_id'], 'train_b')
         self.assertEqual(result['objective']['episode_batch_size'], 1)
+
+    def test_minibatch_fit_reshuffles_every_pass_by_default_from_recorded_seed(self):
+        output = self.root / 'shuffled-minibatch-fit'
+        with self.environment():
+            self.assertEqual(self.run_cli(
+                'fit', output, '--iterations', '8', '--no-evaluate',
+                '--episode-batch-size', '1', '--batch-shuffle-seed', '7'), 0)
+        manifest = self.json(output, 'run_manifest.json')
+        self.assertEqual(manifest['identity']['optimizer']['batch_shuffle_seed'], 7)
+        history = self.json(output, 'optimizer_state.json')['state']['history']
+        passes = [[row['episode_ids'][0] for row in history[start:start + 2]] for start in range(0, 8, 2)]
+        for order in passes:
+            self.assertEqual(sorted(order), ['train_a', 'train_b'])
+        self.assertGreater(len({tuple(order) for order in passes}), 1)
+        training = [ep for ep in cli.load_dataset(self.dataset_path).episodes if ep.membership == 'training']
+        for row in history:
+            index, batch = cli._iteration_batch(training, 1, row['iteration'], 7)
+            self.assertEqual((row['batch_index'], row['episode_ids']), (index, [ep.id for ep in batch]))
 
     def test_selection_contains_shared_only_and_actual_per_episode_floors(self):
         output = self.root / 'selection'

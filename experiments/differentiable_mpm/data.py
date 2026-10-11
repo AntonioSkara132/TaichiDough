@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -172,8 +173,20 @@ def collision_inputs(config, records, sequence_names, simulator, build_sdf):
         if build_sdf:
             vertices, _ = simulator.load_binary_stl(config.paths[key], config.tool_mesh_scale)
             transformed = simulator.mesh_in_tool_frame(vertices, origin, simulator.rpy_to_matrix(rpy))
-            volumes.append(simulator.build_mesh_sdf(transformed, config.tool_sdf_resolution,
-                                                    config.simulation.get("tool_contact_padding", 1 / 384)))
+            padding = config.simulation.get("tool_contact_padding", 1 / 384)
+            cache_dir = os.environ.get("TAICHIDOUGH_SDF_CACHE")
+            if cache_dir:
+                from .sdf_cache import cached_mesh_sdf
+
+                source = {"mesh_sha256": records[key]["sha256"], "mesh_scale": config.tool_mesh_scale,
+                          "visual_origin_m": np.asarray(origin).tolist(), "visual_rpy_rad": np.asarray(rpy).tolist(),
+                          "builder_sha256": file_sha256(Path(simulator.__file__))}
+                volumes.append(cached_mesh_sdf(
+                    cache_dir, transformed, config.tool_sdf_resolution, padding, source,
+                    simulator.build_mesh_sdf,
+                    read_only=os.environ.get("TAICHIDOUGH_SDF_CACHE_READONLY") == "1"))
+            else:
+                volumes.append(simulator.build_mesh_sdf(transformed, config.tool_sdf_resolution, padding))
     sdf = None
     derived = None
     if build_sdf:

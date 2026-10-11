@@ -60,6 +60,10 @@ def parse_args(argv=None):
     parser.add_argument("--episode-batch-size", type=int, default=0,
                         help="Fit with independent training-episode minibatches of this size; also limits parallel workers. "
                              "Default 0 keeps the exact full training objective.")
+    parser.add_argument("--batch-shuffle-seed", type=int, default=0,
+                        help="Seed for reshuffling training episodes into new minibatches every pass (default 0)")
+    parser.add_argument("--fixed-batch-order", action="store_true",
+                        help="Keep the manifest episode order in every minibatch pass instead of reshuffling")
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--iterations", type=int, default=20)
     parser.add_argument("--learning-rate", type=float)
@@ -110,6 +114,8 @@ def parse_args(argv=None):
         parser.error("no-evaluate is only for fit")
     if args.episode_batch_size and args.action != "fit":
         parser.error("episode-batch-size is only for fit")
+    if args.fixed_batch_order and not args.episode_batch_size:
+        parser.error("fixed-batch-order is only for minibatch fits")
     if args.episode_batch_size and args.resume:
         parser.error("resume is not supported for minibatch dataset fits")
     if args.parameters is not None and args.action not in {"gradient", "replay", "evaluate"}:
@@ -311,6 +317,22 @@ def _episode_batches(episodes, batch_size):
     return [tuple(episodes[index:index + batch_size]) for index in range(0, len(episodes), batch_size)]
 
 
+def _iteration_batch(episodes, batch_size, iteration, shuffle_seed=None):
+    """Return (batch_index, batch) for a 1-based update.
+
+    Without a seed the batches keep the manifest order every pass. With a seed the episodes are
+    permuted at the start of each pass by a generator seeded with (seed, pass), so any update's
+    batch can be recomputed on resume without stored generator state.
+    """
+    count = len(_episode_batches(episodes, batch_size))
+    batch_index = (iteration - 1) % count
+    order = list(episodes)
+    if shuffle_seed is not None:
+        permutation = np.random.default_rng([shuffle_seed, (iteration - 1) // count]).permutation(len(order))
+        order = [order[index] for index in permutation]
+    return batch_index, _episode_batches(order, batch_size)[batch_index]
+
+
 def _evaluate_episode_batch(dataset, episodes, parameters, *, compute_grad, runner_factory,
                             max_workers, event):
     """Evaluate independent episodes concurrently and combine them as one batch."""
@@ -440,9 +462,9 @@ def _run_minibatch_fit(dataset, args, adam_options, store, runner_factory, event
     successful = 0
     mismatches = 0
     fit_names = tuple(dataset.fit_parameters)
+    shuffle_seed = None if args.fixed_batch_order else args.batch_shuffle_seed
     for iteration in range(1, args.iterations + 1):
-        batch_index = (iteration - 1) % len(batches)
-        batch = batches[batch_index]
+        batch_index, batch = _iteration_batch(training, batch_size, iteration, shuffle_seed)
         shared = space.physical(u)
         if args.fit_log != "quiet":
             fitted = {name: shared[name] for name in fit_names}
@@ -560,6 +582,8 @@ def run(args):
         if args.episode_batch_size:
             identity["optimizer"]["episode_batch_size"] = args.episode_batch_size
             identity["optimizer"]["objective"] = "independent-episode-minibatch-v1"
+            if not args.fixed_batch_order:
+                identity["optimizer"]["batch_shuffle_seed"] = args.batch_shuffle_seed
     shared = dict(dataset.shared_initial)
     if args.parameters is not None:
         shared, selection_record = load_selection(args.parameters, dataset, verified)

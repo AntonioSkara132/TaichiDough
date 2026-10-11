@@ -16,12 +16,14 @@ if __package__:
     from .config import REPOSITORY_ROOT, EXPERIMENT_ROOT, file_sha256
     from .reference_adapter import get_reference_modules, reference_policy
     from .register_tool_clouds import evaluate, fit_icp, sample_mesh, transform, visible_model
+    from .partial_view_icp import registration_passes
 else:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from experiments.differentiable_mpm.config import REPOSITORY_ROOT, EXPERIMENT_ROOT, file_sha256
     from experiments.differentiable_mpm.reference_adapter import get_reference_modules, reference_policy
     from experiments.differentiable_mpm.register_tool_clouds import evaluate, fit_icp, sample_mesh, transform, visible_model
+    from experiments.differentiable_mpm.partial_view_icp import registration_passes
 
 TOOL_NAMES = ("UR5e_spathla", "gen3_spathla")
 GEOMETRY_PATH = REPOSITORY_ROOT / "configs/tool_geometry_episode18_sdf.json"
@@ -78,26 +80,6 @@ def select_training_candidate(candidates: Sequence[Mapping[str, Any]]) -> Mappin
     if len(candidates) != 4:
         raise ValueError("Exactly four deterministic registration candidates are required")
     return min(candidates, key=lambda row: (row["train_score_mm"], row["seed_index"]))
-
-
-def registration_passes(before: Mapping[str, Any], after: Mapping[str, Any], relative_information: Sequence[float]) -> tuple[bool, list[str]]:
-    reasons = []
-    baseline = float(before["equal_frame_median_distance_mm"])
-    fitted = float(after["equal_frame_median_distance_mm"])
-    if not fitted <= 0.70 * baseline:
-        reasons.append("heldout_median_improvement_below_30_percent")
-    if not fitted < 5.0:
-        reasons.append("heldout_equal_frame_median_not_below_5_mm")
-    if not float(after["equal_frame_within_5mm"]) > 0.75:
-        reasons.append("heldout_within_5mm_not_above_75_percent")
-    if not float(relative_information[0]) > 1e-4:
-        reasons.append("point_to_plane_information_ratio_not_above_1e-4")
-    before_frames = {int(row["raw_frame"]): row for row in before["frames"]}
-    for row in after["frames"]:
-        base = before_frames[int(row["raw_frame"])]
-        if float(row["median_distance_mm"]) > max(5.0, 1.25 * float(base["median_distance_mm"])):
-            reasons.append(f"heldout_frame_{row['raw_frame']}_regressed")
-    return not reasons, reasons
 
 
 def load_models(seed: int) -> tuple[list[tuple[np.ndarray, np.ndarray]], list[tuple[np.ndarray, np.ndarray]], list[Path]]:

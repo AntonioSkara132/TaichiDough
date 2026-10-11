@@ -16,6 +16,9 @@ from scipy.spatial.transform import Rotation
 from .config import REPOSITORY_ROOT, EXPERIMENT_ROOT, file_sha256
 from .estimate_table_plane import hsv_mask
 from .reference_adapter import get_reference_modules, reference_policy
+from .partial_view_icp import (  # noqa: F401  (re-exported for existing callers)
+    correspondences, evaluate, fit_icp, pose_matrix, sample_mesh, transform, visible_model,
+)
 
 HSV = (8, 33, 123, 255, 180, 255)
 NAMES = ('UR5e_spathla', 'gen3_spathla')
@@ -25,141 +28,6 @@ def save_json(path, value):
     with Path(path).open('x') as stream:
         json.dump(value, stream, indent=2, allow_nan=False)
         stream.write('\n')
-
-
-def transform(points, matrix):
-    return np.asarray(points) @ matrix[:3, :3].T + matrix[:3, 3]
-
-
-def pose_matrix(pose):
-    matrix = np.eye(4)
-    matrix[:3, :3] = Rotation.from_quat(pose[3:7]).as_matrix()
-    matrix[:3, 3] = pose[:3]
-    return matrix
-
-
-def sample_mesh(triangles, count, seed):
-    edges = triangles[:, 1:] - triangles[:, :1]
-    crosses = np.cross(edges[:, 0], edges[:, 1])
-    twice_area = np.linalg.norm(crosses, axis=1)
-    keep = twice_area > 1e-14
-    triangles, crosses, twice_area = triangles[keep], crosses[keep], twice_area[keep]
-    rng = np.random.default_rng(seed)
-    index = rng.choice(len(triangles), count, p=twice_area / twice_area.sum())
-    uv = rng.random((count, 2))
-    over = uv.sum(axis=1) > 1
-    uv[over] = 1 - uv[over]
-    selected = triangles[index]
-    points = selected[:, 0] + uv[:, :1] * (selected[:, 1] - selected[:, 0]) + uv[:, 1:] * (selected[:, 2] - selected[:, 0])
-    normals = crosses[index] / twice_area[index, None]
-    return points, normals
-
-
-def visible_model(points, normals, correction, camera_from_marker, camera):
-    q = transform(points, correction)
-    n = normals @ correction[:3, :3].T
-    optical = transform(q, camera_from_marker)
-    z = optical[:, 2]
-    good = z > .01
-    u = np.floor((camera['fx'] * optical[:, 0] / np.maximum(z, .01) + camera['cx']) / 2).astype(int)
-    v = np.floor((camera['fy'] * optical[:, 1] / np.maximum(z, .01) + camera['cy']) / 2).astype(int)
-    width, height = int(np.ceil(camera['width'] / 2)), int(np.ceil(camera['height'] / 2))
-    good &= (u >= 0) & (u < width) & (v >= 0) & (v < height)
-    index = np.flatnonzero(good)
-    bins = v[index] * width + u[index]
-    depth = np.full(width * height, np.inf)
-    np.minimum.at(depth, bins, z[index])
-    index = index[z[index] <= depth[bins] + .0015]
-    if len(index) < 100:
-        raise ValueError('Fewer than 100 camera-visible mesh samples')
-    return q[index], n[index]
-
-
-def correspondences(frame, model, correction, camera, limit):
-    q, n = visible_model(*model, correction, frame['camera_from_marker'], camera)
-    distance, index = cKDTree(q).query(frame['points'], workers=1)
-    keep = distance < limit
-    return frame['points'][keep], q[index[keep]], n[index[keep]], distance[keep], distance
-
-
-def fit_icp(frames, model, camera, initial=None, iterations=35, tangential_weight=.12):
-    correction = np.eye(4) if initial is None else initial.copy()
-    history = []
-    last_hessian = np.zeros((6, 6))
-    for iteration in range(iterations):
-        limit = .08 if iteration < 8 else (.04 if iteration < 18 else .025)
-        hessian, gradient = np.zeros((6, 6)), np.zeros(6)
-        plane_hessian = np.zeros((6, 6))
-        errors, used = [], 0
-        for frame in frames:
-            p, q, n, distance, all_distance = correspondences(frame, model, correction, camera, limit)
-            if len(p) < 50:
-                continue
-            cutoff = np.quantile(distance, .85)
-            keep = distance <= cutoff
-            p, q, n, distance = p[keep], q[keep], n[keep], distance[keep]
-            residual = np.sum((p - q) * n, axis=1)
-            # Rotation is scaled by a 100 mm lever arm for interpretable conditioning.
-            jacobian = np.column_stack((np.cross(q, n) / .1, n))
-            weight = np.minimum(1, .004 / np.maximum(np.abs(residual), 1e-12))
-            weight *= np.minimum(1, .01 / np.maximum(distance, 1e-12))
-            weight /= len(p)
-            h = jacobian.T @ (weight[:, None] * jacobian)
-            plane_hessian += h
-            hessian += h
-            gradient += jacobian.T @ (weight * residual)
-            # Small tangential term retains edge information; rank uses plane terms only.
-            if tangential_weight:
-                for axis in range(3):
-                    unit = np.zeros(3); unit[axis] = 1
-                    j = np.column_stack((np.cross(q, unit) / .1,
-                                         np.broadcast_to(unit, (len(q), 3))))
-                    w = tangential_weight * weight
-                    hessian += j.T @ (w[:, None] * j)
-                    gradient += j.T @ (w * (p[:, axis] - q[:, axis]))
-            errors.extend(all_distance.tolist())
-            used += len(p)
-        if used < 100:
-            raise ValueError('Insufficient registration correspondences')
-        step = np.linalg.lstsq(hessian + np.eye(6) * 1e-7, gradient, rcond=1e-8)[0]
-        rotation_step = step[:3] / .1
-        translation_step = step[3:]
-        fraction = min(1, np.deg2rad(6) / max(np.linalg.norm(rotation_step), 1e-12),
-                       .008 / max(np.linalg.norm(translation_step), 1e-12))
-        delta = np.eye(4)
-        delta[:3, :3] = Rotation.from_rotvec(rotation_step * fraction).as_matrix()
-        delta[:3, 3] = translation_step * fraction
-        candidate = delta @ correction
-        angle = Rotation.from_matrix(candidate[:3, :3]).magnitude()
-        if np.linalg.norm(candidate[:3, 3]) > .15 or angle > np.deg2rad(70):
-            history.append({'iteration': iteration, 'bounded_stop': True})
-            break
-        correction = candidate
-        last_hessian = plane_hessian
-        history.append({'iteration': iteration, 'median_distance_m': float(np.median(errors)),
-                        'correspondences': used, 'step_translation_m': float(np.linalg.norm(translation_step * fraction)),
-                        'step_rotation_deg': float(np.rad2deg(np.linalg.norm(rotation_step * fraction)))})
-        if iteration > 20 and np.linalg.norm(step) * fraction < 2e-6:
-            break
-    return correction, history, last_hessian
-
-
-def evaluate(frames, model, correction, camera):
-    rows = []
-    for frame in frames:
-        p, q, n, d, all_distance = correspondences(frame, model, correction, camera, .08)
-        residual = np.sum((p - q) * n, axis=1)
-        rows.append({'processed_frame': frame['processed'], 'raw_frame': frame['raw'],
-                     'points': len(frame['points']), 'median_distance_mm': float(np.median(all_distance) * 1000),
-                     'p90_distance_mm': float(np.quantile(all_distance, .9) * 1000),
-                     'within_3mm': float(np.mean(all_distance < .003)),
-                     'within_5mm': float(np.mean(all_distance < .005)),
-                     'median_abs_plane_mm': float(np.median(np.abs(residual)) * 1000),
-                     'mean_residual_marker_xyz_mm': ((p - q).mean(axis=0) * 1000).tolist()})
-    return {'equal_frame_median_distance_mm': float(np.mean([row['median_distance_mm'] for row in rows])),
-            'equal_frame_p90_distance_mm': float(np.mean([row['p90_distance_mm'] for row in rows])),
-            'equal_frame_within_3mm': float(np.mean([row['within_3mm'] for row in rows])),
-            'equal_frame_within_5mm': float(np.mean([row['within_5mm'] for row in rows])), 'frames': rows}
 
 
 def run(args):
