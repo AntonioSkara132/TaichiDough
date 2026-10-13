@@ -333,8 +333,10 @@ def reference_arguments(config: SimulationConfig, parameters: Mapping[str, float
     validate_parameters(parameters)
     if config.plasticity == "von-mises":
         raise ValueError("The preserved simulator does not implement von-mises plasticity")
-    if config.tool_contact_model == "coulomb-adhesive-v1":
-        raise ValueError("The preserved simulator does not implement coulomb-adhesive-v1")
+    if config.tool_contact_model in ("coulomb-adhesive-v1", "coulomb-bounded-adhesive-v2"):
+        raise ValueError(f"The preserved simulator does not implement {config.tool_contact_model}")
+    if config.floor_contact_model != "retention-v1":
+        raise ValueError("The preserved simulator only implements floor retention-v1")
     if config.precision != "f32":
         raise ValueError("The preserved simulator is float32; reference parity requires precision=f32")
     values = asdict(config)

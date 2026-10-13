@@ -23,6 +23,8 @@ LABELS = {
     "floor_retention": ("Floor retention", "dimensionless", 1),
     "tool_friction_coefficient": ("Tool friction coefficient", "dimensionless", 1),
     "tool_stickiness": ("Tool stickiness", "dimensionless", 1),
+    "tool_adhesion": ("Tool adhesion limit", "m/s²", 1),
+    "floor_friction_coefficient": ("Floor friction coefficient", "dimensionless", 1),
     "loss": ("Training objective", "dimensionless", 1),
 }
 COLORS = ["#2a78d6", "#eb6834"]

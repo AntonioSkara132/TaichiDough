@@ -7,7 +7,7 @@ frozen reference transfer. Discrete decisions are differentiated within the acti
 import numpy as np
 import taichi as ti
 
-from .state import (DEFAULT_PARAMETERS, PARAMETER_NAMES, STATE_NAMES, InvalidStateError,
+from .state import (DEFAULT_PARAMETERS, PARAMETER_NAMES, SLIP_SPEED_EPSILON, STATE_NAMES, InvalidStateError,
                     ParticleState, SimulationConfig, SDFData, ToolControl,
                     normalize_parameters, validate_tool_parameters)
 from .spectral import (clamp_forward, clamp_vjp, polar_forward, polar_vjp,
@@ -387,8 +387,50 @@ class Stepper:
                 ix, iy, iz = base[0] + a, base[1] + b, base[2] + c
                 distance += weight * self.sdf[tool, ix, iy, iz]
                 gradient += weight * self.sdf_normal[tool, ix, iy, iz]
-            gradient /= ti.max(gradient.norm(), 1e-6)
+            # Same value as gradient / max(|gradient|, 1e-6). Taichi's adjoint of norm()
+            # is NaN at a zero vector even when ti.max discards the norm, and mesh SDFs
+            # have cells whose eight corner normals are all exactly zero.
+            squared = gradient.dot(gradient)
+            if squared > 1e-12:
+                gradient /= ti.sqrt(squared)
+            else:
+                gradient /= 1e-6
         return valid, distance, gradient
+
+    @ti.func
+    def _coulomb_slip(self, tangential, normal_change, coefficient):
+        """Remove up to coefficient * normal_change of tangential speed.
+
+        normal_change is the normal velocity change applied by the contact, i.e. the
+        normal impulse per unit mass, so the friction impulse is bounded by
+        coefficient times the normal impulse. The speed in the denominator carries
+        SLIP_SPEED_EPSILON so the result and its derivative stay finite at zero slip.
+        """
+        speed = ti.sqrt(tangential.norm_sqr() + SLIP_SPEED_EPSILON ** 2)
+        return tangential * ti.max(0.0, 1.0 - coefficient * normal_change / speed)
+
+    @ti.func
+    def _bounded_adhesive_response(self, velocity, collider_v, normal):
+        """coulomb-bounded-adhesive-v2 velocity response.
+
+        Approach (vn < 0) removes the inward normal velocity. Separation (vn >= 0)
+        is slowed by adhesion acting along the normal only: the removed speed
+        limit*vn/sqrt(vn^2 + limit^2) is close to vn for slow separation and tends to
+        limit = tool_adhesion * dt for fast separation, so dough pulls off once the
+        separating acceleration exceeds tool_adhesion (m/s^2). Both normal changes
+        feed the Coulomb friction bound, so adhesion holds tangentially only as
+        much as friction allows.
+        """
+        relative = velocity - collider_v
+        vn = relative.dot(normal)
+        tangential = relative - normal * vn
+        normal_change = -vn
+        new_vn = ti.cast(0.0, self.dtype)
+        if vn >= 0:
+            limit = self.parameters[9] * self.dt
+            normal_change = limit * vn / ti.sqrt(vn * vn + limit * limit + SLIP_SPEED_EPSILON ** 2)
+            new_vn = vn - normal_change
+        return collider_v + normal * new_vn + self._coulomb_slip(tangential, normal_change, self.parameters[7])
 
     @ti.func
     def _tool_velocity_response(self, velocity, collider_v, normal):
@@ -400,13 +442,16 @@ class Stepper:
         result = velocity
         relative = velocity - collider_v
         vn = relative.dot(normal)
-        if ti.static(self.config.tool_contact_model != "retention-v1"):
+        if ti.static(self.config.tool_contact_model == "coulomb-bounded-adhesive-v2"):
+            result = self._bounded_adhesive_response(velocity, collider_v, normal)
+        elif ti.static(self.config.tool_contact_model != "retention-v1"):
             if vn < 0:
                 tangential = relative - normal * vn
-                tangential_speed = tangential.norm()
+                # sqrt only inside the branch: norm() has a NaN adjoint at zero slip.
+                squared = tangential.dot(tangential)
                 scale = ti.cast(0.0, self.dtype)
-                if tangential_speed > 0:
-                    scale = ti.max(0.0, 1.0 - self.parameters[7] * (-vn) / tangential_speed)
+                if squared > 0:
+                    scale = ti.max(0.0, 1.0 - self.parameters[7] * (-vn) / ti.sqrt(squared))
                 result = collider_v + tangential * scale
             if ti.static(self.config.tool_contact_model == "coulomb-adhesive-v1"):
                 # Velocity matching acts only inside the existing contact region,
@@ -465,6 +510,16 @@ class Stepper:
                 self.grid_m.grad[I] -= self.grid_u[I].dot(momentum_bar)
             self.grid_p.grad[I] += momentum_bar
 
+    @ti.func
+    def _floor_coulomb_response(self, velocity):
+        """Floor coulomb-v1: remove downward velocity; friction with floor_friction_coefficient."""
+        result = velocity
+        if velocity[1] < 0:
+            tangential = ti.Vector([velocity[0], 0.0, velocity[2]])
+            tangential = self._coulomb_slip(tangential, -velocity[1], self.parameters[10])
+            result = ti.Vector([tangential[0], 0.0, tangential[2]])
+        return result
+
     @ti.kernel
     def _grid_operations(self):
         for I in ti.grouped(self.grid_m):
@@ -473,9 +528,12 @@ class Stepper:
                 velocity[1] += self.dt * self.config.gravity
                 pos = I.cast(self.dtype) * self.dx
                 if pos[1] <= self.config.floor_y and velocity[1] < 0:
-                    velocity[1] *= -self.config.floor_absorption
-                    velocity[0] *= self.parameters[6] * (1 - self.config.floor_stickiness)
-                    velocity[2] *= self.parameters[6] * (1 - self.config.floor_stickiness)
+                    if ti.static(self.config.floor_contact_model == "coulomb-v1"):
+                        velocity = self._floor_coulomb_response(velocity)
+                    else:
+                        velocity[1] *= -self.config.floor_absorption
+                        velocity[0] *= self.parameters[6] * (1 - self.config.floor_stickiness)
+                        velocity[2] *= self.parameters[6] * (1 - self.config.floor_stickiness)
                     ti.atomic_add(self.counts[9], 1)
                 if ti.static(self.use_sdf):
                     velocity = self._tool_grid_response(pos, velocity)
@@ -541,18 +599,24 @@ class Stepper:
             floor_contact = 0
             if pos[1] < self.config.floor_y:
                 pos[1] = self.config.floor_y
-                if velocity[1] < 0:
-                    velocity[1] *= -self.config.floor_absorption
-                velocity[0] *= self.parameters[6] * (1 - self.config.floor_stickiness)
-                velocity[2] *= self.parameters[6] * (1 - self.config.floor_stickiness)
-                floor_contact = 1
-                ti.atomic_add(self.counts[10], 1)
-            if pos[1] < self.config.floor_y + self.config.floor_plastic_damping_band:
-                if floor_contact == 0:
+                if ti.static(self.config.floor_contact_model == "coulomb-v1"):
+                    velocity = self._floor_coulomb_response(velocity)
+                else:
                     if velocity[1] < 0:
                         velocity[1] *= -self.config.floor_absorption
                     velocity[0] *= self.parameters[6] * (1 - self.config.floor_stickiness)
                     velocity[2] *= self.parameters[6] * (1 - self.config.floor_stickiness)
+                floor_contact = 1
+                ti.atomic_add(self.counts[10], 1)
+            if pos[1] < self.config.floor_y + self.config.floor_plastic_damping_band:
+                if floor_contact == 0:
+                    if ti.static(self.config.floor_contact_model == "coulomb-v1"):
+                        velocity = self._floor_coulomb_response(velocity)
+                    else:
+                        if velocity[1] < 0:
+                            velocity[1] *= -self.config.floor_absorption
+                        velocity[0] *= self.parameters[6] * (1 - self.config.floor_stickiness)
+                        velocity[2] *= self.parameters[6] * (1 - self.config.floor_stickiness)
                 affine *= self.config.plastic_affine_damping
                 ti.atomic_add(self.counts[11], 1)
             if self.yielded[p] == 1:

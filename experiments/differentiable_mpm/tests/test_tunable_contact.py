@@ -1,5 +1,6 @@
 """CPU float64 derivatives and compatibility for tunable tool contact."""
 import json
+from dataclasses import replace
 from pathlib import Path
 import tempfile
 import unittest
@@ -22,6 +23,8 @@ from experiments.differentiable_mpm.tests.test_solver import fixture, terminal_s
 class GradientProbe(ContactProbe):
     def __init__(self):
         super().__init__()
+        self.velocity = ti.Vector.field(3, ti.f64, shape=(), needs_grad=True)
+        self.pos = ti.Vector.field(3, ti.f64, shape=(), needs_grad=True)
         self.loss = ti.field(ti.f64, shape=(), needs_grad=True)
 
     @ti.kernel
@@ -31,8 +34,11 @@ class GradientProbe(ContactProbe):
             result = solver._tool_velocity_response(result, self.collider[None], self.normal[None])
         elif ti.static(path == 'grid'):
             result = solver._tool_grid_response(self.pos[None], result)
+        elif ti.static(path == 'floor'):
+            result = solver._floor_coulomb_response(result)
         else:
             position, result = solver._tool_particle_response(self.pos[None], result)
+            result += position
         self.loss[None] = result.dot(ti.Vector([0.7, -0.4, 0.2]))
 
 
@@ -140,6 +146,107 @@ class DerivativeTests(unittest.TestCase):
                     if velocity == (-1, 2, .3):
                         self.assertTrue(any(abs(gradients[name]) > 1e-5 for name in names))
 
+    def probe_gradients(self, solver, probe, params, path, names):
+        """Adjoint gradients of the probe loss and their central finite differences."""
+        solver.set_parameters(params)
+        solver.clear_parameter_gradients()
+        probe.velocity.grad[None] = [0, 0, 0]
+        probe.pos.grad[None] = [0, 0, 0]
+        probe.evaluate(solver, path)
+        probe.loss.grad[None] = 1
+        probe.evaluate.grad(solver, path)
+        gradients = solver.parameter_gradients()
+        differences = {}
+        for name in names:
+            h = 1e-6 * max(1.0, abs(params[name]))
+            samples = []
+            for sign in (1, -1):
+                solver.set_parameters(dict(params, **{name: params[name] + sign * h}))
+                probe.evaluate(solver, path)
+                samples.append(probe.loss[None])
+            differences[name] = (samples[0] - samples[1]) / (2 * h)
+        solver.set_parameters(params)
+        return gradients, differences
+
+    def bounded_solver(self, floor='retention-v1'):
+        config = SimulationConfig(n_particles=1, grid=12, precision='f64', tool_collision='sdf',
+                                  tool_contact_model='coulomb-bounded-adhesive-v2', floor_contact_model=floor,
+                                  tool_contact_padding=.004)
+        params = dict(DEFAULT_PARAMETERS, tool_friction_coefficient=.3, tool_adhesion=150.0,
+                      floor_friction_coefficient=.4)
+        solver = Stepper(config, params, capacity=2, sdf=plane_sdf())
+        control = ToolControl.stationary()
+        control.poses[0, :3] = [.4, .4, .4]
+        control.poses[1, :3] = [10, 10, 10]
+        solver._set_control(control)
+        return solver, params
+
+    def test_bounded_adhesive_contact_path_derivatives(self):
+        solver, params = self.bounded_solver()
+        probe = GradientProbe()
+        probe.pos[None] = [.401, .4, .4]
+        probe.normal[None] = [1, 0, 0]
+        names = ['tool_friction_coefficient', 'tool_adhesion']
+        # Approach, fast separation, separation near the pull-off limit (150 m/s^2 * 2e-4 s = 0.03 m/s), pure approach.
+        for path in ('velocity', 'grid', 'particle'):
+            for velocity in ((-1, 2, .3), (1, 2, .3), (.02, .5, -.1), (-1, 0, 0)):
+                probe.velocity[None] = velocity
+                gradients, differences = self.probe_gradients(solver, probe, params, path, names)
+                for name in names:
+                    self.assertAlmostEqual(gradients[name], differences[name], delta=2e-8 + 1e-6 * abs(differences[name]),
+                                           msg=f'{path} {velocity} {name}')
+                if velocity == (.02, .5, -.1):
+                    self.assertTrue(all(abs(gradients[name]) > 1e-5 for name in names), gradients)
+
+    def test_floor_coulomb_derivatives(self):
+        solver, params = self.bounded_solver(floor='coulomb-v1')
+        probe = GradientProbe()
+        for velocity in ((1, -.2, .3), (.05, -.2, 0), (.3, .2, -.4)):
+            probe.velocity[None] = velocity
+            gradients, differences = self.probe_gradients(solver, probe, params, 'floor', ['floor_friction_coefficient'])
+            self.assertAlmostEqual(gradients['floor_friction_coefficient'], differences['floor_friction_coefficient'],
+                                   delta=2e-8, msg=str(velocity))
+            if velocity == (1, -.2, .3):
+                self.assertGreater(abs(gradients['floor_friction_coefficient']), 1e-3)
+
+    def test_co_moving_contact_gradients_are_finite(self):
+        """Zero relative velocity at a contact must not produce NaN adjoints."""
+        solver, params = self.bounded_solver(floor='coulomb-v1')
+        probe = GradientProbe()
+        probe.pos[None] = [.401, .4, .4]
+        probe.normal[None] = [1, 0, 0]
+        for path, velocity in (('velocity', (0, 0, 0)), ('grid', (0, 0, 0)), ('particle', (0, 0, 0)),
+                               ('floor', (0, 0, 0)), ('floor', (0, -.2, 0))):
+            for adhesion in (0.0, 150.0):
+                probe.velocity[None] = velocity
+                gradients, _ = self.probe_gradients(solver, probe, dict(params, tool_adhesion=adhesion), path, [])
+                self.assertTrue(np.isfinite(list(gradients.values())).all(), f'{path} {velocity} {adhesion} {gradients}')
+                self.assertTrue(np.isfinite(probe.velocity.grad[None].to_numpy()).all(), f'{path} {velocity} {adhesion}')
+
+    def test_zero_sdf_normal_gradients_are_finite(self):
+        """Mesh SDFs contain cells whose corner normals are all exactly zero."""
+        sdf = plane_sdf()
+        sdf.gradients[:] = 0
+        for model, extra in (('coulomb-v1', {}), ('coulomb-adhesive-v1', {'tool_stickiness': .2}),
+                             ('coulomb-bounded-adhesive-v2', {'tool_adhesion': 150.0})):
+            config = SimulationConfig(n_particles=1, grid=12, precision='f64', tool_collision='sdf',
+                                      tool_contact_model=model, tool_contact_padding=.004)
+            params = dict(DEFAULT_PARAMETERS, tool_friction_coefficient=.3, **extra)
+            solver = Stepper(config, params, capacity=2, sdf=sdf)
+            control = ToolControl.stationary()
+            control.poses[0, :3] = [.4, .4, .4]
+            control.poses[1, :3] = [10, 10, 10]
+            solver._set_control(control)
+            probe = GradientProbe()
+            probe.pos[None] = [.401, .4, .4]
+            for path in ('grid', 'particle'):
+                for velocity in ((0, 0, 0), (-1, 2, .3)):
+                    probe.velocity[None] = velocity
+                    gradients, _ = self.probe_gradients(solver, probe, params, path, [])
+                    self.assertTrue(np.isfinite(list(gradients.values())).all(), f'{model} {path} {velocity}')
+                    self.assertTrue(np.isfinite(probe.velocity.grad[None].to_numpy()).all(), f'{model} {path} {velocity}')
+                    self.assertTrue(np.isfinite(probe.pos.grad[None].to_numpy()).all(), f'{model} {path} {velocity}')
+
     def test_zero_stickiness_exact_coulomb_and_withdrawal(self):
         probe = ContactProbe()
         probe.normal[None] = [1, 0, 0]
@@ -186,6 +293,43 @@ class DerivativeTests(unittest.TestCase):
             fd = (value(plus) - value(minus)) / (2 * h)
             self.assertGreater(abs(gradients[name]), 1e-7)
             self.assertAlmostEqual(gradients[name], fd, delta=2e-6 + 3e-4 * abs(fd), msg=name)
+
+    def rollout_gradients(self, config, state, params, control, sdf, names):
+        solver = Stepper(config, params, capacity=4, sdf=sdf)
+        seed = terminal_seed(state)
+
+        def value(parameters):
+            solver.set_parameters(parameters)
+            solver.load_state(0, state)
+            for step in range(3):
+                solver.advance(step, control)
+            return dot_state(solver.state(3), seed)
+
+        value(params)
+        solver.clear_state_gradients()
+        solver.clear_parameter_gradients()
+        solver.load_adjoint(3, seed)
+        for step in reversed(range(3)):
+            solver.reverse_step(step, control)
+        gradients = solver.parameter_gradients()
+        self.assertTrue(np.isfinite(list(gradients.values())).all(), gradients)
+        for name in names:
+            h = 1e-6 * max(1.0, abs(params[name]))
+            fd = (value(dict(params, **{name: params[name] + h})) - value(dict(params, **{name: params[name] - h}))) / (2 * h)
+            self.assertGreater(abs(gradients[name]), 1e-7, name)
+            self.assertAlmostEqual(gradients[name], fd, delta=2e-6 + 3e-4 * abs(fd), msg=name)
+
+    def test_three_step_mpm_bounded_adhesive_gradients(self):
+        config, state, params, control, sdf = fixture(sdf=True, p2g_mode='serial',
+                                                    tool_contact_model='coulomb-bounded-adhesive-v2')
+        params.update(tool_friction_coefficient=.3, tool_adhesion=200.0)
+        self.rollout_gradients(config, state, params, control, sdf, ['tool_friction_coefficient', 'tool_adhesion'])
+
+    def test_three_step_mpm_floor_coulomb_gradients(self):
+        config, state, params, control, sdf = fixture(floor=True, p2g_mode='serial')
+        config = replace(config, floor_contact_model='coulomb-v1')
+        params.update(floor_friction_coefficient=.4)
+        self.rollout_gradients(config, state, params, control, sdf, ['floor_friction_coefficient'])
 
 
 if __name__ == '__main__':

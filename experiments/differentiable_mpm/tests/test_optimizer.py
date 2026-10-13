@@ -36,10 +36,10 @@ class ParameterTests(unittest.TestCase):
         self.assertEqual(space.settings(), json.loads(json.dumps(space.serialize(), allow_nan=False)))
 
     def test_all_coordinate_derivatives(self):
-        initial = dict(DEFAULT_PARAMETERS, viscosity=13.0, tool_stickiness=0.2)
+        initial = dict(DEFAULT_PARAMETERS, viscosity=13.0, tool_stickiness=0.2, tool_adhesion=30.0)
         space = PhysicalParameterSpace(initial, PARAMETER_NAMES, "stretch-clamp")
         u = space.coordinates()
-        physical_gradient = dict(zip(PARAMETER_NAMES, [2e-5, -0.7, 0.05, 2.0, -4.0, 0.9, -0.4, 0.6, -0.8]))
+        physical_gradient = dict(zip(PARAMETER_NAMES, [2e-5, -0.7, 0.05, 2.0, -4.0, 0.9, -0.4, 0.6, -0.8, 0.003, -0.5]))
         expected = space.pullback(u, physical_gradient)
         finite_difference = np.zeros_like(u)
         h = 1e-5
@@ -105,8 +105,9 @@ class OptimizerTests(unittest.TestCase):
         initial = dict(DEFAULT_PARAMETERS, viscosity=25)
         targets = dict(initial, youngs_modulus=90000, poisson_ratio=0.34, viscosity=5.0,
                        plastic_min=0.84, plastic_max=1.18, tool_retention=0.45, floor_retention=0.55,
-                       tool_friction_coefficient=0.7, tool_stickiness=0.25)
-        normalizers = dict(zip(PARAMETER_NAMES, [1e5, 0.1, 100, 0.1, 0.1, 1, 1, 1, 1]))
+                       tool_friction_coefficient=0.7, tool_stickiness=0.25, tool_adhesion=40.0,
+                       floor_friction_coefficient=0.8)
+        normalizers = dict(zip(PARAMETER_NAMES, [1e5, 0.1, 100, 0.1, 0.1, 1, 1, 1, 1, 100, 1]))
         evaluations = []
 
         def objective(parameters):

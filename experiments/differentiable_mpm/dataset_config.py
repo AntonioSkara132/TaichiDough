@@ -19,6 +19,8 @@ SCHEMA_V2 = "taichidough/differentiable-dataset/v2"
 MATERIAL_NAMES = ("youngs_modulus", "poisson_ratio", "viscosity", "plastic_min", "plastic_max")
 CONTACT_NAMES = ("floor_retention", "tool_friction_coefficient", "tool_stickiness")
 PHYSICAL_NAMES = MATERIAL_NAMES + CONTACT_NAMES
+# Dataset v2 files may add these; files without them keep the simulator defaults.
+OPTIONAL_CONTACT_NAMES = ("tool_adhesion", "floor_friction_coefficient")
 TOOL_CONTACT = {"retention": 1.0, "absorption": 0.0, "stickiness": 0.0}
 _EPISODE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
 
@@ -45,10 +47,11 @@ def _number(value, name):
     return result
 
 
-def _shared_values(values, names):
-    if not isinstance(values, Mapping) or set(values) != set(names):
-        raise ValueError("Shared values must specify exactly " + ", ".join(names))
-    return {name: _number(values[name], name) for name in names}
+def _shared_values(values, names, optional=()):
+    if not isinstance(values, Mapping) or not set(names) <= set(values) <= set(names) | set(optional):
+        raise ValueError("Shared values must specify exactly " + ", ".join(names)
+                         + (" and optionally " + ", ".join(optional) if optional else ""))
+    return {name: _number(values[name], name) for name in (*names, *optional) if name in values}
 
 
 def _material_values(values):
@@ -114,7 +117,9 @@ class DatasetConfig:
 
     @property
     def shared_parameter_names(self):
-        return PHYSICAL_NAMES if self.schema == SCHEMA_V2 else MATERIAL_NAMES
+        if self.schema != SCHEMA_V2:
+            return MATERIAL_NAMES
+        return PHYSICAL_NAMES + tuple(name for name in OPTIONAL_CONTACT_NAMES if name in self.shared_initial)
 
     def parameter_space(self):
         first = self.episodes[0]
@@ -173,7 +178,8 @@ def load_dataset(path, *, path_overrides=None, backend=None, precision=None, p2g
         raise ValueError("Dataset name is required")
     shared = _object(document["shared_parameters"], "shared_parameters", {"initial", "fit", "bounds"}, {"initial", "fit"})
     shared_names = PHYSICAL_NAMES if schema == SCHEMA_V2 else MATERIAL_NAMES
-    initial = _shared_values(shared["initial"], shared_names)
+    initial = _shared_values(shared["initial"], shared_names, OPTIONAL_CONTACT_NAMES if schema == SCHEMA_V2 else ())
+    shared_names = tuple(initial)
     fit = shared["fit"]
     if (not isinstance(fit, list) or not fit or not all(type(name) is str for name in fit)
             or len(set(fit)) != len(fit) or set(fit) - set(shared_names)):

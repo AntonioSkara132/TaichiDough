@@ -10,19 +10,27 @@ from numpy.typing import DTypeLike
 PARAMETER_NAMES = (
     "youngs_modulus", "poisson_ratio", "viscosity", "plastic_min", "plastic_max",
     "tool_retention", "floor_retention", "tool_friction_coefficient", "tool_stickiness",
+    "tool_adhesion", "floor_friction_coefficient",
 )
 LEGACY_PARAMETER_NAMES = PARAMETER_NAMES[:7]
+# Contact parameters that SimulationConfig also stores, so old seven-value records
+# take their values from the simulation settings they were run with.
 TUNABLE_TOOL_PARAMETERS = PARAMETER_NAMES[7:]
 DEFAULT_PARAMETERS = {
     "youngs_modulus": 130579.320726, "poisson_ratio": 0.3, "viscosity": 0.0,
     "plastic_min": 0.9, "plastic_max": 1.1,
     "tool_retention": 0.2, "floor_retention": 0.4,
     "tool_friction_coefficient": 0.5, "tool_stickiness": 0.0,
+    "tool_adhesion": 0.0, "floor_friction_coefficient": 0.5,
 }
 STATE_NAMES = ("x", "v", "C", "F", "Jp")
 P2G_MODES = ("atomic", "serial")
 PHYSICS_VERSIONS = ("corrected-v1", "legacy-v1")
-TOOL_CONTACT_MODELS = ("retention-v1", "coulomb-v1", "coulomb-adhesive-v1")
+TOOL_CONTACT_MODELS = ("retention-v1", "coulomb-v1", "coulomb-adhesive-v1", "coulomb-bounded-adhesive-v2")
+FLOOR_CONTACT_MODELS = ("retention-v1", "coulomb-v1")
+# Relative tangential speed (m/s) added in quadrature before dividing by it, so the
+# Coulomb scale and its derivative stay finite when tool or floor and dough move together.
+SLIP_SPEED_EPSILON = 1e-8
 
 
 class InvalidStateError(RuntimeError):
@@ -87,6 +95,9 @@ class SimulationConfig:
     tool_friction_coefficient: float = 0.5
     tool_contact_absorption: float = 0.0
     tool_stickiness: float = 0.0
+    tool_adhesion: float = 0.0
+    floor_contact_model: str = "retention-v1"
+    floor_friction_coefficient: float = 0.5
     floor_absorption: float = 0.0
     floor_stickiness: float = 0.0
     floor_plastic_damping_band: float = 0.0
@@ -121,14 +132,24 @@ class SimulationConfig:
             raise ValueError("The experiment supports recorded SDF tools or no tools")
         if not isinstance(self.tool_contact_model, str) or self.tool_contact_model not in TOOL_CONTACT_MODELS:
             raise ValueError(f"tool_contact_model must be one of {TOOL_CONTACT_MODELS}")
-        if (isinstance(self.tool_friction_coefficient, (bool, np.bool_)) or
-                not isinstance(self.tool_friction_coefficient, (int, float)) or
-                not np.isfinite(self.tool_friction_coefficient) or self.tool_friction_coefficient < 0):
-            raise ValueError("tool_friction_coefficient must be finite and nonnegative")
+        for name in ("tool_friction_coefficient", "tool_adhesion", "floor_friction_coefficient"):
+            value = getattr(self, name)
+            if (isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, float))
+                    or not np.isfinite(value) or value < 0):
+                raise ValueError(f"{name} must be finite and nonnegative")
+        if not isinstance(self.floor_contact_model, str) or self.floor_contact_model not in FLOOR_CONTACT_MODELS:
+            raise ValueError(f"floor_contact_model must be one of {FLOOR_CONTACT_MODELS}")
         if self.tool_contact_model == "coulomb-v1" and (self.tool_contact_absorption != 0 or self.tool_stickiness != 0):
             raise ValueError("coulomb-v1 requires zero tool contact absorption and stickiness")
         if self.tool_contact_model == "coulomb-adhesive-v1" and self.tool_contact_absorption != 0:
             raise ValueError("coulomb-adhesive-v1 requires zero tool contact absorption")
+        if self.tool_contact_model == "coulomb-bounded-adhesive-v2" and (
+                self.tool_contact_absorption != 0 or self.tool_stickiness != 0):
+            raise ValueError("coulomb-bounded-adhesive-v2 requires zero tool contact absorption and stickiness")
+        if self.tool_contact_model != "coulomb-bounded-adhesive-v2" and self.tool_adhesion != 0:
+            raise ValueError("tool_adhesion requires coulomb-bounded-adhesive-v2")
+        if self.floor_contact_model == "coulomb-v1" and (self.floor_absorption != 0 or self.floor_stickiness != 0):
+            raise ValueError("Floor coulomb-v1 requires zero floor absorption and stickiness")
         if self.precision not in {"f32", "f64"}:
             raise ValueError("precision must be f32 or f64")
         if not isinstance(self.p2g_mode, str) or self.p2g_mode not in P2G_MODES:
@@ -225,6 +246,9 @@ def validate_parameters(values: Mapping[str, float]):
     if "tool_stickiness" in values and (isinstance(values["tool_stickiness"], (bool, np.bool_)) or
                                       not 0 <= values["tool_stickiness"] <= 1):
         raise ValueError("tool_stickiness must be in [0,1]")
+    for name in ("tool_adhesion", "floor_friction_coefficient"):
+        if name in values and (isinstance(values[name], (bool, np.bool_)) or values[name] < 0):
+            raise ValueError(f"{name} must be finite and nonnegative")
 
 
 def normalize_parameters(values: Mapping[str, float], simulation=None):
@@ -250,9 +274,20 @@ def validate_tool_parameters(values, config, fit=()):
     """Reject unsupported contact fits instead of returning identically zero gradients."""
     model = config.tool_contact_model
     fitted = set(fit)
-    if model == "coulomb-v1" and values["tool_stickiness"] != 0:
+    if model in ("coulomb-v1", "coulomb-bounded-adhesive-v2") and values["tool_stickiness"] != 0:
         raise ValueError("Nonzero tool_stickiness requires retention-v1 or coulomb-adhesive-v1")
-    if fitted.intersection(TUNABLE_TOOL_PARAMETERS) and config.tool_collision != "sdf":
+    if model != "coulomb-bounded-adhesive-v2" and values["tool_adhesion"] != 0:
+        raise ValueError("Nonzero tool_adhesion requires coulomb-bounded-adhesive-v2")
+    if model != "coulomb-bounded-adhesive-v2" and "tool_adhesion" in fitted:
+        raise ValueError("tool_adhesion is inactive outside coulomb-bounded-adhesive-v2")
+    if model == "coulomb-bounded-adhesive-v2" and "tool_stickiness" in fitted:
+        raise ValueError("coulomb-bounded-adhesive-v2 uses tool_adhesion instead of tool_stickiness")
+    floor = getattr(config, "floor_contact_model", "retention-v1")
+    if floor == "coulomb-v1" and "floor_retention" in fitted:
+        raise ValueError("floor_retention is inactive with floor_contact_model='coulomb-v1'")
+    if floor != "coulomb-v1" and "floor_friction_coefficient" in fitted:
+        raise ValueError("floor_friction_coefficient requires floor_contact_model='coulomb-v1'")
+    if fitted.intersection(set(TUNABLE_TOOL_PARAMETERS) - {"floor_friction_coefficient"}) and config.tool_collision != "sdf":
         raise ValueError("Fitting tool contact parameters requires tool_collision='sdf'")
     if model == "retention-v1" and "tool_friction_coefficient" in fitted:
         raise ValueError("tool_friction_coefficient is inactive in retention-v1")

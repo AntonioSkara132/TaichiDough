@@ -17,6 +17,8 @@ DEFAULT_BOUNDS = {
     "floor_retention": (0.0, 1.0),
     "tool_friction_coefficient": (0.0, 2.0),
     "tool_stickiness": (0.0, 1.0),
+    "tool_adhesion": (0.0, 1000.0),
+    "floor_friction_coefficient": (0.0, 2.0),
 }
 DEFAULT_SCALES = {
     "poisson_ratio": 0.1,
@@ -27,6 +29,8 @@ DEFAULT_SCALES = {
     "floor_retention": 1.0,
     "tool_friction_coefficient": 1.0,
     "tool_stickiness": 1.0,
+    "tool_adhesion": 100.0,
+    "floor_friction_coefficient": 1.0,
 }
 
 
@@ -92,7 +96,7 @@ class PhysicalParameterSpace:
             valid = lower > 0
         elif name == "poisson_ratio":
             valid = -1 < lower < upper < 0.5
-        elif name in {"viscosity", "tool_friction_coefficient"}:
+        elif name in {"viscosity", "tool_friction_coefficient", "tool_adhesion", "floor_friction_coefficient"}:
             valid = lower >= 0
         elif name == "plastic_min":
             valid = 0 < lower < upper <= 1
