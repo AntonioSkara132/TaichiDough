@@ -15,6 +15,9 @@ class RolloutEvaluation:
     initial_gradient: ParticleState | None
     frames: list[dict]
     diagnostics: dict
+    # Per control step t: dL/d(controls[t]) as arrays poses [T,2,7], velocities [T,2,6],
+    # rotation [T,2,3] (see state.ToolControlGradient). Only with compute_control_grad.
+    control_gradient: dict[str, np.ndarray] | None = None
 
 
 def estimate_memory(n_particles, total_steps, segment_length=64, precision="f32", grid=48, sdf_resolution=64,
@@ -196,7 +199,10 @@ class CheckpointedRollout:
             if gradient.shape != (n_particles, 3) or not np.isfinite(gradient).all():
                 raise InvalidStateError("Observation position derivative is invalid")
 
-    def value_and_gradient(self, parameters, *, compute_grad=True, frame_callback=None, frame_steps=None):
+    def value_and_gradient(self, parameters, *, compute_grad=True, frame_callback=None, frame_steps=None,
+                           compute_control_grad=False):
+        if compute_control_grad and not (compute_grad and getattr(self.stepper, "control_gradients", False)):
+            raise ValueError("compute_control_grad needs compute_grad and a Stepper built with control_gradients=True")
         self._reset_recompute_mismatches()
         start_time = perf_counter()
         export_steps = set(self.by_step) | {0} if frame_steps is None else set(frame_steps)
@@ -272,6 +278,8 @@ class CheckpointedRollout:
         observation_gradient_count = np.zeros(len(records), dtype=int)
         endpoints = sorted(checkpoints)
         loss_drift_max = 0.0
+        control_gradient = ({"poses": np.zeros((self.total_steps, 2, 7)), "velocities": np.zeros((self.total_steps, 2, 6)),
+                             "rotation": np.zeros((self.total_steps, 2, 3))} if compute_control_grad else None)
 
         def seed_observation(global_step, slot):
             nonlocal loss_drift_max
@@ -310,7 +318,10 @@ class CheckpointedRollout:
             for global_output in range(last, first, -1):
                 local = global_output - first
                 seed_observation(global_output, local)
-                stepper.reverse_step(local - 1, self.controls[global_output - 1])
+                step_gradient = stepper.reverse_step(local - 1, self.controls[global_output - 1])
+                if control_gradient is not None:
+                    for name, values in control_gradient.items():
+                        values[global_output - 1] = getattr(step_gradient, name)
             carry = stepper.adjoint(0)
             self._validate_adjoint(carry, first)
             self._notify("backward_segment", first)
@@ -327,6 +338,8 @@ class CheckpointedRollout:
         gradient = stepper.parameter_gradients()
         if set(gradient) != set(parameters) or not all(np.isfinite(v) for v in gradient.values()):
             raise InvalidStateError("Parameter derivatives are missing or nonfinite")
+        if control_gradient is not None and not all(np.isfinite(v).all() for v in control_gradient.values()):
+            raise InvalidStateError("Tool control derivatives are nonfinite")
         diagnostics.update({
             **self._recompute_diagnostics(),
             "backward_seconds": perf_counter() - reverse_start,
@@ -336,4 +349,4 @@ class CheckpointedRollout:
             "observation_gradient_injections": observation_gradient_count.tolist(),
             "branch_summary_steps_checked": len(signatures),
         })
-        return RolloutEvaluation(loss_total, gradient, carry, frame_records, diagnostics)
+        return RolloutEvaluation(loss_total, gradient, carry, frame_records, diagnostics, control_gradient)

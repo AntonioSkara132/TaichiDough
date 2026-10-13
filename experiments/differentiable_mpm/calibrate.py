@@ -191,11 +191,14 @@ def stored_progress(store, *, display=True):
     return callback
 
 
-def make_rollout(prepared, stepper=None, progress=progress_printer, *, ignore_recompute_mismatch=False):
+def make_rollout(prepared, stepper=None, progress=progress_printer, *, ignore_recompute_mismatch=False,
+                 control_gradients=False):
     length = min(prepared.config.segment_length, max(1, prepared.total_steps))
     if stepper is None:
-        stepper = Stepper(prepared.simulation_config, prepared.parameters, capacity=length + 1, sdf=prepared.sdf)
-    elif asdict(stepper.config) != asdict(prepared.simulation_config) or stepper.capacity < length + 1:
+        stepper = Stepper(prepared.simulation_config, prepared.parameters, capacity=length + 1, sdf=prepared.sdf,
+                          control_gradients=control_gradients)
+    elif (asdict(stepper.config) != asdict(prepared.simulation_config) or stepper.capacity < length + 1
+          or (control_gradients and not stepper.control_gradients)):
         raise ValueError('Existing stepper does not match the fixed replay configuration')
     options = {}
     if is_paper_loss(prepared.loss_config):

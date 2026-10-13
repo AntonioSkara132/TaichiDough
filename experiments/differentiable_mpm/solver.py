@@ -7,17 +7,23 @@ frozen reference transfer. Discrete decisions are differentiated within the acti
 import numpy as np
 import taichi as ti
 
-from .state import (BOUNDED_ADHESIVE_MODELS, DEFAULT_PARAMETERS, PARAMETER_NAMES, SLIP_SPEED_EPSILON, STATE_NAMES, InvalidStateError,
-                    ParticleState, SimulationConfig, SDFData, ToolControl,
-                    normalize_parameters, validate_tool_parameters)
+from .state import (BOUNDED_ADHESIVE_MODELS, DEFAULT_PARAMETERS, PARAMETER_NAMES, SLIP_SPEED_EPSILON,
+                    STATE_NAMES, InvalidStateError, ParticleState, SimulationConfig, SDFData, ToolControl, ToolControlGradient,
+                    normalize_parameters, quaternion_matrix_vjp, rotation_vector_vjp,
+                    validate_tool_parameters)
 from .spectral import (clamp_forward, clamp_vjp, polar_forward, polar_vjp,
                        von_mises_forward, von_mises_vjp)
 
 
 @ti.data_oriented
 class Stepper:
-    def __init__(self, config: SimulationConfig, parameters=None, capacity=65, sdf: SDFData = None):
+    def __init__(self, config: SimulationConfig, parameters=None, capacity=65, sdf: SDFData = None,
+                 control_gradients=False):
+        """control_gradients=True gives the tool fields adjoints, so reverse_step also
+        returns dL/d(control) for that substep. Off by default because the backward
+        kernels then add atomically into four extra two-element fields."""
         self.config = config
+        self.control_gradients = bool(control_gradients)
         self.n = config.n_particles
         self.capacity = int(capacity)
         if self.capacity < 2:
@@ -68,10 +74,11 @@ class Stepper:
         self.grid_p = ti.Vector.field(3, self.dtype, shape=grid_shape, offset=grid_offset, needs_grad=True)
         self.grid_u = ti.Vector.field(3, self.dtype, shape=grid_shape, offset=grid_offset, needs_grad=True)
         self.grid_v = ti.Vector.field(3, self.dtype, shape=grid_shape, offset=grid_offset, needs_grad=True)
-        self.tool_center = ti.Vector.field(3, self.dtype, shape=2)
-        self.tool_rotation = ti.Matrix.field(3, 3, self.dtype, shape=2)
-        self.tool_velocity = ti.Vector.field(3, self.dtype, shape=2)
-        self.tool_omega = ti.Vector.field(3, self.dtype, shape=2)
+        tool_grad = self.control_gradients
+        self.tool_center = ti.Vector.field(3, self.dtype, shape=2, needs_grad=tool_grad)
+        self.tool_rotation = ti.Matrix.field(3, 3, self.dtype, shape=2, needs_grad=tool_grad)
+        self.tool_velocity = ti.Vector.field(3, self.dtype, shape=2, needs_grad=tool_grad)
+        self.tool_omega = ti.Vector.field(3, self.dtype, shape=2, needs_grad=tool_grad)
         self.sdf_resolution = sdf.resolution if self.use_sdf else 2
         self.sdf = ti.field(self.dtype, shape=(2,) + (self.sdf_resolution,) * 3)
         self.sdf_normal = ti.Vector.field(3, self.dtype, shape=(2,) + (self.sdf_resolution,) * 3)
@@ -481,7 +488,7 @@ class Stepper:
             rotation = self.tool_rotation[tool]
             center = self.tool_center[tool]
             valid, distance, local_normal = self._sdf_at(tool, rotation.transpose() @ (pos - center))
-            if valid and distance < self.config.tool_contact_padding and distance < closest:
+            if valid and distance < self.config.effective_tool_grid_contact_padding and distance < closest:
                 selected = tool
                 closest = distance
                 normal = rotation @ local_normal
@@ -491,7 +498,10 @@ class Stepper:
             relative = velocity - collider_v
             if relative.dot(normal) < 0:
                 ti.atomic_add(self.counts[3 + selected], 1)
-            result = self._tool_velocity_response(velocity, collider_v, normal)
+            if ti.static(self.config.tool_grid_contact_mode == "dirichlet-v1"):
+                result = collider_v
+            else:
+                result = self._tool_velocity_response(velocity, collider_v, normal)
         return result
 
     @ti.kernel
@@ -689,11 +699,25 @@ class Stepper:
         self._check_state(slot + 1, 1)
         self._raise_invalid()
 
+    def _control_gradient(self, control):
+        rotation_gradient = self.tool_rotation.grad.to_numpy().astype(np.float64)
+        poses = np.zeros((2, 7))
+        poses[:, :3] = self.tool_center.grad.to_numpy()
+        poses[:, 3:] = quaternion_matrix_vjp(control.poses[:, 3:], rotation_gradient)
+        velocities = np.concatenate([self.tool_velocity.grad.to_numpy(), self.tool_omega.grad.to_numpy()], axis=1)
+        rotation = rotation_vector_vjp(self.tool_rotation.to_numpy(), rotation_gradient)
+        return ToolControlGradient(poses, velocities.astype(np.float64), rotation)
+
     def reverse_step(self, slot, control):
+        """Back-propagate one substep. Returns the ToolControlGradient of this substep's
+        control when the stepper was built with control_gradients=True, else None."""
         slot = self._slot(slot, next_slot=True)
         self._prepare(slot, control)
         self._preserve_output_adjoint(slot, False)
         self._clear_scratch_gradients()
+        if self.control_gradients:
+            for field in (self.tool_center, self.tool_rotation, self.tool_velocity, self.tool_omega):
+                field.grad.fill(0)
         self._particle_operations.grad(slot)
         self._g2p.grad(slot)
         self._grid_operations.grad()
@@ -706,6 +730,7 @@ class Stepper:
         self._project_backward(slot)
         self._trial.grad(slot)
         self._preserve_output_adjoint(slot, True)
+        return self._control_gradient(control) if self.control_gradients else None
 
     def diagnostics(self):
         names = ("yielded", "grid_tool0", "grid_tool1", "grid_inward0", "grid_inward1",

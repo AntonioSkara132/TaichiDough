@@ -55,7 +55,29 @@ Both bounded models require zero `tool_contact_absorption` and `tool_stickiness`
 
 In v3, normal and tangential adhesion have **independent caps**, not a single cap on their combined vector. Adhesion is an effective acceleration, not interface stress in Pa: there is no contact-area calibration, persistent bond, damage, or separation-energy law. Resistance ends when the point leaves the contact region; smooth normal adhesion is not an exact sticking constraint or a sharp acceleration threshold. Grid and particle contact can both apply corrections during one substep, so these are per-response limits, not a guaranteed bound on a particle's total substep acceleration.
 
-The same response is used for the closest-tool grid contact and sequential particle projection. Angular collider velocity in the particle path is evaluated at the projected position. Floor contact is selected independently. Coulomb contact uses normal velocity corrections after stress, gravity and grid forces as its normal-impulse proxy; it is not a full complementarity solve and can underestimate static friction when resting contact has no inward velocity in that step. Active friction and adhesion parameters support adjoint differentiation within the selected contact branches.
+By default, the same response is used for the closest-tool grid contact and sequential particle projection. Angular collider velocity in the particle path is evaluated at the projected position. Floor contact is selected independently. Coulomb contact uses normal velocity corrections after stress, gravity and grid forces as its normal-impulse proxy; it is not a full complementarity solve and can underestimate static friction when resting contact has no inward velocity in that step. Active friction and adhesion parameters support adjoint differentiation within the selected contact branches.
+
+### Grid-only Dirichlet contact
+
+`simulation.tool_grid_contact_mode` defaults to `"inherit"`, which uses `tool_contact_model` on the grid. The opt-in `"dirichlet-v1"` mode requires SDF tools and sets each selected grid node's full velocity to `tool_velocity + tool_omega.cross(node_position - tool_center)`. This occurs before G2P, so particle velocity and affine velocity receive the constrained grid field. It is an instantaneous rigid-velocity constraint, not a port of DPSI's next-pose collision timing or finite-displacement tool velocity.
+
+`simulation.tool_grid_contact_padding` is an optional finite nonnegative distance in metres. Its default `null` inherits `tool_contact_padding`; setting it changes only grid contact selection. Particle velocity response and positional push-out retain the existing `tool_contact_model` and `tool_contact_padding`. Neither new option is a fitted material parameter. To test a half-cell grid band at grid 128, merge these fields into an existing simulation configuration, keeping its other settings unchanged:
+
+```json
+{
+  "grid": 128,
+  "tool_collision": "sdf",
+  "tool_grid_contact_mode": "dirichlet-v1",
+  "tool_grid_contact_padding": 0.00390625,
+  "tool_contact_padding": 0.0013
+}
+```
+
+Grid selection retains the strict `distance < padding` test, SDF-volume validity checks, and smallest signed-distance tool selection (the first tool wins ties). The full constraint applies during approach, sliding and separation while the node remains selected. There is no persistent bond or additional physical release criterion. A wider band also extends the region in which tool motion is imposed; it does not guarantee particle nonpenetration. Existing ordering remains floor response, tool response, then domain constraints, so incompatible tool/table constraints are not solved jointly.
+
+The response remains in the Taichi reverse computation. Within a fixed contact/selected-tool branch, gradients propagate through rigid tool velocity, tool center and G2P. The overwritten incoming grid velocity has zero derivative. Grid friction/adhesion parameters do not affect the prescribed velocity, but those parameters still act through particle contact and other steps. Enable tool-control adjoints with `Stepper(..., control_gradients=True)`. Contact activation, nearest-tool changes and release are discrete decisions, not globally smooth functions; finite-difference checks must stay within the same selection. There is no detached or straight-through gradient approximation.
+
+The frozen reference simulator rejects Dirichlet mode or unequal grid/particle padding. Both settings are recorded in resolved configurations and fingerprints; changed configurations require new runs rather than resuming an existing fit. Full recorded-motion accuracy and GPU validation of this mode must be checked separately.
 
 Parameters are differentiated through every replay step. Host checkpoints and a configurable device history bound memory. At segment boundaries, **all five state adjoints are carried backward**, rather than detached. Grid/material/contact intermediates are recomputed. By default, checkpoint endpoint and contact/yield-count disagreement rejects a backward evaluation.
 

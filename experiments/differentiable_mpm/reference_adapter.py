@@ -335,6 +335,10 @@ def reference_arguments(config: SimulationConfig, parameters: Mapping[str, float
         raise ValueError("The preserved simulator does not implement von-mises plasticity")
     if config.tool_contact_model not in ("retention-v1", "coulomb-v1"):
         raise ValueError(f"The preserved simulator does not implement {config.tool_contact_model}")
+    if config.tool_grid_contact_mode != "inherit":
+        raise ValueError("The preserved simulator does not implement grid Dirichlet contact")
+    if config.effective_tool_grid_contact_padding != config.tool_contact_padding:
+        raise ValueError("The preserved simulator requires matching grid and particle contact padding")
     if config.floor_contact_model != "retention-v1":
         raise ValueError("The preserved simulator only implements floor retention-v1")
     if config.precision != "f32":

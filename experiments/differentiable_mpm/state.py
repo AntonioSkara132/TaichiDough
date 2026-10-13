@@ -28,6 +28,7 @@ P2G_MODES = ("atomic", "serial")
 PHYSICS_VERSIONS = ("corrected-v1", "legacy-v1")
 BOUNDED_ADHESIVE_MODELS = ("coulomb-bounded-adhesive-v2", "coulomb-bounded-shear-adhesive-v3")
 TOOL_CONTACT_MODELS = ("retention-v1", "coulomb-v1", "coulomb-adhesive-v1", *BOUNDED_ADHESIVE_MODELS)
+TOOL_GRID_CONTACT_MODES = ("inherit", "dirichlet-v1")
 FLOOR_CONTACT_MODELS = ("retention-v1", "coulomb-v1")
 # Relative tangential speed (m/s) added in quadrature before dividing by it, so the
 # Coulomb scale and its derivative stay finite when tool or floor and dough move together.
@@ -93,6 +94,8 @@ class SimulationConfig:
     tool_collision: str = "none"
     tool_contact_padding: float = 1.0 / 384.0
     tool_contact_model: str = "retention-v1"
+    tool_grid_contact_mode: str = "inherit"
+    tool_grid_contact_padding: float | None = None
     tool_friction_coefficient: float = 0.5
     tool_contact_absorption: float = 0.0
     tool_stickiness: float = 0.0
@@ -133,6 +136,15 @@ class SimulationConfig:
             raise ValueError("The experiment supports recorded SDF tools or no tools")
         if not isinstance(self.tool_contact_model, str) or self.tool_contact_model not in TOOL_CONTACT_MODELS:
             raise ValueError(f"tool_contact_model must be one of {TOOL_CONTACT_MODELS}")
+        if not isinstance(self.tool_grid_contact_mode, str) or self.tool_grid_contact_mode not in TOOL_GRID_CONTACT_MODES:
+            raise ValueError(f"tool_grid_contact_mode must be one of {TOOL_GRID_CONTACT_MODES}")
+        if self.tool_grid_contact_mode == "dirichlet-v1" and self.tool_collision != "sdf":
+            raise ValueError("dirichlet-v1 grid contact requires SDF tool collision")
+        grid_padding = self.tool_grid_contact_padding
+        if grid_padding is not None and (
+                isinstance(grid_padding, (bool, np.bool_)) or not isinstance(grid_padding, (int, float))
+                or not np.isfinite(grid_padding) or grid_padding < 0):
+            raise ValueError("tool_grid_contact_padding must be None or a finite nonnegative number")
         for name in ("tool_friction_coefficient", "tool_adhesion", "floor_friction_coefficient"):
             value = getattr(self, name)
             if (isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, float))
@@ -174,6 +186,10 @@ class SimulationConfig:
             raise ValueError("Contact padding and floor damping band must be nonnegative")
 
     @property
+    def effective_tool_grid_contact_padding(self) -> float:
+        return self.tool_contact_padding if self.tool_grid_contact_padding is None else self.tool_grid_contact_padding
+
+    @property
     def allocated_grid(self) -> int:
         return self.grid + (self.physics_version == "corrected-v1")
 
@@ -203,6 +219,59 @@ class ToolControl:
             raise ValueError("Nonfinite tool controls")
         if not np.allclose(np.linalg.norm(self.poses[:, 3:], axis=1), 1, atol=1e-5):
             raise ValueError("Tool quaternions must be unit length")
+
+
+def quaternion_matrix(quaternions):
+    """Rotation matrices [...,3,3] from xyzw quaternions [...,4]; the formula the solver uploads."""
+    x, y, z, w = np.moveaxis(np.asarray(quaternions, dtype=np.float64), -1, 0)
+    return np.stack([
+        np.stack([1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)], -1),
+        np.stack([2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)], -1),
+        np.stack([2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)], -1),
+    ], -2)
+
+
+def quaternion_matrix_vjp(quaternions, matrix_gradient):
+    """dL/dq [...,4] for the raw (not renormalized) xyzw components, given dL/dR [...,3,3]."""
+    x, y, z, w = np.moveaxis(np.asarray(quaternions, dtype=np.float64), -1, 0)
+    G = np.asarray(matrix_gradient, dtype=np.float64)
+    g = lambda i, j: G[..., i, j]
+    return 2 * np.stack([
+        y * (g(0, 1) + g(1, 0)) + z * (g(0, 2) + g(2, 0)) - w * (g(1, 2) - g(2, 1)) - 2 * x * (g(1, 1) + g(2, 2)),
+        x * (g(0, 1) + g(1, 0)) + z * (g(1, 2) + g(2, 1)) + w * (g(0, 2) - g(2, 0)) - 2 * y * (g(0, 0) + g(2, 2)),
+        x * (g(0, 2) + g(2, 0)) + y * (g(1, 2) + g(2, 1)) - w * (g(0, 1) - g(1, 0)) - 2 * z * (g(0, 0) + g(1, 1)),
+        -z * (g(0, 1) - g(1, 0)) + y * (g(0, 2) - g(2, 0)) - x * (g(1, 2) - g(2, 1)),
+    ], -1)
+
+
+def rotation_vector_vjp(rotations, matrix_gradient):
+    """dL/dθ [...,3] for a world-frame rotation R -> exp([θ]x) R at θ = 0, given dL/dR."""
+    M = np.asarray(matrix_gradient, dtype=np.float64) @ np.swapaxes(np.asarray(rotations, dtype=np.float64), -1, -2)
+    return np.stack([M[..., 2, 1] - M[..., 1, 2], M[..., 0, 2] - M[..., 2, 0], M[..., 1, 0] - M[..., 0, 1]], -1)
+
+
+@dataclass
+class ToolControlGradient:
+    """Loss derivatives for one ToolControl, laid out like it.
+
+    poses [2,7] holds dL/d(center xyz) and dL/d(raw quaternion xyzw); the quaternion
+    part includes a component along q that a unit-norm update removes. rotation [2,3]
+    is dL/dθ for a world-frame rotation exp([θ]x) R, the usual direction for
+    updating orientation. velocities [2,6] holds dL/d(linear, angular velocity).
+    """
+    poses: np.ndarray
+    velocities: np.ndarray
+    rotation: np.ndarray
+
+    @classmethod
+    def zeros(cls):
+        return cls(np.zeros((2, 7)), np.zeros((2, 6)), np.zeros((2, 3)))
+
+    def __iadd__(self, other):
+        self.poses += other.poses
+        self.velocities += other.velocities
+        self.rotation += other.rotation
+        return self
 
 
 @dataclass
