@@ -7,7 +7,7 @@ frozen reference transfer. Discrete decisions are differentiated within the acti
 import numpy as np
 import taichi as ti
 
-from .state import (DEFAULT_PARAMETERS, PARAMETER_NAMES, SLIP_SPEED_EPSILON, STATE_NAMES, InvalidStateError,
+from .state import (BOUNDED_ADHESIVE_MODELS, DEFAULT_PARAMETERS, PARAMETER_NAMES, SLIP_SPEED_EPSILON, STATE_NAMES, InvalidStateError,
                     ParticleState, SimulationConfig, SDFData, ToolControl,
                     normalize_parameters, validate_tool_parameters)
 from .spectral import (clamp_forward, clamp_vjp, polar_forward, polar_vjp,
@@ -411,15 +411,15 @@ class Stepper:
 
     @ti.func
     def _bounded_adhesive_response(self, velocity, collider_v, normal):
-        """coulomb-bounded-adhesive-v2 velocity response.
+        """Shared bounded normal response, with independent shear adhesion in v3.
 
-        Approach (vn < 0) removes the inward normal velocity. Separation (vn >= 0)
-        is slowed by adhesion acting along the normal only: the removed speed
-        limit*vn/sqrt(vn^2 + limit^2) is close to vn for slow separation and tends to
-        limit = tool_adhesion * dt for fast separation, so dough pulls off once the
-        separating acceleration exceeds tool_adhesion (m/s^2). Both normal changes
-        feed the Coulomb friction bound, so adhesion holds tangentially only as
-        much as friction allows.
+        Approach removes inward normal velocity. During separation the removed
+        speed tends to tool_adhesion * dt at high relative speed. Both normal
+        corrections supply Coulomb friction. v3 additionally permits up to
+        tool_adhesion * dt of tangential correction, even at zero normal load.
+        These are independent caps, not a bound on the combined correction.
+        tool_adhesion is an acceleration (m/s^2), not interface stress; contact
+        has no persistent bond and stops acting outside the contact region.
         """
         relative = velocity - collider_v
         vn = relative.dot(normal)
@@ -430,7 +430,12 @@ class Stepper:
             limit = self.parameters[9] * self.dt
             normal_change = limit * vn / ti.sqrt(vn * vn + limit * limit + SLIP_SPEED_EPSILON ** 2)
             new_vn = vn - normal_change
-        return collider_v + normal * new_vn + self._coulomb_slip(tangential, normal_change, self.parameters[7])
+        new_tangential = self._coulomb_slip(tangential, normal_change, self.parameters[7])
+        if ti.static(self.config.tool_contact_model == "coulomb-bounded-shear-adhesive-v3"):
+            budget = self.parameters[7] * normal_change + self.parameters[9] * self.dt
+            speed = ti.sqrt(tangential.norm_sqr() + SLIP_SPEED_EPSILON ** 2)
+            new_tangential = tangential * ti.max(0.0, 1.0 - budget / speed)
+        return collider_v + normal * new_vn + new_tangential
 
     @ti.func
     def _tool_velocity_response(self, velocity, collider_v, normal):
@@ -442,7 +447,7 @@ class Stepper:
         result = velocity
         relative = velocity - collider_v
         vn = relative.dot(normal)
-        if ti.static(self.config.tool_contact_model == "coulomb-bounded-adhesive-v2"):
+        if ti.static(self.config.tool_contact_model in BOUNDED_ADHESIVE_MODELS):
             result = self._bounded_adhesive_response(velocity, collider_v, normal)
         elif ti.static(self.config.tool_contact_model != "retention-v1"):
             if vn < 0:

@@ -26,7 +26,8 @@ DEFAULT_PARAMETERS = {
 STATE_NAMES = ("x", "v", "C", "F", "Jp")
 P2G_MODES = ("atomic", "serial")
 PHYSICS_VERSIONS = ("corrected-v1", "legacy-v1")
-TOOL_CONTACT_MODELS = ("retention-v1", "coulomb-v1", "coulomb-adhesive-v1", "coulomb-bounded-adhesive-v2")
+BOUNDED_ADHESIVE_MODELS = ("coulomb-bounded-adhesive-v2", "coulomb-bounded-shear-adhesive-v3")
+TOOL_CONTACT_MODELS = ("retention-v1", "coulomb-v1", "coulomb-adhesive-v1", *BOUNDED_ADHESIVE_MODELS)
 FLOOR_CONTACT_MODELS = ("retention-v1", "coulomb-v1")
 # Relative tangential speed (m/s) added in quadrature before dividing by it, so the
 # Coulomb scale and its derivative stay finite when tool or floor and dough move together.
@@ -143,11 +144,11 @@ class SimulationConfig:
             raise ValueError("coulomb-v1 requires zero tool contact absorption and stickiness")
         if self.tool_contact_model == "coulomb-adhesive-v1" and self.tool_contact_absorption != 0:
             raise ValueError("coulomb-adhesive-v1 requires zero tool contact absorption")
-        if self.tool_contact_model == "coulomb-bounded-adhesive-v2" and (
+        if self.tool_contact_model in BOUNDED_ADHESIVE_MODELS and (
                 self.tool_contact_absorption != 0 or self.tool_stickiness != 0):
-            raise ValueError("coulomb-bounded-adhesive-v2 requires zero tool contact absorption and stickiness")
-        if self.tool_contact_model != "coulomb-bounded-adhesive-v2" and self.tool_adhesion != 0:
-            raise ValueError("tool_adhesion requires coulomb-bounded-adhesive-v2")
+            raise ValueError(f"{self.tool_contact_model} requires zero tool contact absorption and stickiness")
+        if self.tool_contact_model not in BOUNDED_ADHESIVE_MODELS and self.tool_adhesion != 0:
+            raise ValueError(f"tool_adhesion requires one of {BOUNDED_ADHESIVE_MODELS}")
         if self.floor_contact_model == "coulomb-v1" and (self.floor_absorption != 0 or self.floor_stickiness != 0):
             raise ValueError("Floor coulomb-v1 requires zero floor absorption and stickiness")
         if self.precision not in {"f32", "f64"}:
@@ -274,14 +275,14 @@ def validate_tool_parameters(values, config, fit=()):
     """Reject unsupported contact fits instead of returning identically zero gradients."""
     model = config.tool_contact_model
     fitted = set(fit)
-    if model in ("coulomb-v1", "coulomb-bounded-adhesive-v2") and values["tool_stickiness"] != 0:
+    if model in ("coulomb-v1", *BOUNDED_ADHESIVE_MODELS) and values["tool_stickiness"] != 0:
         raise ValueError("Nonzero tool_stickiness requires retention-v1 or coulomb-adhesive-v1")
-    if model != "coulomb-bounded-adhesive-v2" and values["tool_adhesion"] != 0:
-        raise ValueError("Nonzero tool_adhesion requires coulomb-bounded-adhesive-v2")
-    if model != "coulomb-bounded-adhesive-v2" and "tool_adhesion" in fitted:
-        raise ValueError("tool_adhesion is inactive outside coulomb-bounded-adhesive-v2")
-    if model == "coulomb-bounded-adhesive-v2" and "tool_stickiness" in fitted:
-        raise ValueError("coulomb-bounded-adhesive-v2 uses tool_adhesion instead of tool_stickiness")
+    if model not in BOUNDED_ADHESIVE_MODELS and values["tool_adhesion"] != 0:
+        raise ValueError(f"Nonzero tool_adhesion requires one of {BOUNDED_ADHESIVE_MODELS}")
+    if model not in BOUNDED_ADHESIVE_MODELS and "tool_adhesion" in fitted:
+        raise ValueError(f"tool_adhesion is inactive outside {BOUNDED_ADHESIVE_MODELS}")
+    if model in BOUNDED_ADHESIVE_MODELS and "tool_stickiness" in fitted:
+        raise ValueError(f"{model} uses tool_adhesion instead of tool_stickiness")
     floor = getattr(config, "floor_contact_model", "retention-v1")
     if floor == "coulomb-v1" and "floor_retention" in fitted:
         raise ValueError("floor_retention is inactive with floor_contact_model='coulomb-v1'")
