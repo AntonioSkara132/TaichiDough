@@ -111,7 +111,7 @@ def von_mises_forward(F, youngs_modulus, poisson_ratio, yield_stress):
 
 @ti.func
 def von_mises_vjp(F, youngs_modulus, poisson_ratio, yield_stress, Y_bar):
-    """VJP of :func:`von_mises_forward`, including projection bars for E and nu."""
+    """VJP of :func:`von_mises_forward`, including projection bars for E, nu and yield stress."""
     U, sig, V = ti.svd(F)
     epsilon = ti.Vector([0.0, 0.0, 0.0])
     mean = F[0, 0] * 0.0
@@ -123,6 +123,7 @@ def von_mises_vjp(F, youngs_modulus, poisson_ratio, yield_stress, Y_bar):
     limit = yield_stress * (1.0 + poisson_ratio) / youngs_modulus
     young_bar = F[0, 0] * 0.0
     poisson_bar = F[0, 0] * 0.0
+    yield_bar = F[0, 0] * 0.0
     F_bar = Y_bar
     if radius >= limit:
         normal = deviator / radius
@@ -148,6 +149,7 @@ def von_mises_vjp(F, youngs_modulus, poisson_ratio, yield_stress, Y_bar):
             limit_bar += K[i, i] * corrected[i] * normal[i]
         young_bar = -limit_bar * limit / youngs_modulus
         poisson_bar = limit_bar * limit / (1.0 + poisson_ratio)
+        yield_bar = limit_bar * limit / yield_stress
 
         local_bar = F * 0.0
         for i, j in ti.static(ti.ndrange(3, 3)):
@@ -166,4 +168,4 @@ def von_mises_vjp(F, youngs_modulus, poisson_ratio, yield_stress, Y_bar):
                     + skew_coefficient * (K[i, j] - K[j, i]) * 0.5
                 )
         F_bar = U @ local_bar @ V.transpose()
-    return F_bar, young_bar, poisson_bar
+    return F_bar, young_bar, poisson_bar, yield_bar

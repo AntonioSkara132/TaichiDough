@@ -18,6 +18,7 @@ from experiments.differentiable_mpm.data import camera_from_calibration, scaled_
 from experiments.differentiable_mpm.evaluate import fresh_directory, require_complete_frames, require_owned_output
 from experiments.differentiable_mpm.replay import RecordedControls, observation_schedule
 from experiments.differentiable_mpm import evaluate
+from experiments.differentiable_mpm.state import DEFAULT_PARAMETERS, INACTIVE_YIELD_STRESS_PA, LEGACY_PARAMETER_NAMES
 from experiments.differentiable_mpm.tests import helpers
 from experiments.differentiable_mpm.tests.helpers import temporary_directory
 
@@ -128,6 +129,59 @@ class InputTests(unittest.TestCase):
         config.fit_parameters = ["youngs_modulus", "plastic_min"]
         with self.assertRaisesRegex(ValueError, "plastic bounds"):
             config.validate()
+
+    def test_von_mises_yield_stress_is_a_fittable_parameter(self):
+        from experiments.differentiable_mpm.parameters import PhysicalParameterSpace
+
+        config = self.fixture_config()
+        config.simulation.update(plasticity="von-mises", von_mises_yield_stress_pa=800.0)
+        config.fit_parameters = ["youngs_modulus", "von_mises_yield_stress_pa"]
+        config.parameter_bounds = {"von_mises_yield_stress_pa": [100.0, 5000.0]}
+        config.validate()
+        # The configured value is the initial parameter; the parameter value is mirrored back.
+        self.assertEqual(config.parameters["von_mises_yield_stress_pa"], 800.0)
+        config.parameters["von_mises_yield_stress_pa"] = 1200.0
+        config.validate()
+        self.assertEqual(config.simulation["von_mises_yield_stress_pa"], 1200.0)
+        space = PhysicalParameterSpace(config.parameters, config.fit_parameters, "von-mises",
+                                       bounds=config.parameter_bounds)
+        coordinates = space.coordinates()
+        self.assertEqual(coordinates[1], 0.0)
+        shifted = coordinates + [0.0, np.log(2.0)]
+        self.assertAlmostEqual(space.physical(shifted)["von_mises_yield_stress_pa"], 2400.0)
+        gradient = space.pullback(shifted, {"youngs_modulus": 0.0, "von_mises_yield_stress_pa": 3.0})
+        self.assertAlmostEqual(gradient[1], 3.0 * 2400.0)
+
+    def test_yield_stress_fit_requires_von_mises(self):
+        from experiments.differentiable_mpm.parameters import PhysicalParameterSpace
+
+        config = self.fixture_config()
+        for plasticity in ("none", "stretch-clamp"):
+            config.simulation["plasticity"] = plasticity
+            config.fit_parameters = ["youngs_modulus", "von_mises_yield_stress_pa"]
+            with self.subTest(plasticity=plasticity):
+                with self.assertRaisesRegex(ValueError, "von-mises"):
+                    config.validate()
+                with self.assertRaisesRegex(ValueError, "von-mises"):
+                    PhysicalParameterSpace(DEFAULT_PARAMETERS, config.fit_parameters, plasticity)
+        # Non-von-Mises configurations keep the inactive default and leave the setting unset.
+        config.simulation["plasticity"] = "none"
+        config.fit_parameters = ["youngs_modulus"]
+        config.validate()
+        self.assertEqual(config.parameters["von_mises_yield_stress_pa"], INACTIVE_YIELD_STRESS_PA)
+        self.assertNotIn("von_mises_yield_stress_pa", config.simulation)
+
+    def test_records_without_yield_stress_take_the_configured_value(self):
+        from experiments.differentiable_mpm.state import normalize_parameters, SimulationConfig
+
+        old = {name: DEFAULT_PARAMETERS[name] for name in LEGACY_PARAMETER_NAMES}
+        simulation = SimulationConfig(n_particles=1, plasticity="von-mises", von_mises_yield_stress_pa=650.0)
+        self.assertEqual(normalize_parameters(old, simulation)["von_mises_yield_stress_pa"], 650.0)
+        self.assertEqual(normalize_parameters(old, {"von_mises_yield_stress_pa": None})["von_mises_yield_stress_pa"],
+                         INACTIVE_YIELD_STRESS_PA)
+        for value in (0.0, -1.0, float("nan"), True):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                normalize_parameters(dict(old, von_mises_yield_stress_pa=value), simulation)
 
     def test_examples_select_training_loss_version_explicitly(self):
         from experiments.differentiable_mpm.loss import LossConfig

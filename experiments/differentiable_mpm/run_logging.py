@@ -60,6 +60,7 @@ BALANCED_STABILITY_ATOL = {
     "tool_stickiness": 1e-5,
     "tool_adhesion": 1e-2,
     "floor_friction_coefficient": 1e-4,
+    "von_mises_yield_stress_pa": 0.1,
 }
 
 

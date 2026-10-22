@@ -186,6 +186,8 @@ python3 -m experiments.differentiable_mpm.calibrate fit \
 
 That configuration changes the enabled plasticity model relative to the recent pure-viscoelastic runs; it is an explicit experiment, not an automatic reinterpretation of those results. Fitting inactive plastic limits is refused.
 
+With `plasticity="von-mises"`, `von_mises_yield_stress_pa` is also a physical parameter and can be listed in `fit_parameters` (or in a dataset's `shared_parameters`). The simulation setting supplies its initial value and records that lack it; the fitted value is written back to the simulation setting. It uses a log coordinate like E, default bounds 10 Pa–1 MPa, and receives gradient only from yielded particles: with radius `r = σ_y(1+ν)/E`, the projection adjoint gives `∂L/∂σ_y = (∂L/∂r)·r/σ_y`. Fitting it with any other plasticity model is refused. The value is the radius of the Hencky deviatoric stress at yield, so the uniaxial yield stress is `√(3/2)·σ_y`. Adding this twelfth parameter changes serialized parameter records and configuration fingerprints; older records still load.
+
 For non-adhesive tool friction, create a new configuration rather than changing an existing run's identity. Its `simulation` object must explicitly contain:
 
 ```json

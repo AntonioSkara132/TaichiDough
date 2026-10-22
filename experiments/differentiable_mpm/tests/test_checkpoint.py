@@ -103,7 +103,8 @@ class CheckpointTests(unittest.TestCase):
         self.controls = np.linspace(0, 0.1, 8)
         self.obs = [Observation(i, s, np.full((1, 3), 0.2 + 0.01 * i))
                     for i, s in enumerate([0, 2, 3, 3, 4, 6, 8])]
-        self.parameters = dict(DEFAULT_PARAMETERS, youngs_modulus=3.0)
+        # The linear test stepper uses every parameter, so keep each one of order one.
+        self.parameters = dict(DEFAULT_PARAMETERS, youngs_modulus=3.0, von_mises_yield_stress_pa=1.5)
 
     def rollout(self, length, initial=None, drift=False, ignore_recompute_mismatch=False):
         return CheckpointedRollout(LinearStepper(length + 1, drift),

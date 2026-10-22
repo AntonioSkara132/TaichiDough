@@ -25,11 +25,15 @@ def viscosity_quadratic(target):
     return objective
 
 
+# Every parameter except the yield stress, which is fitted only with von Mises plasticity.
+STRETCH_CLAMP_NAMES = tuple(name for name in PARAMETER_NAMES if name != "von_mises_yield_stress_pa")
+
+
 class ParameterTests(unittest.TestCase):
     def test_roundtrip_and_zero_viscosity(self):
-        space = PhysicalParameterSpace(DEFAULT_PARAMETERS, PARAMETER_NAMES, "stretch-clamp")
+        space = PhysicalParameterSpace(DEFAULT_PARAMETERS, STRETCH_CLAMP_NAMES, "stretch-clamp")
         actual = space.physical(space.coordinates())
-        for name in PARAMETER_NAMES:
+        for name in DEFAULT_PARAMETERS:
             self.assertAlmostEqual(actual[name], DEFAULT_PARAMETERS[name], places=8)
         self.assertEqual(actual["viscosity"], 0.0)
         self.assertEqual(space.coordinates()[2], 0.0)
@@ -37,9 +41,9 @@ class ParameterTests(unittest.TestCase):
 
     def test_all_coordinate_derivatives(self):
         initial = dict(DEFAULT_PARAMETERS, viscosity=13.0, tool_stickiness=0.2, tool_adhesion=30.0)
-        space = PhysicalParameterSpace(initial, PARAMETER_NAMES, "stretch-clamp")
+        space = PhysicalParameterSpace(initial, STRETCH_CLAMP_NAMES, "stretch-clamp")
         u = space.coordinates()
-        physical_gradient = dict(zip(PARAMETER_NAMES, [2e-5, -0.7, 0.05, 2.0, -4.0, 0.9, -0.4, 0.6, -0.8, 0.003, -0.5]))
+        physical_gradient = dict(zip(STRETCH_CLAMP_NAMES, [2e-5, -0.7, 0.05, 2.0, -4.0, 0.9, -0.4, 0.6, -0.8, 0.003, -0.5]))
         expected = space.pullback(u, physical_gradient)
         finite_difference = np.zeros_like(u)
         h = 1e-5
@@ -48,7 +52,7 @@ class ParameterTests(unittest.TestCase):
             offset[i] = h
             plus, minus = space.physical(u + offset), space.physical(u - offset)
             finite_difference[i] = sum(physical_gradient[name] * (plus[name] - minus[name])
-                                       for name in PARAMETER_NAMES) / (2 * h)
+                                       for name in STRETCH_CLAMP_NAMES) / (2 * h)
         np.testing.assert_allclose(expected, finite_difference, rtol=1e-8, atol=1e-9)
         zero = viscosity_space(0)
         self.assertEqual(zero.pullback(zero.coordinates(), {"viscosity": -2})[0], -2)
@@ -60,7 +64,7 @@ class ParameterTests(unittest.TestCase):
         self.assertEqual(space.project([5])[0], 1.0)
         physical = space.physical(space.project([5]))
         self.assertEqual(physical["viscosity"], 1.0)
-        for name in set(PARAMETER_NAMES) - {"viscosity"}:
+        for name in set(STRETCH_CLAMP_NAMES) - {"viscosity"}:
             self.assertEqual(physical[name], DEFAULT_PARAMETERS[name])
         with self.assertRaisesRegex(ValueError, "outside"):
             space.physical([-0.1])
@@ -107,18 +111,18 @@ class OptimizerTests(unittest.TestCase):
                        plastic_min=0.84, plastic_max=1.18, tool_retention=0.45, floor_retention=0.55,
                        tool_friction_coefficient=0.7, tool_stickiness=0.25, tool_adhesion=40.0,
                        floor_friction_coefficient=0.8)
-        normalizers = dict(zip(PARAMETER_NAMES, [1e5, 0.1, 100, 0.1, 0.1, 1, 1, 1, 1, 100, 1]))
+        normalizers = dict(zip(STRETCH_CLAMP_NAMES, [1e5, 0.1, 100, 0.1, 0.1, 1, 1, 1, 1, 100, 1]))
         evaluations = []
 
         def objective(parameters):
             evaluations.append(dict(parameters))
             value = sum(0.5 * ((parameters[name] - targets[name]) / normalizers[name]) ** 2
-                        for name in PARAMETER_NAMES)
+                        for name in STRETCH_CLAMP_NAMES)
             gradient = {name: (parameters[name] - targets[name]) / normalizers[name] ** 2
-                        for name in PARAMETER_NAMES}
+                        for name in STRETCH_CLAMP_NAMES}
             return ObjectiveValue(value, gradient)
 
-        space = PhysicalParameterSpace(initial, PARAMETER_NAMES, "stretch-clamp")
+        space = PhysicalParameterSpace(initial, STRETCH_CLAMP_NAMES, "stretch-clamp")
         optimizer = ProjectedAdam(space, objective, AdamOptions(learning_rate=0.1))
         initial_value = optimizer.initialize().value
         result = optimizer.run(250)

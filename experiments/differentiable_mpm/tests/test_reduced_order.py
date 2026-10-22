@@ -8,7 +8,7 @@ import torch
 
 from experiments.differentiable_mpm.reduced_order import PODCodec, ReducedDynamics, control_features
 from experiments.differentiable_mpm.reduced_order_data import Trajectory, encode_control, pack_state
-from experiments.differentiable_mpm.state import DEFAULT_PARAMETERS, PARAMETER_NAMES, ParticleState, ToolControl
+from experiments.differentiable_mpm.state import DEFAULT_PARAMETERS, PARAMETER_NAMES, normalize_parameters, ParticleState, ToolControl
 from experiments.differentiable_mpm.train_reduced_order import split_trajectories, train, evaluate
 
 
@@ -23,7 +23,7 @@ def trajectory(index, steps=12):
     states = np.repeat(initial[None], steps + 1, axis=0)
     for k in range(steps + 1):
         states[k, [0, 3]] += k * .01 * control.velocities[0, 0]
-    return Trajectory(states, controls, np.array([DEFAULT_PARAMETERS[n] for n in PARAMETER_NAMES]),
+    return Trajectory(states, controls, np.array([normalize_parameters(DEFAULT_PARAMETERS)[n] for n in PARAMETER_NAMES]),
                       .01, f'trajectory-{index}', 'fixed-test-scene')
 
 

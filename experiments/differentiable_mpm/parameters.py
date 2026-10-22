@@ -7,6 +7,7 @@ import numpy as np
 from .state import PARAMETER_NAMES, validate_parameters, normalize_parameters
 
 
+LOG_PARAMETERS = ("youngs_modulus", "von_mises_yield_stress_pa")
 DEFAULT_BOUNDS = {
     "youngs_modulus": (100.0, 1.0e7),
     "poisson_ratio": (0.01, 0.49),
@@ -19,6 +20,7 @@ DEFAULT_BOUNDS = {
     "tool_stickiness": (0.0, 1.0),
     "tool_adhesion": (0.0, 1000.0),
     "floor_friction_coefficient": (0.0, 2.0),
+    "von_mises_yield_stress_pa": (10.0, 1.0e6),
 }
 DEFAULT_SCALES = {
     "poisson_ratio": 0.1,
@@ -37,7 +39,7 @@ DEFAULT_SCALES = {
 class PhysicalParameterSpace:
     """Transform fitted values without changing any fixed physical parameters.
 
-    E uses log(E / scale); viscosity and retention use value / scale; the
+    E and the von Mises yield stress use log(value / scale); viscosity and retention use value / scale; the
     lower/upper plastic bounds use (1 - lower) / scale and (upper - 1) / scale.
     Nu uses a linear scaled coordinate with explicit bounds below 0.5. Projection
     belongs to the optimizer: ``pullback`` does not differentiate projection.
@@ -61,6 +63,8 @@ class PhysicalParameterSpace:
         self.plasticity = plasticity
         if plasticity != "stretch-clamp" and {"plastic_min", "plastic_max"}.intersection(self.fit):
             raise ValueError("Fitting plastic limits requires explicit stretch-clamp plasticity")
+        if plasticity != "von-mises" and "von_mises_yield_stress_pa" in self.fit:
+            raise ValueError("Fitting von_mises_yield_stress_pa requires von-mises plasticity")
         supplied_bounds = dict(bounds or {})
         supplied_scales = dict(scales or {})
         for name, supplied in (("bounds", supplied_bounds), ("scales", supplied_scales)):
@@ -79,7 +83,8 @@ class PhysicalParameterSpace:
             self._validate_bound(name, lower, upper)
             if (name in self.fit or name in supplied_bounds) and not lower <= self.initial[name] <= upper:
                 raise ValueError(f"Initial {name} is outside the configured fitting bounds")
-        self.scales = {"youngs_modulus": self.initial["youngs_modulus"], **DEFAULT_SCALES}
+        self.scales = {name: self.initial[name] for name in LOG_PARAMETERS}
+        self.scales.update(DEFAULT_SCALES)
         self.scales.update({name: float(value) for name, value in supplied_scales.items()})
         if not all(np.isfinite(value) and value > 0 for value in self.scales.values()):
             raise ValueError("All parameter scales must be finite and positive")
@@ -92,7 +97,7 @@ class PhysicalParameterSpace:
     @staticmethod
     def _validate_bound(name, lower, upper):
         valid = True
-        if name == "youngs_modulus":
+        if name in LOG_PARAMETERS:
             valid = lower > 0
         elif name == "poisson_ratio":
             valid = -1 < lower < upper < 0.5
@@ -109,7 +114,7 @@ class PhysicalParameterSpace:
 
     def _encode(self, name, value):
         scale = self.scales[name]
-        if name == "youngs_modulus":
+        if name in LOG_PARAMETERS:
             return math.log(value) - math.log(scale)
         if name == "plastic_min":
             return (1.0 - value) / scale
@@ -136,7 +141,7 @@ class PhysicalParameterSpace:
             raise ValueError("Parameter coordinates are outside their bounds; project proposals first")
         result = dict(self.initial)
         for name, value in zip(self.fit, u):
-            if name == "youngs_modulus":
+            if name in LOG_PARAMETERS:
                 physical = math.exp(float(value) + math.log(self.scales[name]))
             elif name == "plastic_min":
                 physical = 1.0 - self.scales[name] * float(value)
@@ -160,7 +165,7 @@ class PhysicalParameterSpace:
         gradient = []
         for name in self.fit:
             derivative = self.scales[name]
-            if name == "youngs_modulus":
+            if name in LOG_PARAMETERS:
                 derivative = physical[name]
             elif name == "plastic_min":
                 derivative = -derivative

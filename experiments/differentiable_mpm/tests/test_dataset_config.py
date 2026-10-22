@@ -344,6 +344,30 @@ class DatasetConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "incompatible shared"):
             load_dataset(self.path)
 
+    def test_von_mises_dataset_fits_shared_yield_stress(self):
+        initial = self.document["shared_parameters"]["initial"]
+        initial["von_mises_yield_stress_pa"] = 900.0
+        self.document["shared_parameters"]["fit"] = ["youngs_modulus", "von_mises_yield_stress_pa"]
+        self.document["shared_parameters"]["bounds"] = {"youngs_modulus": [4000, 40000],
+                                                        "von_mises_yield_stress_pa": [100, 5000]}
+        for index, config in enumerate(self.configs):
+            # The shared value replaces each episode's configured initial value.
+            config["simulation"].update(plasticity="von-mises", von_mises_yield_stress_pa=1000.0 + 200 * index,
+                                        tool_contact_absorption=0.0, tool_stickiness=0.0)
+        self.write()
+        dataset = load_dataset(self.path)
+        self.assertIn("von_mises_yield_stress_pa", dataset.shared_parameter_names)
+        for episode in dataset.episodes:
+            self.assertEqual(episode.config.parameters["von_mises_yield_stress_pa"], 900.0)
+            self.assertEqual(episode.config.simulation["von_mises_yield_stress_pa"], 900.0)
+        self.assertEqual(dataset.parameter_space().fit, ("youngs_modulus", "von_mises_yield_stress_pa"))
+        for config in self.configs:
+            config["simulation"]["plasticity"] = "stretch-clamp"
+            config["simulation"].pop("von_mises_yield_stress_pa")
+        self.write()
+        with self.assertRaisesRegex(ValueError, "von-mises"):
+            load_dataset(self.path)
+
     def test_von_mises_dataset_rejects_plastic_limit_fit(self):
         for config in self.configs:
             config["simulation"].update(

@@ -283,8 +283,7 @@ class Stepper:
                     ti.atomic_add(self.counts[0], 1)
             elif ti.static(self.use_von_mises):
                 corrected, yielded = von_mises_forward(
-                    trial, self.parameters[0], self.parameters[1],
-                    self.config.von_mises_yield_stress_pa,
+                    trial, self.parameters[0], self.parameters[1], self.parameters[11],
                 )
                 self.corrected[p] = corrected
                 self.yielded[p] = yielded
@@ -303,13 +302,14 @@ class Stepper:
                 self.parameters.grad[3] += lower
                 self.parameters.grad[4] += upper
             elif ti.static(self.use_von_mises):
-                gradient, young_bar, nu_bar = von_mises_vjp(
-                    self.trial[p], self.parameters[0], self.parameters[1],
-                    self.config.von_mises_yield_stress_pa, self.corrected.grad[p],
+                gradient, young_bar, nu_bar, yield_bar = von_mises_vjp(
+                    self.trial[p], self.parameters[0], self.parameters[1], self.parameters[11],
+                    self.corrected.grad[p],
                 )
                 self.trial.grad[p] += gradient
                 self.parameters.grad[0] += young_bar
                 self.parameters.grad[1] += nu_bar
+                self.parameters.grad[11] += yield_bar
             else:
                 self.trial.grad[p] += self.corrected.grad[p]
 

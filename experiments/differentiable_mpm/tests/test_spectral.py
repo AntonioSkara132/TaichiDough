@@ -41,7 +41,7 @@ class SpectralKernels:
         self.material = ti.Vector.field(3, dtype=dtype, shape=())
         self.von_mises = ti.Matrix.field(3, 3, dtype=dtype, shape=())
         self.von_mises_bar = ti.Matrix.field(3, 3, dtype=dtype, shape=())
-        self.von_mises_parameter_bar = ti.Vector.field(2, dtype=dtype, shape=())
+        self.von_mises_parameter_bar = ti.Vector.field(3, dtype=dtype, shape=())
         self.von_mises_yielded = ti.field(dtype=ti.i32, shape=())
 
     @ti.kernel
@@ -86,11 +86,11 @@ class SpectralKernels:
 
     @ti.kernel
     def von_mises_backward_kernel(self):
-        F_bar, young_bar, poisson_bar = von_mises_vjp(
+        F_bar, young_bar, poisson_bar, yield_bar = von_mises_vjp(
             self.F[None], self.material[None][0], self.material[None][1], self.material[None][2], self.bar[None],
         )
         self.von_mises_bar[None] = F_bar
-        self.von_mises_parameter_bar[None] = ti.Vector([young_bar, poisson_bar])
+        self.von_mises_parameter_bar[None] = ti.Vector([young_bar, poisson_bar, yield_bar])
 
     def value(self, F, lower, upper, G, which):
         self.F[None] = F
@@ -376,13 +376,13 @@ def _run_precision(precision):
                         minus = float(np.sum(_numpy_von_mises(F - h * direction, young, poisson, yield_stress)[0] * G))
                         errors.append(abs((plus - minus) / (2 * h) - ad))
                     self.assertLessEqual(min(errors), matrix_tolerance * max(1.0, abs(ad)), name)
-                for index, (value, h) in enumerate(((young, 0.5), (poisson, 2e-5))):
-                    args_plus = [young, poisson]
-                    args_minus = [young, poisson]
+                for index, (value, h) in enumerate(((young, 0.5), (poisson, 2e-5), (yield_stress, 0.01))):
+                    args_plus = [young, poisson, yield_stress]
+                    args_minus = [young, poisson, yield_stress]
                     args_plus[index] = value + h
                     args_minus[index] = value - h
-                    plus = float(np.sum(_numpy_von_mises(F, *args_plus, yield_stress)[0] * G))
-                    minus = float(np.sum(_numpy_von_mises(F, *args_minus, yield_stress)[0] * G))
+                    plus = float(np.sum(_numpy_von_mises(F, *args_plus)[0] * G))
+                    minus = float(np.sum(_numpy_von_mises(F, *args_minus)[0] * G))
                     fd = (plus - minus) / (2 * h)
                     self.assertLessEqual(abs(fd - parameter_bar[index]),
                                          parameter_tolerance * max(1.0, abs(fd), abs(parameter_bar[index])))
@@ -405,6 +405,15 @@ def _run_precision(precision):
             self.assertTrue(np.isfinite(F_bar).all())
             self.assertTrue(np.isfinite(parameter_bar).all())
             self.assertGreater(np.linalg.norm(parameter_bar), 0)
+
+        def test_von_mises_yield_bar_is_scaled_radius_bar(self):
+            # r = sigma_y (1 + nu) / E, so sigma_y * yield_bar = -E * young_bar.
+            F = (_rotation([1, -1, 2], 0.3) @ np.diag(np.exp([0.18, -0.03, -0.15]))).astype(np_dtype)
+            young, poisson, yield_stress = 5000.0, 0.3, 100.0
+            _, parameter_bar = kernels.von_mises_adjoint(F, young, poisson, yield_stress, G)
+            self.assertGreater(abs(parameter_bar[2]), 0)
+            np.testing.assert_allclose(yield_stress * parameter_bar[2], -young * parameter_bar[0],
+                                       rtol=1e-10 if precision == "f64" else 1e-4)
 
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(KernelTests)
     result = unittest.TextTestRunner(verbosity=2).run(suite)

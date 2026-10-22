@@ -23,7 +23,7 @@ from .run_logging import (format_optimizer_boundary, format_optimizer_evaluation
                           stability_settings)
 from .runtime import init_runtime
 from .solver import Stepper
-from .state import (PARAMETER_NAMES, LEGACY_PARAMETER_NAMES, TUNABLE_TOOL_PARAMETERS,
+from .state import (PARAMETER_NAMES, LEGACY_PARAMETER_NAMES, SIMULATION_MIRRORED_PARAMETERS,
                     P2G_MODES, PHYSICS_VERSIONS, InvalidStateError, normalize_parameters)
 
 
@@ -118,7 +118,7 @@ def read_parameters(path, simulation=None):
         raise ValueError('Physical parameters must be an object')
     source: dict[str, object] = {'path': str(path), 'sha256': hashlib.sha256(raw).hexdigest()}
     defaults = dict(simulation or {})
-    if set(TUNABLE_TOOL_PARAMETERS) - set(values):
+    if set(SIMULATION_MIRRORED_PARAMETERS) - set(values):
         manifest_path = path.parent / 'run_manifest.json'
         if manifest_path.exists():
             manifest_raw = manifest_path.read_bytes()
@@ -137,7 +137,7 @@ def read_parameters(path, simulation=None):
             saved = prepared.get('simulation', {})
             if not isinstance(saved, dict):
                 raise ValueError('Saved simulation contact settings must be an object')
-            defaults.update({name: saved[name] for name in TUNABLE_TOOL_PARAMETERS if name in saved})
+            defaults.update({name: saved[name] for name in SIMULATION_MIRRORED_PARAMETERS if name in saved})
             source['contact_defaults_source'] = {
                 'path': str(manifest_path), 'sha256': hashlib.sha256(manifest_raw).hexdigest()}
     values = normalize_parameters(values, defaults)

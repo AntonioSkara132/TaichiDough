@@ -27,6 +27,8 @@ from .results import RUN_ROOT, SCHEMA as RUN_SCHEMA, RunStore, canonical_hash, s
 
 MATERIAL_NAMES = ("youngs_modulus", "poisson_ratio", "viscosity", "plastic_min", "plastic_max")
 CONTACT_NAMES = ("floor_retention", "tool_friction_coefficient", "tool_stickiness")
+# Shared values a dataset may add; they appear in selections only when present.
+OPTIONAL_SHARED_NAMES = ("tool_adhesion", "floor_friction_coefficient", "von_mises_yield_stress_pa")
 DATASET_V2 = "taichidough/differentiable-dataset/v2"
 
 
@@ -349,6 +351,8 @@ def verify_completed(calibration_directory, attempt, exit_code=0):
     names = MATERIAL_NAMES + CONTACT_NAMES if dataset_schema == DATASET_V2 else MATERIAL_NAMES
     parameter_key = "shared_physical_parameters" if dataset_schema == DATASET_V2 else "shared_material_parameters"
     values = selected.get(parameter_key)
+    if isinstance(values, dict):
+        names += tuple(name for name in OPTIONAL_SHARED_NAMES if name in values)
     if not isinstance(values, dict) or set(values) != set(names):
         raise ValueError("Selected parameters do not contain exactly the dataset shared values")
     values = {name: _finite(values[name], f"selected {name}") for name in names}

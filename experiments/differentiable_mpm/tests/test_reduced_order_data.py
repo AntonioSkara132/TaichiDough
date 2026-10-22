@@ -15,7 +15,7 @@ from experiments.differentiable_mpm.reduced_order_data import (
 )
 from experiments.differentiable_mpm.solver import Stepper
 from experiments.differentiable_mpm.state import (
-    DEFAULT_PARAMETERS, PARAMETER_NAMES, STATE_NAMES, InvalidStateError,
+    DEFAULT_PARAMETERS, PARAMETER_NAMES, STATE_NAMES, InvalidStateError, normalize_parameters,
     ParticleState, SimulationConfig, ToolControl,
 )
 from experiments.differentiable_mpm.tests.test_solver import fixture
@@ -27,7 +27,7 @@ def example_trajectory():
     next_state.x[:, 0] += .001
     control = encode_control(ToolControl.stationary())
     return Trajectory(np.stack([pack_state(state), pack_state(next_state)]),
-                      control[None], np.array([DEFAULT_PARAMETERS[name] for name in PARAMETER_NAMES]),
+                      control[None], np.array([normalize_parameters(DEFAULT_PARAMETERS)[name] for name in PARAMETER_NAMES]),
                       .0002, "one", "fixed-scene")
 
 

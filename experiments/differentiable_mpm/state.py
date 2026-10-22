@@ -10,12 +10,18 @@ from numpy.typing import DTypeLike
 PARAMETER_NAMES = (
     "youngs_modulus", "poisson_ratio", "viscosity", "plastic_min", "plastic_max",
     "tool_retention", "floor_retention", "tool_friction_coefficient", "tool_stickiness",
-    "tool_adhesion", "floor_friction_coefficient",
+    "tool_adhesion", "floor_friction_coefficient", "von_mises_yield_stress_pa",
 )
 LEGACY_PARAMETER_NAMES = PARAMETER_NAMES[:7]
 # Contact parameters that SimulationConfig also stores, so old seven-value records
 # take their values from the simulation settings they were run with.
-TUNABLE_TOOL_PARAMETERS = PARAMETER_NAMES[7:]
+TUNABLE_TOOL_PARAMETERS = PARAMETER_NAMES[7:11]
+# The von Mises yield stress is also a SimulationConfig setting. It is absent from
+# DEFAULT_PARAMETERS so that spreading the defaults never replaces a configured
+# value; normalize_parameters fills it from the simulation, else the inactive value.
+YIELD_STRESS_PARAMETER = "von_mises_yield_stress_pa"
+INACTIVE_YIELD_STRESS_PA = 1000.0
+SIMULATION_MIRRORED_PARAMETERS = (*TUNABLE_TOOL_PARAMETERS, YIELD_STRESS_PARAMETER)
 DEFAULT_PARAMETERS = {
     "youngs_modulus": 130579.320726, "poisson_ratio": 0.3, "viscosity": 0.0,
     "plastic_min": 0.9, "plastic_max": 1.1,
@@ -319,6 +325,9 @@ def validate_parameters(values: Mapping[str, float]):
     for name in ("tool_adhesion", "floor_friction_coefficient"):
         if name in values and (isinstance(values[name], (bool, np.bool_)) or values[name] < 0):
             raise ValueError(f"{name} must be finite and nonnegative")
+    if YIELD_STRESS_PARAMETER in values and (isinstance(values[YIELD_STRESS_PARAMETER], (bool, np.bool_))
+                                            or values[YIELD_STRESS_PARAMETER] <= 0):
+        raise ValueError(f"{YIELD_STRESS_PARAMETER} must be finite and positive")
 
 
 def normalize_parameters(values: Mapping[str, float], simulation=None):
@@ -330,11 +339,14 @@ def normalize_parameters(values: Mapping[str, float], simulation=None):
     """
     validate_parameters(values)
     defaults = {}
-    for name in TUNABLE_TOOL_PARAMETERS:
+    for name in SIMULATION_MIRRORED_PARAMETERS:
         if isinstance(simulation, Mapping):
-            defaults[name] = simulation.get(name, DEFAULT_PARAMETERS[name])
+            value = simulation.get(name)
         else:
-            defaults[name] = getattr(simulation, name, DEFAULT_PARAMETERS[name])
+            value = getattr(simulation, name, None)
+        if value is None:
+            value = INACTIVE_YIELD_STRESS_PA if name == YIELD_STRESS_PARAMETER else DEFAULT_PARAMETERS[name]
+        defaults[name] = value
     result = {**defaults, **values}
     validate_parameters(result)
     return {name: float(result[name]) for name in PARAMETER_NAMES}
@@ -359,6 +371,8 @@ def validate_tool_parameters(values, config, fit=()):
         raise ValueError("floor_friction_coefficient requires floor_contact_model='coulomb-v1'")
     if fitted.intersection(set(TUNABLE_TOOL_PARAMETERS) - {"floor_friction_coefficient"}) and config.tool_collision != "sdf":
         raise ValueError("Fitting tool contact parameters requires tool_collision='sdf'")
+    if YIELD_STRESS_PARAMETER in fitted and getattr(config, "plasticity", "none") != "von-mises":
+        raise ValueError(f"{YIELD_STRESS_PARAMETER} is inactive without von-mises plasticity")
     if model == "retention-v1" and "tool_friction_coefficient" in fitted:
         raise ValueError("tool_friction_coefficient is inactive in retention-v1")
     if model == "coulomb-v1" and "tool_stickiness" in fitted:

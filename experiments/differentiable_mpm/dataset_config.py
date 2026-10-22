@@ -21,6 +21,9 @@ CONTACT_NAMES = ("floor_retention", "tool_friction_coefficient", "tool_stickines
 PHYSICAL_NAMES = MATERIAL_NAMES + CONTACT_NAMES
 # Dataset v2 files may add these; files without them keep the simulator defaults.
 OPTIONAL_CONTACT_NAMES = ("tool_adhesion", "floor_friction_coefficient")
+# Either schema may add a shared von Mises yield stress; files without it keep
+# each episode's configured simulation value.
+OPTIONAL_MATERIAL_NAMES = ("von_mises_yield_stress_pa",)
 TOOL_CONTACT = {"retention": 1.0, "absorption": 0.0, "stickiness": 0.0}
 _EPISODE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
 
@@ -117,9 +120,9 @@ class DatasetConfig:
 
     @property
     def shared_parameter_names(self):
-        if self.schema != SCHEMA_V2:
-            return MATERIAL_NAMES
-        return PHYSICAL_NAMES + tuple(name for name in OPTIONAL_CONTACT_NAMES if name in self.shared_initial)
+        required, optional = ((PHYSICAL_NAMES, OPTIONAL_CONTACT_NAMES + OPTIONAL_MATERIAL_NAMES)
+                              if self.schema == SCHEMA_V2 else (MATERIAL_NAMES, OPTIONAL_MATERIAL_NAMES))
+        return required + tuple(name for name in optional if name in self.shared_initial)
 
     def parameter_space(self):
         first = self.episodes[0]
@@ -178,7 +181,9 @@ def load_dataset(path, *, path_overrides=None, backend=None, precision=None, p2g
         raise ValueError("Dataset name is required")
     shared = _object(document["shared_parameters"], "shared_parameters", {"initial", "fit", "bounds"}, {"initial", "fit"})
     shared_names = PHYSICAL_NAMES if schema == SCHEMA_V2 else MATERIAL_NAMES
-    initial = _shared_values(shared["initial"], shared_names, OPTIONAL_CONTACT_NAMES if schema == SCHEMA_V2 else ())
+    optional_names = (OPTIONAL_CONTACT_NAMES + OPTIONAL_MATERIAL_NAMES if schema == SCHEMA_V2
+                      else OPTIONAL_MATERIAL_NAMES)
+    initial = _shared_values(shared["initial"], shared_names, optional_names)
     shared_names = tuple(initial)
     fit = shared["fit"]
     if (not isinstance(fit, list) or not fit or not all(type(name) is str for name in fit)

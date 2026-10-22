@@ -10,7 +10,7 @@ from typing import Any, Mapping
 
 import numpy as np
 
-from .state import (DEFAULT_PARAMETERS, PARAMETER_NAMES, TUNABLE_TOOL_PARAMETERS,
+from .state import (DEFAULT_PARAMETERS, PARAMETER_NAMES, TUNABLE_TOOL_PARAMETERS, YIELD_STRESS_PARAMETER,
                     SimulationConfig, validate_parameters, normalize_parameters, validate_tool_parameters)
 
 
@@ -143,6 +143,8 @@ class ExperimentConfig:
         # Keep exported fixed-setting mirrors consistent with the physical values.
         self.simulation = {**self.simulation,
                            **{name: self.parameters[name] for name in TUNABLE_TOOL_PARAMETERS}}
+        if self.simulation.get("plasticity", "none") == "von-mises":
+            self.simulation[YIELD_STRESS_PARAMETER] = self.parameters[YIELD_STRESS_PARAMETER]
         simulation_config = SimulationConfig(**self.simulation)
         validate_tool_parameters(self.parameters, simulation_config, self.fit_parameters)
         if not self.fit_parameters or len(set(self.fit_parameters)) != len(self.fit_parameters):
@@ -232,6 +234,8 @@ def load_config(path: str | Path, path_overrides: Mapping[str, str | Path] | Non
         value["observation"] = ObservationSettings(**value["observation"])
     simulation_contact = {name: value.get("simulation", {}).get(name, DEFAULT_PARAMETERS[name])
                           for name in TUNABLE_TOOL_PARAMETERS}
+    if value.get("simulation", {}).get(YIELD_STRESS_PARAMETER) is not None:
+        simulation_contact[YIELD_STRESS_PARAMETER] = value["simulation"][YIELD_STRESS_PARAMETER]
     value["parameters"] = {**DEFAULT_PARAMETERS, **simulation_contact, **value.get("parameters", {})}
     config = ExperimentConfig(**value, config_path=path, source_document_sha256=hashlib.sha256(raw).hexdigest(),
                               path_overrides={k: str(v) for k, v in overrides.items()})

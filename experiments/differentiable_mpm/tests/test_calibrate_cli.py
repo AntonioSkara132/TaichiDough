@@ -16,7 +16,8 @@ from experiments.differentiable_mpm.config import ExperimentConfig, FrameWindow,
 from experiments.differentiable_mpm.optimize import AdamOptions, ProjectedAdam
 from experiments.differentiable_mpm.parameters import PhysicalParameterSpace
 from experiments.differentiable_mpm.results import RunStore
-from experiments.differentiable_mpm.state import DEFAULT_PARAMETERS, PARAMETER_NAMES, InvalidStateError, SimulationConfig
+from experiments.differentiable_mpm.state import (DEFAULT_PARAMETERS, PARAMETER_NAMES, InvalidStateError, SimulationConfig,
+                                                  normalize_parameters)
 from experiments.differentiable_mpm.tests.helpers import temporary_directory
 
 
@@ -302,7 +303,7 @@ class CalibrateCliTests(unittest.TestCase):
                                     {'optimization': {'best_parameters': DEFAULT_PARAMETERS}})):
             path = self.parameters_file(record, f'parameters-{i}.json')
             values, source = calibrate.read_parameters(path)
-            self.assertEqual(values, DEFAULT_PARAMETERS)
+            self.assertEqual(values, normalize_parameters(DEFAULT_PARAMETERS))
             self.assertEqual(source['path'], str(path.resolve()))
             self.assertEqual(source['sha256'], hashlib.sha256(path.read_bytes()).hexdigest())
         for i, record in enumerate(({'youngs_modulus': 100}, {'best_parameters': {'viscosity': 1}},

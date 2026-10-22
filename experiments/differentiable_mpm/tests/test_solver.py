@@ -40,7 +40,8 @@ def fixture(plastic=False, von_mises=False, floor=False, sdf=False, p2g_mode="at
     if floor:
         state.x[:, 1] = [0.018, 0.020, 0.021, 0.023]
     params = dict(DEFAULT_PARAMETERS, youngs_modulus=4200.0, viscosity=8.0,
-                  plastic_min=.91, plastic_max=1.10, tool_retention=.28, floor_retention=.43)
+                  plastic_min=.91, plastic_max=1.10, tool_retention=.28, floor_retention=.43,
+                  von_mises_yield_stress_pa=config.von_mises_yield_stress_pa or 1000.0)
     control = ToolControl.stationary()
     sdf_data = None
     if sdf:
@@ -287,6 +288,7 @@ class SolverGradientTests(unittest.TestCase):
         self.assertNotEqual(gradients["viscosity"], 0)
         self.assertEqual(gradients["plastic_min"], 0)
         self.assertEqual(gradients["plastic_max"], 0)
+        self.assertEqual(gradients["von_mises_yield_stress_pa"], 0)
 
     def test_active_plastic_bounds_and_updated_history(self):
         solver, state, params, control = self.make(plastic=True)
@@ -302,10 +304,11 @@ class SolverGradientTests(unittest.TestCase):
         seed = terminal_seed(state)
         gradients = self.check_parameter_gradients(
             solver, state, params, control, seed,
-            names=("youngs_modulus", "poisson_ratio", "viscosity"),
+            names=("youngs_modulus", "poisson_ratio", "viscosity", "von_mises_yield_stress_pa"),
         )
         self.check_state_gradients(solver, state, params, control, seed)
         self.assertGreater(solver.diagnostics()["yielded"], 0)
+        self.assertNotEqual(gradients["von_mises_yield_stress_pa"], 0)
         self.assertEqual(gradients["plastic_min"], 0)
         self.assertEqual(gradients["plastic_max"], 0)
         self.value(solver, state, params, control, seed)
@@ -316,7 +319,7 @@ class SolverGradientTests(unittest.TestCase):
         seed = terminal_seed(state)
         self.check_parameter_gradients(
             solver, state, params, control, seed, steps=5,
-            names=("youngs_modulus", "poisson_ratio", "viscosity"),
+            names=("youngs_modulus", "poisson_ratio", "viscosity", "von_mises_yield_stress_pa"),
         )
         self.check_state_gradients(solver, state, params, control, seed, steps=5)
 
