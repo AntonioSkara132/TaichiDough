@@ -89,8 +89,7 @@ class DatasetEpisode:
     membership: str
     weight: float
     scored_window: FrameWindow
-
-    shared_parameter_names: tuple[str, ...]
+    shared_parameter_names: tuple[str, ...] = MATERIAL_NAMES
 
     def parameters_for(self, shared_values):
         """Insert the dataset's shared values while preserving episode-specific values."""

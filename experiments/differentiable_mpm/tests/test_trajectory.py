@@ -8,7 +8,7 @@ import numpy as np
 from experiments.differentiable_mpm.checkpoint import CheckpointedRollout
 from experiments.differentiable_mpm.runtime import init_runtime
 from experiments.differentiable_mpm.solver import Stepper
-from experiments.differentiable_mpm.state import DEFAULT_PARAMETERS, ParticleState, SimulationConfig, ToolControl
+from experiments.differentiable_mpm.state import DEFAULT_PARAMETERS, ParticleState, normalize_parameters, SimulationConfig, ToolControl
 
 
 @dataclass
@@ -39,8 +39,8 @@ def fixture(plastic=False, physics_version="corrected-v1"):
                            particle_mass=0.001, particle_volume=1e-6, gravity=-1.0,
                            plasticity='stretch-clamp' if plastic else 'none',
                            use_jp=plastic, jp_hardening=0.4, precision='f64', physics_version=physics_version)
-    params = dict(DEFAULT_PARAMETERS, youngs_modulus=6000, viscosity=3.0,
-                  plastic_min=0.94, plastic_max=1.07)
+    params = normalize_parameters(dict(DEFAULT_PARAMETERS, youngs_modulus=6000, viscosity=3.0,
+                                       plastic_min=0.94, plastic_max=1.07))
     controls = [ToolControl.stationary(i * cfg.dt) for i in range(8)]
     center = positions.mean(axis=0)
     targets = [Target(i, step, center + (positions - center) * np.array([0.93, 1.08, 0.95])

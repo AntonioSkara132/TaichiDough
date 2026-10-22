@@ -23,7 +23,7 @@ from .renderer import Camera
 from .results import RUN_ROOT, RunStore, canonical_hash, source_identity
 from .runtime import init_runtime
 from .solver import Stepper
-from .state import DEFAULT_PARAMETERS, PHYSICS_VERSIONS, ParticleState, SimulationConfig, ToolControl
+from .state import DEFAULT_PARAMETERS, PHYSICS_VERSIONS, normalize_parameters, ParticleState, SimulationConfig, ToolControl
 
 
 SYNTHETIC_VERSION = "prestrained-visible-patch-v1"
@@ -32,8 +32,8 @@ TARGET_TEMPERATURE_M = 0.002
 FIT_PARAMETERS = ("youngs_modulus", "poisson_ratio", "viscosity", "plastic_min", "plastic_max")
 TRUTH = {**DEFAULT_PARAMETERS, "youngs_modulus": 12000.0, "poisson_ratio": 0.28,
          "viscosity": 12.0, "plastic_min": 0.88, "plastic_max": 1.12}
-INITIAL_PARAMETERS = {**DEFAULT_PARAMETERS, "youngs_modulus": 18000.0, "poisson_ratio": 0.22,
-                      "viscosity": 5.0, "plastic_min": 0.93, "plastic_max": 1.05}
+INITIAL_PARAMETERS = normalize_parameters({**DEFAULT_PARAMETERS, "youngs_modulus": 18000.0, "poisson_ratio": 0.22,
+                                           "viscosity": 5.0, "plastic_min": 0.93, "plastic_max": 1.05})
 
 
 @dataclass(frozen=True)

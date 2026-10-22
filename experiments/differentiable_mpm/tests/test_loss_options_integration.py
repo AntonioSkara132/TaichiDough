@@ -18,7 +18,7 @@ from experiments.differentiable_mpm.multi_episode import DatasetObjective, Episo
 from experiments.differentiable_mpm.renderer import Camera
 from experiments.differentiable_mpm.replay import observation_schedule
 from experiments.differentiable_mpm.run_logging import RunLogger
-from experiments.differentiable_mpm.state import DEFAULT_PARAMETERS, ParticleState, SimulationConfig
+from experiments.differentiable_mpm.state import DEFAULT_PARAMETERS, ParticleState, normalize_parameters, SimulationConfig
 from experiments.differentiable_mpm.tests import test_checkpoint as recurrence
 from experiments.differentiable_mpm.tests import test_calibrate_cli as cli_fixture
 from experiments.differentiable_mpm.tests import test_multi_episode as multi_fixture
@@ -246,7 +246,7 @@ class ReductionTests(HostOnlyTests):
         self.controls = np.linspace(0, .1, 8)
         self.observations = [recurrence.Observation(i, s, np.full((1, 3), .2 + .01 * i))
                              for i, s in enumerate([0, 2, 3, 4, 6, 8])]
-        self.parameters = dict(DEFAULT_PARAMETERS, youngs_modulus=3.)
+        self.parameters = normalize_parameters(dict(DEFAULT_PARAMETERS, youngs_modulus=3.))
 
     def rollout(self, length, reduction):
         return CheckpointedRollout(recurrence.LinearStepper(length + 1), self.initial, self.controls,
