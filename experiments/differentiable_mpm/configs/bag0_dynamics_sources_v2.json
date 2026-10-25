@@ -1,0 +1,83 @@
+{
+  "schema": "taichidough/bag0-dynamics-sources/v1",
+  "version": "v2",
+  "note": "v2 of bag0_dynamics_sources_v1.json: +12 ms lag, 2.66 mm Kinova blade, closed newest UR mesh, blade-only collision meshes with triangle-distance SDFs at 256 under grid-relative-v1, and both body corrections refitted at +12 ms with the table constraint. To change an input, copy this file to a new version and rerun into a new output directory.",
+  "segments_spec": "/home/antonio/diplomski_antonio/diplomski/data/bag0_tool_segments/segments_spec.json",
+  "observations_root": "/home/antonio/diplomski_antonio/diplomski/data/bag0_tool_segments_deformpath/grid",
+  "mocap_to_camera_calibration": "/home/antonio/diplomski_antonio/diplomski/data/bag0_tool_segments/mocap_to_camera_calibration.json",
+  "table_plane": {
+    "fit_cloud": "/home/antonio/.claude/jobs/1f2c3881/tmp/bag0/tag/cloud_first_full.npy",
+    "check_clouds": [
+      "/home/antonio/.claude/jobs/1f2c3881/tmp/bag0/conv/cloud_236.npy",
+      "/home/antonio/.claude/jobs/1f2c3881/tmp/bag0/conv/cloud_239.npy"
+    ],
+    "cloud_frame": "camera_depth_optical_frame",
+    "inlier_distance_m": 0.003,
+    "ransac_iterations": 2000,
+    "seed": 0
+  },
+  "poses": {
+    "file": "/home/antonio/diplomski_antonio/diplomski/data/bag0_tool_segments/optitrack_poses_raw.npz",
+    "lag_s": 0.012,
+    "drop_zero_positions": true,
+    "max_speed_m_s": 2.0,
+    "max_bracket_gap_s": 0.03,
+    "interpolation": "linear position, slerp rotation between the two raw samples around cloud time + lag"
+  },
+  "tools": {
+    "UR5e_spathla": {
+      "body": "rf_marker_ur5e",
+      "mesh": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/bag0_tool_meshes_v2/ur_fixed_spathla_newest_blade.stl",
+      "body_correction": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/bag0_tool_meshes_v2/joint_corrections_thin_table_rf_marker_ur5e.json",
+      "selection_note": "Blade of ur_fixed_spathla_newest.stl, closed without moving vertices; mount omitted from collision. The newest mesh is already in the new body frame, so there is no base tool geometry."
+    },
+    "gen3_spathla": {
+      "body": "kinova_spathla_robot_aligned",
+      "mesh": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/bag0_tool_meshes_v2/gen3_fixed_spathla_thin_blade.stl",
+      "base_tool_geometry": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/episode18_dynamics_icp_final_v1/tool_geometry.json",
+      "body_correction": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/bag0_tool_meshes_v2/joint_corrections_thin_table_orange_kinova_spathla_robot_aligned.json",
+      "selection_note": "2.66 mm spathla_3mm blade (user confirmed) on the gen3_fixed mount, mount omitted from collision; gen3_fixed static calibration from episode18_dynamics_icp_final_v1."
+    }
+  },
+  "mass_kg": 0.3,
+  "chunking": {
+    "max_frames": 65,
+    "min_frames": 10
+  },
+  "episode_order": [
+    "ep03c_squeezes_seg44",
+    "ep07_fast_squeezes_b",
+    "ep01_pushes_squeeze",
+    "ep02_turned_spatula_squeeze",
+    "ep03a_squeeze_end_seg42",
+    "ep03b_spatula_kneading",
+    "ep04_right_edge_cut",
+    "ep05_left_edge_cross_cut",
+    "ep06_fast_squeezes"
+  ],
+  "priority_episodes": [
+    "ep03c_squeezes_seg44",
+    "ep07_fast_squeezes_b"
+  ],
+  "config_templates": {
+    "stretch_clamp_coulomb": {
+      "config": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/episode14_dynamics_density1200_roi_temporal_v4_coulomb/configs/episode14_dynamics_chunk02_stretch_clamp_coulomb_v1.json",
+      "dataset": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/episode14_dynamics_density1200_roi_temporal_v4_coulomb/dataset_episode14_dynamics_temporal_coulomb_v1.json"
+    },
+    "von_mises_1000pa_coulomb": {
+      "config": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/episode14_dynamics_density1200_roi_temporal_v4_coulomb/configs/episode14_dynamics_chunk02_von_mises_1000pa_coulomb_v1.json",
+      "dataset": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/episode14_dynamics_density1200_roi_temporal_v4_coulomb/dataset_episode14_dynamics_temporal_von_mises_1000pa_coulomb_v1.json"
+    }
+  },
+  "observation_size": {
+    "width": 212,
+    "height": 120,
+    "note": "848x480 depth camera scaled by 0.25, the same factor episode14 used for 640x480 -> 160x120, so pixels stay square"
+  },
+  "validation_every": 5,
+  "tool_sdf": {
+    "builder": "triangle-distance-v1",
+    "resolution": 256,
+    "qualification": "grid-relative-v1"
+  }
+}
