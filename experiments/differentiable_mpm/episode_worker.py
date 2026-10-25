@@ -119,7 +119,7 @@ def _evaluate(request, store, response):
     sim = prepared.simulation_config
     memory = estimate_memory(sim.n_particles, prepared.total_steps, config.segment_length,
                              sim.precision, sim.grid, config.tool_sdf_resolution,
-                             physics_version=sim.physics_version)
+                             physics_version=sim.physics_version, grid_cells=sim.box_cells)
     response["prepared_summary"] = {**prepared.summary(), "memory_estimate": memory,
                                     "n_particles": sim.n_particles}
     if request["action"] == "validate":

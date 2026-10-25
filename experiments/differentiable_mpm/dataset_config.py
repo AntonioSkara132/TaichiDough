@@ -11,7 +11,7 @@ from .config import ExperimentConfig, FrameWindow, canonical_hash, load_config
 from .loss_options import parse_loss_config
 from .optimize import AdamOptions
 from .parameters import PhysicalParameterSpace
-from .state import SimulationConfig, validate_parameters
+from .state import GRID_BOX_SETTINGS, SimulationConfig, validate_parameters
 
 
 SCHEMA = "taichidough/differentiable-dataset/v1"
@@ -152,7 +152,8 @@ def _common_settings(config):
     numerical = asdict(SimulationConfig(**config.simulation))
     # These values describe an episode's discretization, reconstruction or floor.
     for name in tuple(numerical):
-        if name in {"n_particles", "grid", "dt", "particle_mass", "particle_volume"} or name.startswith("floor_"):
+        if (name in {"n_particles", "grid", "dt", "particle_mass", "particle_volume"} or name.startswith("floor_")
+                or name in GRID_BOX_SETTINGS):
             numerical.pop(name)
     return {"simulation": numerical, "backend": config.backend,
             "tool_sdf_builder": config.tool_sdf_builder, "tool_sdf_qualification": config.tool_sdf_qualification,

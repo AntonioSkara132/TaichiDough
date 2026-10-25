@@ -21,13 +21,15 @@ class RolloutEvaluation:
 
 
 def estimate_memory(n_particles, total_steps, segment_length=64, precision="f32", grid=48, sdf_resolution=64,
-                    *, physics_version="corrected-v1"):
+                    *, physics_version="corrected-v1", grid_cells=None):
     """Allocation estimates, not a measurement of the Taichi process or device allocator."""
     if min(n_particles, segment_length, grid) < 1 or total_steps < 0:
         raise ValueError("Invalid allocation dimensions")
     if physics_version not in PHYSICS_VERSIONS:
         raise ValueError("Invalid physics_version")
     allocated_grid = grid + (physics_version == "corrected-v1")
+    cells = (grid,) * 3 if grid_cells is None else tuple(int(c) for c in grid_cells)
+    allocated_nodes = int(np.prod([c + (physics_version == "corrected-v1") for c in cells]))
     itemsize = 4 if precision == "f32" else 8
     segment_length = min(segment_length, max(1, total_steps))
     state_bytes = n_particles * 25 * itemsize
@@ -40,7 +42,8 @@ def estimate_memory(n_particles, total_steps, segment_length=64, precision="f32"
         "physics_version": physics_version,
         "physical_grid": grid,
         "allocated_grid": allocated_grid,
-        "grid_primal_and_adjoint_estimate_bytes": allocated_grid ** 3 * 20 * itemsize,
+        "grid_cells": list(cells),
+        "grid_primal_and_adjoint_estimate_bytes": allocated_nodes * 20 * itemsize,
         "sdf_estimate_bytes": 2 * sdf_resolution ** 3 * 4 * itemsize,
         "full_particle_history_and_adjoint_bytes": 2 * (total_steps + 1) * state_bytes,
         "note": "Material/contact scratch, loss fields, compiler and allocator overhead are additional.",

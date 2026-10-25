@@ -1,6 +1,6 @@
 """Shared NumPy state and fixed numerical settings for the experimental solver."""
 from __future__ import annotations
-from dataclasses import dataclass, fields
+from dataclasses import asdict, dataclass, fields
 from typing import Mapping
 
 import numpy as np
@@ -39,6 +39,9 @@ FLOOR_CONTACT_MODELS = ("retention-v1", "coulomb-v1")
 # Relative tangential speed (m/s) added in quadrature before dividing by it, so the
 # Coulomb scale and its derivative stay finite when tool or floor and dough move together.
 SLIP_SPEED_EPSILON = 1e-8
+# Optional sub-box of the 1/grid lattice; omitted from records when unset so that
+# full-cube configurations keep their earlier fingerprints.
+GRID_BOX_SETTINGS = ("grid_box_lower", "grid_box_cells")
 
 
 class InvalidStateError(RuntimeError):
@@ -118,10 +121,16 @@ class SimulationConfig:
     min_singular_value: float = 1e-6
     p2g_mode: str = "atomic"
     physics_version: str = "corrected-v1"
+    # The grid covers [0,1]^3 with spacing 1/grid unless a box is given. A box keeps
+    # spacing 1/grid and global node indices, and allocates only nodes
+    # grid_box_lower .. grid_box_lower + grid_box_cells - 1 on each axis.
+    grid_box_lower: tuple[int, int, int] | None = None
+    grid_box_cells: tuple[int, int, int] | None = None
 
     def __post_init__(self):
         if self.n_particles < 1 or self.grid < 8:
             raise ValueError("Require particles > 0 and grid >= 8")
+        self._validate_grid_box()
         if self.plasticity not in {"none", "stretch-clamp", "von-mises"}:
             raise ValueError("plasticity must be none, stretch-clamp or von-mises")
         yield_stress = self.von_mises_yield_stress_pa
@@ -191,6 +200,37 @@ class SimulationConfig:
         if min(self.tool_contact_padding, self.floor_plastic_damping_band) < 0:
             raise ValueError("Contact padding and floor damping band must be nonnegative")
 
+    def _validate_grid_box(self):
+        lower, cells = self.grid_box_lower, self.grid_box_cells
+        if lower is None and cells is None:
+            return
+        if lower is None or cells is None:
+            raise ValueError("grid_box_lower and grid_box_cells must be given together")
+        values = []
+        for name, value in (("grid_box_lower", lower), ("grid_box_cells", cells)):
+            if (isinstance(value, (str, bytes)) or len(value) != 3
+                    or any(isinstance(v, (bool, np.bool_)) or not isinstance(v, (int, np.integer)) for v in value)):
+                raise ValueError(f"{name} must be three integers")
+            values.append(tuple(int(v) for v in value))
+        lower, cells = values
+        if min(cells) < 8:
+            raise ValueError("grid_box_cells must be at least 8 on every axis")
+        if min(lower) < 0 or any(a + b > self.grid for a, b in zip(lower, cells)):
+            raise ValueError("the grid box must lie inside the full cube of grid cells")
+        # The floor and the walls below it act at global node 0 as in the full cube.
+        if lower[1] != 0:
+            raise ValueError("grid_box_lower[1] must be 0 so the box contains the floor nodes")
+        object.__setattr__(self, "grid_box_lower", lower)
+        object.__setattr__(self, "grid_box_cells", cells)
+
+    @property
+    def box_lower(self) -> tuple[int, int, int]:
+        return (0, 0, 0) if self.grid_box_lower is None else self.grid_box_lower
+
+    @property
+    def box_cells(self) -> tuple[int, int, int]:
+        return (self.grid,) * 3 if self.grid_box_cells is None else self.grid_box_cells
+
     @property
     def effective_tool_grid_contact_padding(self) -> float:
         return self.tool_contact_padding if self.tool_grid_contact_padding is None else self.tool_grid_contact_padding
@@ -202,6 +242,16 @@ class SimulationConfig:
     @property
     def numpy_dtype(self) -> DTypeLike:
         return np.float32 if self.precision == "f32" else np.float64
+
+    def record(self) -> dict:
+        """asdict without unset grid-box settings."""
+        values = asdict(self)
+        for name in GRID_BOX_SETTINGS:
+            if values[name] is None:
+                values.pop(name)
+            else:
+                values[name] = list(values[name])
+        return values
 
 
 @dataclass

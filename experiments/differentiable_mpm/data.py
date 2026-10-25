@@ -22,7 +22,9 @@ def validate_initial_stencils(particles, config: SimulationConfig):
     scaled = positions * config.grid - 0.5
     corrected = config.physics_version == "corrected-v1"
     base = (np.floor(scaled) if corrected else np.trunc(scaled)).astype(np.int64)
-    if np.any(base < (-1 if corrected else 0)) or np.any(base + 2 >= config.grid):
+    lower = np.asarray(config.box_lower) + (-1 if corrected else 0)
+    upper = np.asarray(config.box_lower) + np.asarray(config.box_cells)
+    if np.any(base < lower) or np.any(base + 2 >= upper):
         raise ValueError("Initial particle has an unsafe MPM grid stencil")
 
 
@@ -464,7 +466,7 @@ def prepare_experiment(config: ExperimentConfig, split="training", end_frame=Non
     provenance = {"schema": "taichidough/differentiable-prepared-inputs/v1", "configuration": config.as_dict(),
                   "input_files": records, "source_manifest": source, "sequence_fingerprint": sequence.fingerprint,
                   "reconstruction": metadata_record, "particle_array_content_sha256_f32": simulator.particle_array_sha256(particles),
-                  "mass": mass, "simulation": asdict(sim_config), "calibration": topview.calibration_metadata(calibration),
+                  "mass": mass, "simulation": sim_config.record(), "calibration": topview.calibration_metadata(calibration),
                   "tool_geometry": dynamics.tool_geometry_metadata(geometry), "collision": collision_record,
                   "split": split, "scored_frames": list(scored_frames), "frames": [asdict(f) for f in frames],
                   "training_camera": training_camera, "observation_processing": asdict(settings),

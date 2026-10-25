@@ -489,7 +489,8 @@ def run(args):
         prepared = prepare_experiment(config, split=split, end_frame=args.end_frame, build_sdf=True)
     memory = estimate_memory(prepared.simulation_config.n_particles, prepared.total_steps, config.segment_length,
                              prepared.simulation_config.precision, prepared.simulation_config.grid, config.tool_sdf_resolution,
-                             physics_version=prepared.simulation_config.physics_version)
+                             physics_version=prepared.simulation_config.physics_version,
+                             grid_cells=prepared.simulation_config.box_cells)
     if args.action != 'fit' or args.fit_log == 'detailed':
         print(f'Prepared {prepared.simulation_config.n_particles} particles; replay0–{prepared.end_frame}; '
               f'{prepared.total_steps} steps; {len(prepared.observations)} observations; backend={config.backend}', flush=True)

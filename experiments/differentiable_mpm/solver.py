@@ -39,6 +39,9 @@ class Stepper:
         self.corrected_physics = config.physics_version == "corrected-v1"
         self.allocated_grid = config.allocated_grid
         self.grid_offset = -1 if self.corrected_physics else 0
+        # Global node indices of the allocated box; the full cube unless a box is set.
+        self.box_lower = config.box_lower
+        self.box_upper = tuple(lower + cells for lower, cells in zip(config.box_lower, config.box_cells))
         self.g2p_affine_scale = 4 * self.inv_dx * (self.inv_dx if self.corrected_physics else 1.0)
         self.use_sdf = config.tool_collision == "sdf"
         self.use_stretch_clamp = config.plasticity == "stretch-clamp"
@@ -69,7 +72,9 @@ class Stepper:
         self.adv_v = ti.Vector.field(3, self.dtype, shape=self.n, needs_grad=True)
         self.new_C = ti.Matrix.field(3, 3, self.dtype, shape=self.n, needs_grad=True)
         self.yielded = ti.field(ti.i32, shape=self.n)
-        grid_shape, grid_offset = (self.allocated_grid,) * 3, (self.grid_offset,) * 3
+        grid_shape = tuple(upper - lower + (self.allocated_grid - self.grid)
+                           for lower, upper in zip(self.box_lower, self.box_upper))
+        grid_offset = tuple(lower + self.grid_offset for lower in self.box_lower)
         self.grid_m = ti.field(self.dtype, shape=grid_shape, offset=grid_offset, needs_grad=True)
         self.grid_p = ti.Vector.field(3, self.dtype, shape=grid_shape, offset=grid_offset, needs_grad=True)
         self.grid_u = ti.Vector.field(3, self.dtype, shape=grid_shape, offset=grid_offset, needs_grad=True)
@@ -229,9 +234,10 @@ class Stepper:
     @ti.func
     def _safe_stencil(self, pos):
         base = self._stencil_base(pos)
-        return (base[0] >= self.grid_offset and base[0] + 2 < self.grid and
-                base[1] >= self.grid_offset and base[1] + 2 < self.grid and
-                base[2] >= self.grid_offset and base[2] + 2 < self.grid)
+        lower, upper = ti.static(self.box_lower, self.box_upper)
+        return (base[0] >= lower[0] + self.grid_offset and base[0] + 2 < upper[0] and
+                base[1] >= lower[1] + self.grid_offset and base[1] + 2 < upper[1] and
+                base[2] >= lower[2] + self.grid_offset and base[2] + 2 < upper[2])
 
     @ti.kernel
     def _reset_diagnostics(self):
@@ -552,15 +558,16 @@ class Stepper:
                     ti.atomic_add(self.counts[9], 1)
                 if ti.static(self.use_sdf):
                     velocity = self._tool_grid_response(pos, velocity)
-                if I[0] < 3 and velocity[0] < 0:
+                lower, upper = ti.static(self.box_lower, self.box_upper)
+                if I[0] < lower[0] + 3 and velocity[0] < 0:
                     velocity[0] = 0
-                if I[0] > self.grid - 3 and velocity[0] > 0:
+                if I[0] > upper[0] - 3 and velocity[0] > 0:
                     velocity[0] = 0
-                if I[1] > self.grid - 3 and velocity[1] > 0:
+                if I[1] > upper[1] - 3 and velocity[1] > 0:
                     velocity[1] = 0
-                if I[2] < 3 and velocity[2] < 0:
+                if I[2] < lower[2] + 3 and velocity[2] < 0:
                     velocity[2] = 0
-                if I[2] > self.grid - 3 and velocity[2] > 0:
+                if I[2] > upper[2] - 3 and velocity[2] > 0:
                     velocity[2] = 0
             self.grid_v[I] = velocity
 

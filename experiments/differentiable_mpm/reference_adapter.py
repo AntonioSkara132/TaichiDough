@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import asdict
+
 import hashlib
 import importlib.util
 import inspect
@@ -335,6 +335,8 @@ def reference_arguments(config: SimulationConfig, parameters: Mapping[str, float
         raise ValueError("The preserved simulator does not implement von-mises plasticity")
     if config.tool_contact_model not in ("retention-v1", "coulomb-v1"):
         raise ValueError(f"The preserved simulator does not implement {config.tool_contact_model}")
+    if config.grid_box_cells is not None:
+        raise ValueError("The preserved simulator only implements the full [0,1]^3 grid")
     if config.tool_grid_contact_mode != "inherit":
         raise ValueError("The preserved simulator does not implement grid Dirichlet contact")
     if config.effective_tool_grid_contact_padding != config.tool_contact_padding:
@@ -343,7 +345,7 @@ def reference_arguments(config: SimulationConfig, parameters: Mapping[str, float
         raise ValueError("The preserved simulator only implements floor retention-v1")
     if config.precision != "f32":
         raise ValueError("The preserved simulator is float32; reference parity requires precision=f32")
-    values = asdict(config)
+    values = config.record()
     values.update(parameters)
     values.update(
         particles=config.n_particles,
