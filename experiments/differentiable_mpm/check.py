@@ -13,7 +13,7 @@ from .results import EXPERIMENT_ROOT, RUN_ROOT, RunStore, source_identity
 STANDARD_TESTS = (
     'test_preservation', 'test_checkpoint', 'test_results', 'test_optimizer',
     'test_inputs', 'test_calibrate_cli', 'test_recompute_check', 'test_backend', 'test_spectral', 'test_loss',
-    'test_solver', 'test_corrected_transfer', 'test_coulomb_contact', 'test_grid_dirichlet_contact', 'test_control_gradients',
+    'test_solver', 'test_corrected_transfer', 'test_coulomb_contact', 'test_grid_dirichlet_contact', 'test_grid_box', 'test_control_gradients',
     'test_trajectory', 'test_forward_parity', 'test_synthetic',
     'test_dataset_config', 'test_dataset_inventory', 'test_episode_worker',
     'test_multi_episode', 'test_calibrate_dataset', 'test_calibrate_dataset_attempts', 'test_multi_trajectory',
@@ -22,6 +22,7 @@ STANDARD_TESTS = (
     'test_paper_loss_trajectory', 'test_runtime_target_validation',
     'test_triangle_sdf', 'test_sdf_qualification', 'test_sdf_builder_integration',
     'test_prepare_blade_collision_meshes', 'test_mesh_validation', 'test_prepare_valid_blade_meshes',
+    'test_prepare_bag0_parts',
 )
 QUICK_TESTS = STANDARD_TESTS[:7] + (
     'test_dataset_config', 'test_dataset_inventory', 'test_episode_worker',

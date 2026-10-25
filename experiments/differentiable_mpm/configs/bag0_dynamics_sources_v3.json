@@ -1,0 +1,287 @@
+{
+  "schema": "taichidough/bag0-dynamics-sources/v1",
+  "version": "v3",
+  "note": "v3 of bag0_dynamics_sources_v2.json: the same tools, poses and SDF settings, with the v3 dough export (dough-seeded colour filter with gap fill) and the user's explicit parts in place of 65-frame chunks. Each part runs from a calm dough state to a calm dough state where the recording allows. To change an input, copy this file to a new version and rerun into a new output directory.",
+  "segments_spec": "/home/antonio/diplomski_antonio/diplomski/data/bag0_tool_segments/segments_spec.json",
+  "observations_root": "/home/antonio/diplomski_antonio/diplomski/data/bag0_tool_segments_deformpath_v3/grid",
+  "mocap_to_camera_calibration": "/home/antonio/diplomski_antonio/diplomski/data/bag0_tool_segments/mocap_to_camera_calibration.json",
+  "table_plane": {
+    "fit_cloud": "/home/antonio/.claude/jobs/1f2c3881/tmp/bag0/tag/cloud_first_full.npy",
+    "check_clouds": [
+      "/home/antonio/.claude/jobs/1f2c3881/tmp/bag0/conv/cloud_236.npy",
+      "/home/antonio/.claude/jobs/1f2c3881/tmp/bag0/conv/cloud_239.npy"
+    ],
+    "cloud_frame": "camera_depth_optical_frame",
+    "inlier_distance_m": 0.003,
+    "ransac_iterations": 2000,
+    "seed": 0
+  },
+  "poses": {
+    "file": "/home/antonio/diplomski_antonio/diplomski/data/bag0_tool_segments/optitrack_poses_raw.npz",
+    "lag_s": 0.012,
+    "drop_zero_positions": true,
+    "max_speed_m_s": 2.0,
+    "max_bracket_gap_s": 0.03,
+    "interpolation": "linear position, slerp rotation between the two raw samples around cloud time + lag",
+    "gap_fill": {
+      "max_gap_s": 17.0,
+      "check_clearance_above_s": 0.1,
+      "min_clearance_m": 0.02
+    },
+    "gap_fill_note": "Only the gen3 body needs filling: 230 of 231 frames of ep04 (raw samples 16.83 s apart) and 53 frames of ep05 (1.84 s apart). max_gap_s is the smallest round value that covers both."
+  },
+  "tools": {
+    "UR5e_spathla": {
+      "body": "rf_marker_ur5e",
+      "mesh": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/bag0_tool_meshes_v2/ur_fixed_spathla_newest_blade.stl",
+      "body_correction": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/bag0_tool_meshes_v2/joint_corrections_thin_table_rf_marker_ur5e.json",
+      "selection_note": "Blade of ur_fixed_spathla_newest.stl, closed without moving vertices; mount omitted from collision. The newest mesh is already in the new body frame, so there is no base tool geometry."
+    },
+    "gen3_spathla": {
+      "body": "kinova_spathla_robot_aligned",
+      "mesh": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/bag0_tool_meshes_v2/gen3_fixed_spathla_thin_blade.stl",
+      "base_tool_geometry": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/episode18_dynamics_icp_final_v1/tool_geometry.json",
+      "body_correction": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/bag0_tool_meshes_v2/joint_corrections_thin_table_orange_kinova_spathla_robot_aligned.json",
+      "selection_note": "2.66 mm spathla_3mm blade (user confirmed) on the gen3_fixed mount, mount omitted from collision; gen3_fixed static calibration from episode18_dynamics_icp_final_v1."
+    }
+  },
+  "mass_kg": 0.3,
+  "config_templates": {
+    "stretch_clamp_coulomb": {
+      "config": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/episode14_dynamics_density1200_roi_temporal_v4_coulomb/configs/episode14_dynamics_chunk02_stretch_clamp_coulomb_v1.json",
+      "dataset": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/episode14_dynamics_density1200_roi_temporal_v4_coulomb/dataset_episode14_dynamics_temporal_coulomb_v1.json"
+    },
+    "von_mises_1000pa_coulomb": {
+      "config": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/episode14_dynamics_density1200_roi_temporal_v4_coulomb/configs/episode14_dynamics_chunk02_von_mises_1000pa_coulomb_v1.json",
+      "dataset": "/home/antonio/diplomski_antonio/diplomski/TaichiDough/experiments/differentiable_mpm/data/episode14_dynamics_density1200_roi_temporal_v4_coulomb/dataset_episode14_dynamics_temporal_von_mises_1000pa_coulomb_v1.json"
+    }
+  },
+  "observation_size": {
+    "width": 212,
+    "height": 120,
+    "note": "848x480 depth camera scaled by 0.25, the same factor episode14 used for 640x480 -> 160x120, so pixels stay square"
+  },
+  "tool_sdf": {
+    "builder": "triangle-distance-v1",
+    "resolution": 256,
+    "qualification": "grid-relative-v1"
+  },
+  "parts": [
+    {
+      "id": "p01_E1.1_push",
+      "episode": "ep01_pushes_squeeze",
+      "frames": [
+        0,
+        98
+      ],
+      "motion": "push",
+      "split": "test",
+      "start_quality": {
+        "usable": true,
+        "note": "a hand pressed the dough just before the start; the dough reads about 10 mm high and a 5% patch at the top left reads at table height; blades 67 and 61 mm away"
+      }
+    },
+    {
+      "id": "p02_E1.2_push",
+      "episode": "ep01_pushes_squeeze",
+      "frames": [
+        99,
+        161
+      ],
+      "motion": "push",
+      "split": "validation",
+      "start_quality": {
+        "usable": true,
+        "note": "UR5e blade 44 mm from the dough at the first frame and 35 mm by frame 4"
+      }
+    },
+    {
+      "id": "p03_E1.3_push",
+      "episode": "ep01_pushes_squeeze",
+      "frames": [
+        162,
+        229
+      ],
+      "motion": "push",
+      "split": "calibration",
+      "start_quality": {
+        "usable": true,
+        "note": "calm dough, both blades away from it at the first frame (UR5e 61 mm, gen3 59 mm)"
+      }
+    },
+    {
+      "id": "p04_E1.4_push",
+      "episode": "ep01_pushes_squeeze",
+      "frames": [
+        230,
+        298
+      ],
+      "motion": "push",
+      "split": "test",
+      "start_quality": {
+        "usable": true,
+        "note": "UR5e blade 16 mm from the dough at the first frame"
+      }
+    },
+    {
+      "id": "p05_E1.5_push",
+      "episode": "ep01_pushes_squeeze",
+      "frames": [
+        299,
+        367
+      ],
+      "motion": "push",
+      "split": "calibration",
+      "start_quality": {
+        "usable": true,
+        "note": "calm dough, both blades away from it at the first frame (UR5e 81 mm, gen3 37 mm)"
+      }
+    },
+    {
+      "id": "p06_E1.6_squeeze",
+      "episode": "ep01_pushes_squeeze",
+      "frames": [
+        368,
+        482
+      ],
+      "motion": "squeeze",
+      "split": "calibration",
+      "start_quality": {
+        "usable": true,
+        "note": "calm dough, both blades away from it at the first frame (UR5e 21 mm, gen3 66 mm)"
+      }
+    },
+    {
+      "id": "p07_E2.1_squeeze",
+      "episode": "ep02_turned_spatula_squeeze",
+      "frames": [
+        0,
+        163
+      ],
+      "motion": "squeeze",
+      "split": "calibration",
+      "start_quality": {
+        "usable": true,
+        "note": "calm dough, both blades away from it at the first frame (UR5e 107 mm, gen3 60 mm)"
+      }
+    },
+    {
+      "id": "p09_E4.1_knead",
+      "episode": "ep03b_spatula_kneading",
+      "frames": [
+        0,
+        85
+      ],
+      "motion": "knead",
+      "split": "calibration",
+      "start_quality": {
+        "usable": true,
+        "note": "calm dough, both blades away from it at the first frame (UR5e 81 mm, gen3 61 mm); the only kneading part that starts calm"
+      }
+    },
+    {
+      "id": "p10_E4.2_knead",
+      "episode": "ep03b_spatula_kneading",
+      "frames": [
+        86,
+        121
+      ],
+      "motion": "knead",
+      "split": "validation",
+      "start_quality": {
+        "usable": true,
+        "note": "blades 6-30 mm from the dough at the first frame and within 2-5 mm by frame 4; the dough is already moving"
+      }
+    },
+    {
+      "id": "p11_E4.3_knead",
+      "episode": "ep03b_spatula_kneading",
+      "frames": [
+        122,
+        149
+      ],
+      "motion": "knead",
+      "split": "calibration",
+      "start_quality": {
+        "usable": true,
+        "note": "blades 6-30 mm from the dough at the first frame and within 2-5 mm by frame 4; the dough is already moving (UR5e 16 mm, gen3 11 mm); chosen as the second calibration kneading part because only part 9 starts calm"
+      }
+    },
+    {
+      "id": "p12_E4.4_knead",
+      "episode": "ep03b_spatula_kneading",
+      "frames": [
+        150,
+        182
+      ],
+      "motion": "knead",
+      "split": "test",
+      "start_quality": {
+        "usable": true,
+        "note": "blades 6-30 mm from the dough at the first frame and within 2-5 mm by frame 4; the dough is already moving"
+      }
+    },
+    {
+      "id": "p13_E4.5_knead",
+      "episode": "ep03b_spatula_kneading",
+      "frames": [
+        183,
+        213
+      ],
+      "motion": "knead",
+      "split": "validation",
+      "start_quality": {
+        "usable": true,
+        "note": "blades 6-30 mm from the dough at the first frame and within 2-5 mm by frame 4; the dough is already moving"
+      }
+    },
+    {
+      "id": "p14_E4.6_knead",
+      "episode": "ep03b_spatula_kneading",
+      "frames": [
+        214,
+        251
+      ],
+      "motion": "knead",
+      "split": "test",
+      "start_quality": {
+        "usable": true,
+        "note": "blades 6-30 mm from the dough at the first frame and within 2-5 mm by frame 4; the dough is already moving"
+      }
+    },
+    {
+      "id": "p15_E6.1_cut",
+      "episode": "ep04_right_edge_cut",
+      "frames": [
+        0,
+        230
+      ],
+      "motion": "cut",
+      "split": "calibration",
+      "start_quality": {
+        "usable": true,
+        "note": "the earlier cut grooves are not resolved by the 3 mm reconstruction and a 3-4% patch at the top left reads at table height; kept by the user because the cut does not deform the dough much"
+      }
+    },
+    {
+      "id": "p16_E7.1_cut",
+      "episode": "ep05_left_edge_cross_cut",
+      "frames": [
+        0,
+        214
+      ],
+      "motion": "cut",
+      "split": "calibration",
+      "start_quality": {
+        "usable": true,
+        "note": "the earlier cut grooves are not resolved by the 3 mm reconstruction and a 3-4% patch at the top left reads at table height; kept by the user because the cut does not deform the dough much"
+      }
+    }
+  ],
+  "notes": [
+    "Parts and their cuts come from the user: ep01 cut by hand into five pushes and a squeeze, ep03b cut at the peaks of blade separation with the first two cycles merged, the other episodes whole.",
+    "Dropped by the user: ep03a (a fifth of the dough reads at table height at the start), ep03c (the dough leaves the image), ep06 and ep07 (kneading, already covered by ep03b).",
+    "Calibration: 2 pushes, 2 squeezes, 2 kneading parts with the best starts and both cuts. The other parts are validation or test.",
+    "Observation clouds include the export's gap-filled points; filled_flags.pt in the export marks them."
+  ]
+}

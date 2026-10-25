@@ -9,6 +9,26 @@ Every input is named in one sources file, so tool geometry or poses can be repla
 writing a new sources file and rerunning into a new output directory. The optional sources
 keys "version" (file-name suffix, default v1) and "tool_sdf" (builder, resolution and
 qualification profile written into every chunk config) leave older sources files unchanged.
+
+Two more optional keys replace the fixed-length chunks. "parts" lists explicit frame ranges
+(inclusive, indices into the episode's kept clouds), each with a motion label, a split
+(calibration, validation or test) and a start-quality mark; every part becomes one chunk and
+the episodes are the ones the parts name. Calibration parts are training rows of the dataset
+files, validation parts are validation rows, and test parts get configs but are listed only
+in test_episodes_<variant>_<version>.json, so a calibration run never sees them.
+"poses.gap_fill" bridges untracked frames by interpolating between the raw samples on either
+side of the gap, up to max_gap_s. Bridged frames are flagged; where the bracketing samples are
+more than check_clearance_above_s apart, the placed collision mesh must stay at least
+min_clearance_m from that frame's dough cloud, otherwise the part fails.
+"poses.correction" names a directory with one <episode>.npz per episode, holding per tool
+<tool>_stamps_ns [K] (cloud header stamps) and <tool>_marker_correction [K, 4, 4]. Each pose
+becomes raw @ C, with C interpolated between the two nearest stamps (linear translation, slerp
+rotation) and held constant outside them; a tool with no stamps keeps its raw pose.
+"grid_box" with "slack_cells" gives every part its own simulation grid box: the grid nodes that
+the stencils of the initial particles and of every observed dough point of the part touch, plus
+slack_cells and the WALL_LAYERS outer layers in which the solver removes outward velocity, so the
+walls only act slack_cells beyond anything the observed dough reached. The box starts at the
+floor and is clipped to the full cube, where the full-cube walls act in the same place.
 """
 from __future__ import annotations
 
@@ -35,6 +55,9 @@ from .table_alignment import GRAVITY_ASSUMPTION, compose_table_calibration, tabl
 TOOL_NAMES = ("UR5e_spathla", "gen3_spathla")  # stream order used by Episode 14
 REPLAY_MAX_GAP_S = 0.1
 TOOL_SDF_KEYS = {"builder": "tool_sdf_builder", "resolution": "tool_sdf_resolution", "qualification": "tool_sdf_qualification"}
+PART_SPLITS = {"calibration": "training", "validation": "validation", "test": None}  # split -> dataset membership
+GAP_FILL_KEYS = {"max_gap_s", "check_clearance_above_s", "min_clearance_m"}
+WALL_LAYERS = 3  # solver.py removes outward grid velocity within this many nodes of the box faces
 
 
 def raw_tracks(sources):
@@ -53,6 +76,12 @@ def raw_tracks(sources):
     return tracks
 
 
+def bracket_gap_ns(track, stamp_ns):
+    """Time between the two raw samples around stamp_ns, or None at either end of the track."""
+    i = int(np.searchsorted(track[0], stamp_ns))
+    return None if i <= 0 or i >= len(track[0]) else int(track[0][i] - track[0][i - 1])
+
+
 def pose_at(track, stamp_ns, max_gap_ns):
     """Position and xyzw quaternion at stamp_ns, or None without close bracketing samples."""
     from scipy.spatial.transform import Rotation, Slerp
@@ -67,20 +96,67 @@ def pose_at(track, stamp_ns, max_gap_ns):
 
 
 def episode_poses(stamps_ns, tracks, settings):
-    """[T, 2, 7] poses in the mocap frame and [T, 2] validity, tools in TOOL_NAMES order."""
+    """[T, 2, 7] poses in the mocap frame, [T, 2] validity, [T, 2] filled flags and [T, 2] bracket gaps
+    in s (NaN where not filled), tools in TOOL_NAMES order. Frames are filled only with settings["gap_fill"]."""
     lag_ns, gap_ns = round(settings["lag_s"] * 1e9), round(settings["max_bracket_gap_s"] * 1e9)
+    fill = settings.get("gap_fill")
+    fill_ns = round(fill["max_gap_s"] * 1e9) if fill else None
     poses = np.full((len(stamps_ns), 2, 7), np.nan)
     valid = np.zeros((len(stamps_ns), 2), dtype=bool)
+    filled = np.zeros((len(stamps_ns), 2), dtype=bool)
+    fill_gap_s = np.full((len(stamps_ns), 2), np.nan)
     for j, name in enumerate(TOOL_NAMES):
         previous = None
         for i, stamp in enumerate(stamps_ns):
             pose = pose_at(tracks[name], int(stamp) + lag_ns, gap_ns)
+            if pose is None and fill_ns is not None:
+                pose = pose_at(tracks[name], int(stamp) + lag_ns, fill_ns)
+                if pose is not None:
+                    filled[i, j], fill_gap_s[i, j] = True, bracket_gap_ns(tracks[name], int(stamp) + lag_ns) / 1e9
             if pose is None:
                 continue
             if previous is not None and pose[3:] @ previous < 0:
                 pose[3:] = -pose[3:]  # keep consecutive quaternions in one hemisphere
             poses[i, j], valid[i, j], previous = pose, True, pose[3:]
-    return poses, valid
+    return poses, valid, filled, fill_gap_s
+
+
+def corrected_poses(poses, valid, stamps_ns, correction_file):
+    """Poses right-multiplied by the marker correction interpolated at each cloud stamp, and the number
+    of correction stamps per tool."""
+    from scipy.spatial.transform import Rotation, Slerp
+    data = np.load(correction_file)
+    poses, used = poses.copy(), {}
+    for j, name in enumerate(TOOL_NAMES):
+        stamps, corrections = data[f"{name}_stamps_ns"].astype(np.float64), data[f"{name}_marker_correction"]
+        used[name] = len(stamps)
+        rows = np.flatnonzero(valid[:, j])
+        if not len(stamps) or not len(rows):
+            continue
+        t = np.clip(stamps_ns[rows].astype(np.float64), stamps[0], stamps[-1])
+        if len(stamps) == 1:
+            rotation, translation = Rotation.from_matrix(np.repeat(corrections[:1, :3, :3], len(rows), axis=0)), np.repeat(corrections[:1, :3, 3], len(rows), axis=0)
+        else:
+            rotation = Slerp(stamps, Rotation.from_matrix(corrections[:, :3, :3]))(t)
+            translation = np.stack([np.interp(t, stamps, corrections[:, axis, 3]) for axis in range(3)], axis=1)
+        body = Rotation.from_quat(poses[rows, j, 3:7])
+        poses[rows, j, :3] += body.apply(translation)
+        quaternion = (body * rotation).as_quat()
+        quaternion[np.sum(quaternion * poses[rows, j, 3:7], axis=1) < 0] *= -1  # keep the raw hemisphere
+        poses[rows, j, 3:7] = quaternion
+    return poses, used
+
+
+def grid_box(points, grid, slack_cells):
+    """grid_box_lower and grid_box_cells around the corrected-v1 stencils of points in [0, 1]^3."""
+    base = np.floor(np.asarray(points, dtype=np.float64) * grid - 0.5).astype(np.int64)
+    margin = slack_cells + WALL_LAYERS
+    lower = np.maximum(base.min(axis=0) - margin, 0)
+    upper = np.minimum(base.max(axis=0) + 2 + margin + 1, grid)
+    lower[1] = 0
+    upper = np.maximum(upper, np.minimum(lower + 8, grid))
+    lower = np.minimum(lower, upper - 8)
+    return [int(v) for v in lower], [int(v) for v in upper - lower]
 
 
 def chunk_ranges(valid_both, times, chunking):
@@ -104,6 +180,46 @@ def chunk_ranges(valid_both, times, chunking):
         for a, b in zip(edges[:-1], edges[1:]):
             (kept if b - a >= chunking["min_frames"] else dropped).append((int(a), int(b)))
     return runs, kept, dropped
+
+
+def part_ranges(parts, valid_both, times):
+    """(first, end) per part, end exclusive. Parts are never split, so every frame needs both tool
+    poses and no frame gap may exceed REPLAY_MAX_GAP_S."""
+    ranges = []
+    for part in parts:
+        first, last = part["frames"]
+        if not 0 <= first < last < len(times):
+            raise ValueError(f"part {part['id']}: frames {part['frames']} outside 0..{len(times) - 1}")
+        missing = np.flatnonzero(~valid_both[first:last + 1]) + first
+        if len(missing):
+            raise ValueError(f"part {part['id']}: no pose for a tool at frames {missing.tolist()}")
+        gap = float(np.diff(times[first:last + 1]).max())
+        if gap > REPLAY_MAX_GAP_S:
+            raise ValueError(f"part {part['id']}: frame gap {gap:.3f} s exceeds {REPLAY_MAX_GAP_S} s")
+        ranges.append((first, last + 1))
+    return ranges
+
+
+def filled_clearance(chunk, mesh_samples, mocap_from_camera, settings):
+    """Smallest distance in m per tool between the placed collision mesh and the dough cloud, over the
+    filled frames whose bracket gap exceeds check_clearance_above_s; None when no frame is checked."""
+    from scipy.spatial import cKDTree
+    from scipy.spatial.transform import Rotation
+    result = {}
+    for j, name in enumerate(TOOL_NAMES):
+        frames = np.flatnonzero(chunk["filled"][:, j] & (chunk["fill_gap_s"][:, j] > settings["check_clearance_above_s"]))
+        closest = None
+        for f in frames:
+            pose = chunk["poses"][f, j]
+            world = np.eye(4)
+            world[:3, :3], world[:3, 3] = Rotation.from_quat(pose[3:7]).as_matrix(), pose[:3]
+            world = world @ mesh_samples[name][0]
+            mesh = mesh_samples[name][1] @ world[:3, :3].T + world[:3, 3]
+            cloud = move(chunk["clouds"][f][:, :3].numpy().astype(np.float64), mocap_from_camera)
+            distance = float(cKDTree(cloud).query(mesh)[0].min())
+            closest = distance if closest is None else min(closest, distance)
+        result[name] = {"checked_frames": len(frames), "min_clearance_m": closest}
+    return result
 
 
 def path_tensor(poses, times):
@@ -203,9 +319,28 @@ def run(args):
     if set(tool_sdf) - set(TOOL_SDF_KEYS):
         raise ValueError(f"Unknown tool_sdf settings: {sorted(set(tool_sdf) - set(TOOL_SDF_KEYS))}")
     spec = {row["id"]: row for row in json.loads(Path(sources["segments_spec"]).read_text())["episodes"]}
-    order = sources["episode_order"]
-    if sorted(order) != sorted(spec):
-        raise ValueError("episode_order must list every episode of the segments spec")
+    parts = sources.get("parts")
+    if parts is None:
+        order = sources["episode_order"]
+        if sorted(order) != sorted(spec):
+            raise ValueError("episode_order must list every episode of the segments spec")
+    else:
+        order = list(dict.fromkeys(part["episode"] for part in parts))
+        if set(order) - set(spec):
+            raise ValueError(f"parts name episodes missing from the segments spec: {sorted(set(order) - set(spec))}")
+        if len({part["id"] for part in parts}) != len(parts):
+            raise ValueError("part ids must be unique")
+        if any(part["split"] not in PART_SPLITS for part in parts):
+            raise ValueError(f"part split must be one of {sorted(PART_SPLITS)}")
+    gap_fill = sources["poses"].get("gap_fill")
+    if gap_fill is not None and set(gap_fill) != GAP_FILL_KEYS:
+        raise ValueError(f"poses.gap_fill must have exactly the keys {sorted(GAP_FILL_KEYS)}")
+    correction_dir = Path(sources["poses"]["correction"]["dir"]) if "correction" in sources["poses"] else None
+    if correction_dir is not None and (missing := [ep for ep in order if not (correction_dir / f"{ep}.npz").exists()]):
+        raise ValueError(f"poses.correction has no file for {missing}")
+    box_settings = sources.get("grid_box")
+    if box_settings is not None and set(box_settings) != {"slack_cells"}:
+        raise ValueError("grid_box must have exactly the key slack_cells")
     observations_root = Path(sources["observations_root"])
     templates = {key: {part: Path(path) for part, path in value.items()} for key, value in sources["config_templates"].items()}
     reconstruction_script = REPOSITORY_ROOT / "scripts/reconstruct_voxel_dough_from_deformpath.py"
@@ -215,6 +350,8 @@ def run(args):
                     *(Path(tool[key]) for tool in sources["tools"].values() for key in ("mesh", "body_correction", "base_tool_geometry") if tool.get(key)),
                     *(path for value in templates.values() for path in value.values()),
                     *(observations_root / ep / name for ep in order for name in ("pointclouds.pt", "conversion_metadata.json", "camera_parameters.json")),
+                    *(path for ep in order if (path := observations_root / ep / "filled_flags.pt").exists()),
+                    *((correction_dir / f"{ep}.npz" for ep in order) if correction_dir is not None else ()),
                     Path(__file__).resolve(), EXPERIMENT_ROOT / "table_alignment.py", EXPERIMENT_ROOT / "data.py", reconstruction_script]
     source_hashes = {str(path): file_sha256(path) for path in source_paths}
     output = fresh_directory(args.output_dir)
@@ -279,6 +416,12 @@ def run(args):
     write_json(mocap_path, mocap_document)
     mocap_calibration_loaded = topview.load_calibration(mocap_path)
 
+    # Collision-mesh surface samples in the mesh frame of marker_from_mesh, for the filled-pose clearance check.
+    from .partial_view_icp import sample_mesh
+    mesh_samples = {tool["name"]: (np.asarray(tool["marker_from_mesh"]), sample_mesh(
+        tool_frame_vertices(simulator, tool["name"], mesh_paths[MESH_SETTINGS[tool["name"]][0]], scale).reshape(-1, 3, 3), 20000, 0)[0])
+        for tool in tools}
+
     # Poses and chunks for every episode.
     tracks = raw_tracks(sources)
     episodes, chunk_plan = {}, []
@@ -290,18 +433,36 @@ def run(args):
         if len(clouds) != len(stamps) or np.any(np.diff(stamps) <= 0):
             raise ValueError(f"{ep}: cloud count or timestamps are inconsistent")
         times = (stamps - stamps[0]) / 1e9
-        poses, valid = episode_poses(stamps, tracks, sources["poses"])
-        runs, kept, dropped = chunk_ranges(valid.all(axis=1), times, sources["chunking"])
+        poses, valid, filled, fill_gap_s = episode_poses(stamps, tracks, sources["poses"])
+        correction_frames = None
+        if correction_dir is not None:
+            poses, correction_frames = corrected_poses(poses, valid, stamps, correction_dir / f"{ep}.npz")
+        if parts is None:
+            episode_parts = None
+            runs, kept, dropped = chunk_ranges(valid.all(axis=1), times, sources["chunking"])
+        else:
+            episode_parts = [part for part in parts if part["episode"] == ep]
+            runs, kept, dropped = [], part_ranges(episode_parts, valid.all(axis=1), times), []
+        filled_flags_path = observations_root / ep / "filled_flags.pt"
+        point_filled = torch.load(filled_flags_path, weights_only=True)[0] if filled_flags_path.exists() else None
         torch.save({"path": torch.from_numpy(np.concatenate([poses, np.repeat(times[:, None, None], 2, axis=1)], axis=2)),
                     "stream_validity": torch.from_numpy(valid), "pose_frames": list(TOOL_NAMES),
-                    "layout": "xyz, xyzw quaternion (mocap frame, raw OptiTrack body), time since first cloud in s; NaN where invalid"},
+                    **({"pose_filled": torch.from_numpy(filled)} if gap_fill is not None else {}),
+                    "layout": f"xyz, xyzw quaternion (mocap frame, {'corrected' if correction_dir is not None else 'raw'} OptiTrack body), "
+                              "time since first cloud in s; NaN where invalid"},
                    output / "episode_paths" / f"{ep}.pt")
         episodes[ep] = {"frames": len(stamps), "valid_frames": {name: int(valid[:, j].sum()) for j, name in enumerate(TOOL_NAMES)},
+                        **({"filled_pose_frames": {name: int(filled[:, j].sum()) for j, name in enumerate(TOOL_NAMES)}}
+                           if gap_fill is not None else {}),
+                        **({"pose_correction_stamps": correction_frames} if correction_frames is not None else {}),
                         "both_valid_frames": int(valid.all(axis=1).sum()), "tracked_runs": runs,
                         "chunks": kept, "dropped_short_pieces": dropped}
         for k, (a, b) in enumerate(kept):
-            chunk_plan.append({"id": f"bag0_{ep}_c{k:02d}", "episode": ep, "start": a, "end": b,
+            part = episode_parts[k] if episode_parts is not None else None
+            chunk_plan.append({"id": f"bag0_{part['id']}" if part else f"bag0_{ep}_c{k:02d}", "episode": ep, "start": a, "end": b,
                                "stamps": stamps[a:b], "times": times[a:b], "poses": poses[a:b],
+                               "filled": filled[a:b], "fill_gap_s": fill_gap_s[a:b], "part": part,
+                               "point_filled": point_filled[a:b] if point_filled is not None else None,
                                "clouds": clouds[a:b], "conversion": conversion})
         print(f"{ep}: {len(stamps)} frames, both tools valid {episodes[ep]['both_valid_frames']}, "
               f"{len(kept)} chunks, dropped {dropped}", flush=True)
@@ -336,7 +497,10 @@ def run(args):
             "mocap_from_pointcloud_source": mocap_from_camera.tolist(),
             "pointcloud_columns": "xyz in mocap; columns 3-5 copied unchanged from the grid export",
             "pointcloud_filter": {key: conversion[key] for key in ("subsampling", "hsv_filter", "height_band_m",
-                                                                   "height_reference", "cluster_filter")}})
+                                                                   "height_reference", "cluster_filter", "gap_fill")
+                                  if key in conversion},
+            **({"part": chunk["part"]} if chunk["part"] is not None else {}),
+            **({"pose_filled": chunk["filled"].tolist()} if gap_fill is not None else {})})
         chunk["recording"] = recording
         chunk["sequence"] = dynamics.load_observation_sequence(recording)
 
@@ -369,7 +533,7 @@ def run(args):
     configs_dir.mkdir()
     mass_kg = float(sources["mass_kg"])
     obs_size = sources["observation_size"]
-    chunk_rows, failed, dataset_rows = [], [], {key: [] for key in templates}
+    chunk_rows, failed, dataset_rows, test_rows = [], [], {key: [] for key in templates}, {key: [] for key in templates}
     kept = 0
     for chunk in chunk_plan:
         name, recording, sequence = chunk["id"], chunk["recording"], chunk["sequence"]
@@ -403,6 +567,12 @@ def run(args):
         particles = np.load(particles_path, allow_pickle=False)
         volume = float(json.loads(reconstruction_path.read_text())["object_volume_m3"])
         density = mass_kg / volume
+        clouds = [topview.apply_calibration(topview.filter_xyz(points, trim), calibration) for points in sequence.points]
+        observed = np.concatenate(clouds)
+        box = None
+        if box_settings is not None:
+            grid = json.loads(next(iter(templates.values()))["config"].read_text())["simulation"]["grid"]
+            box = grid_box(np.concatenate([particles, observed]), grid, box_settings["slack_cells"])
 
         config_paths = {}
         for variant, template in templates.items():
@@ -420,6 +590,8 @@ def run(args):
                                          for key, value in config["paths"].items() if key != "episode"}
             config["expected_sequence_fingerprint"] = sequence.fingerprint
             config["mass_kg"] = mass_kg
+            if box is not None:
+                config["simulation"]["grid_box_lower"], config["simulation"]["grid_box_cells"] = box
             config["density_kg_m3"] = density
             config["observation"]["width"], config["observation"]["height"] = obs_size["width"], obs_size["height"]
             config["training"] = {"start_frame": 1, "end_frame": frame_count - 2, "stride": 1}
@@ -430,8 +602,6 @@ def run(args):
 
         loaded = load_config(config_paths["stretch_clamp_coulomb"])
         sim = SimulationConfig(**loaded.simulation)
-        clouds = [topview.apply_calibration(topview.filter_xyz(points, trim), calibration) for points in sequence.points]
-        observed = np.concatenate(clouds)
         replay = dynamics.ToolReplay(sequence, calibration, 0, frame_count - 1, max_gap_s=REPLAY_MAX_GAP_S,
                                      marker_from_tool_frames=geometry.marker_from_mesh)
         support = tool_support(replay, corners, dynamics)
@@ -444,8 +614,22 @@ def run(args):
                "tool_continuous_bounds": support,
                "max_tool_angular_speed_rad_s": dict(zip(TOOL_NAMES, angular.max(axis=0).tolist())),
                "sequence_fingerprint": sequence.fingerprint,
+               **({"grid_box": {"lower": box[0], "cells": box[1], "node_fraction": float(np.prod(box[1]) / sim.grid ** 3)}}
+                  if box is not None else {}),
                "configs": {key: str(path.relative_to(output)) for key, path in config_paths.items()}}
+        if chunk["part"] is not None:
+            row.update(part=chunk["part"], split=chunk["part"]["split"])
+        if gap_fill is not None:
+            row["pose_filled_frames"] = dict(zip(TOOL_NAMES, chunk["filled"].sum(axis=0).tolist()))
+        if chunk["point_filled"] is not None:
+            row["observation_filled_points"] = {"first_frame": int(chunk["point_filled"][0].sum()),
+                                                "all_frames": int(sum(int(flags.sum()) for flags in chunk["point_filled"]))}
         try:
+            if gap_fill is not None and chunk["filled"].any():
+                row["filled_pose_clearance"] = filled_clearance(chunk, mesh_samples, mocap_from_camera, gap_fill)
+                for tool_name, check in row["filled_pose_clearance"].items():
+                    if check["min_clearance_m"] is not None and check["min_clearance_m"] < gap_fill["min_clearance_m"]:
+                        raise ValueError(f"{tool_name} filled pose comes {check['min_clearance_m'] * 1000:.1f} mm from the dough")
             validate_initial_stencils(particles, sim)
             if (particles < 0).any() or (particles >= 1).any():
                 raise ValueError("particles leave the simulation domain")
@@ -466,17 +650,21 @@ def run(args):
                    controls_finite=bool(np.isfinite(prepared.controls.poses).all() and np.isfinite(prepared.controls.velocities).all()))
         del prepared
         kept += 1
-        row["membership"] = "validation" if kept % sources["validation_every"] == 0 else "training"
+        if chunk["part"] is None:
+            row["membership"] = "validation" if kept % sources["validation_every"] == 0 else "training"
+        else:
+            row["membership"] = PART_SPLITS[chunk["part"]["split"]] or "test"
         chunk_rows.append(row)
         for variant, path in config_paths.items():
-            dataset_rows[variant].append({"id": name, "config": f"configs/{path.name}", "membership": row["membership"],
-                                          "weight": 1.0, "scored_window": {"start_frame": 1, "end_frame": frame_count - 1, "stride": 1}})
+            entry = {"id": name, "config": f"configs/{path.name}", "membership": row["membership"],
+                     "weight": 1.0, "scored_window": {"start_frame": 1, "end_frame": frame_count - 1, "stride": 1}}
+            (test_rows if row["membership"] == "test" else dataset_rows)[variant].append(entry)
         print(f"{name}: {frame_count} frames, volume {volume * 1e6:.1f} cm^3, density {density:.0f} kg/m^3, "
               f"tool y min {support['min'][1]:.4f}, {row['membership']}", flush=True)
 
     from .dataset_config import load_dataset
     datasets = []
-    priority = set(sources["priority_episodes"])
+    priority = set(sources.get("priority_episodes", []))
     by_id = {row["id"]: row for row in chunk_rows}
     for variant, template in templates.items():
         shared = json.loads(template["dataset"].read_text())["shared_parameters"]
@@ -491,6 +679,12 @@ def run(args):
             load_dataset(path)
             datasets.append({"dataset": path.name, "variant": variant, "subset": subset, "chunks": len(rows_subset),
                              "validation_chunks": sum(r["membership"] == "validation" for r in rows_subset)})
+        if test_rows[variant]:
+            path = output / f"test_episodes_{variant}_{version}.json"
+            write_json(path, {"schema": "taichidough/bag0-test-episodes/v1", "name": f"bag0-test-{variant.replace('_', '-')}-{version}",
+                              "note": "Held-out test parts. They are in no dataset file, so a calibration run never reads them.",
+                              "shared_parameters": shared, "episodes": test_rows[variant]})
+            datasets.append({"test_episodes": path.name, "variant": variant, "chunks": len(test_rows[variant])})
     if {path: file_sha256(Path(path)) for path in source_hashes} != source_hashes:
         raise ValueError("An input changed during preparation")
     write_json(output / "validation.json", {
@@ -501,7 +695,8 @@ def run(args):
         "transform": transform.tolist(), "gravity_assumption": GRAVITY_ASSUMPTION,
         "chunks": chunk_rows, "failed_chunks": failed, "source_hashes": source_hashes,
         "output_sha256": {str(p.relative_to(output)): file_sha256(p) for p in sorted(output.rglob("*")) if p.is_file()},
-        "notes": [f"Mass is {mass_kg} kg for every chunk (user instruction); density is mass over the reconstructed volume.",
+        "notes": [*sources.get("notes", []),
+                  f"Mass is {mass_kg} kg for every chunk (user instruction); density is mass over the reconstructed volume.",
                   "Each chunk restarts from its own first cloud; frame 0 is initialization only.",
                   "Validation chunks come from the same recording as the training chunks.",
                   "Tool poses are raw OptiTrack samples at cloud time + lag, not the smoothed or exported paths.pt.",
