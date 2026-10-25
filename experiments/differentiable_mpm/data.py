@@ -158,6 +158,28 @@ def collision_inputs(config, records, sequence_names, simulator, build_sdf):
         raise ValueError("Collision solids and recorded tool stream names differ")
     volumes = []
     asset_records = []
+    qualification_reports = []
+    builder_name = config.tool_sdf_builder
+    padding = config.simulation.get("tool_contact_padding", 1 / 384)
+    builder = simulator.build_mesh_sdf
+    construction = None
+    if builder_name == "triangle-distance-v1":
+        if manifest.get("qualification") == "not-qualified":
+            raise ValueError("Collision manifest explicitly marks the source geometry not-qualified")
+        grid_padding = config.simulation.get("tool_grid_contact_padding")
+        padding = max(padding, padding if grid_padding is None else grid_padding)
+        if build_sdf:
+            from .triangle_sdf import build_tool_sdf, builder_identity
+            from .qualify_tool_sdf import qualify_field, qualify_resolution, qualification_identity, qualification_settings
+
+            grid_spacing = 1.0 / config.simulation.get("grid", SimulationConfig.grid)
+            settings = qualification_settings(config.tool_sdf_qualification, grid_spacing)
+            construction = {"builder": builder_identity(),
+                            "qualification": qualification_identity(config.tool_sdf_qualification, grid_spacing),
+                            "sparse_preflight_required": True}
+            builder = build_tool_sdf
+    elif builder_name != "legacy-voxel-v1":
+        raise ValueError(f"Unsupported tool SDF builder: {builder_name}")
     for name in sequence_names:
         key, origin, rpy = asset_settings[name]
         row = by_name[name]
@@ -173,7 +195,20 @@ def collision_inputs(config, records, sequence_names, simulator, build_sdf):
         if build_sdf:
             vertices, _ = simulator.load_binary_stl(config.paths[key], config.tool_mesh_scale)
             transformed = simulator.mesh_in_tool_frame(vertices, origin, simulator.rpy_to_matrix(rpy))
-            padding = config.simulation.get("tool_contact_padding", 1 / 384)
+            report = None
+
+            def qualified_builder(points, resolution, extent):
+                nonlocal report
+                preflight = qualify_resolution(points, resolution, extent, **settings)
+                if not preflight["passed"]:
+                    raise ValueError(f"Tool SDF resolution preflight failed for {name}: {preflight}")
+                volume = builder(points, resolution, extent)
+                report = qualify_field(points, volume, extent, **settings)
+                if not report["passed"]:
+                    raise ValueError(f"Tool SDF qualification failed for {name}: {report}")
+                return volume
+
+            selected_builder = qualified_builder if construction is not None else builder
             cache_dir = os.environ.get("TAICHIDOUGH_SDF_CACHE")
             if cache_dir:
                 from .sdf_cache import cached_mesh_sdf
@@ -181,12 +216,23 @@ def collision_inputs(config, records, sequence_names, simulator, build_sdf):
                 source = {"mesh_sha256": records[key]["sha256"], "mesh_scale": config.tool_mesh_scale,
                           "visual_origin_m": np.asarray(origin).tolist(), "visual_rpy_rad": np.asarray(rpy).tolist(),
                           "builder_sha256": file_sha256(Path(simulator.__file__))}
-                volumes.append(cached_mesh_sdf(
+                if construction is not None:
+                    source["construction"] = construction
+                volume = cached_mesh_sdf(
                     cache_dir, transformed, config.tool_sdf_resolution, padding, source,
-                    simulator.build_mesh_sdf,
-                    read_only=os.environ.get("TAICHIDOUGH_SDF_CACHE_READONLY") == "1"))
+                    selected_builder,
+                    read_only=os.environ.get("TAICHIDOUGH_SDF_CACHE_READONLY") == "1")
             else:
-                volumes.append(simulator.build_mesh_sdf(transformed, config.tool_sdf_resolution, padding))
+                volume = selected_builder(transformed, config.tool_sdf_resolution, padding)
+            if construction is not None:
+                if report is None:
+                    report = qualify_field(transformed, volume, padding, **settings)
+                if not report["passed"]:
+                    raise ValueError(f"Cached tool SDF qualification failed for {name}: {report}")
+                qualification_reports.append({"name": name, "report": report,
+                    "arrays": {key: array_fingerprint(value) for key, value in zip(
+                        ("distances", "gradients", "minimums", "spacings"), volume)}})
+            volumes.append(volume)
     sdf = None
     derived = None
     if build_sdf:
@@ -196,7 +242,9 @@ def collision_inputs(config, records, sequence_names, simulator, build_sdf):
         derived = {name: array_fingerprint(getattr(sdf, name)) for name in ("distances", "gradients", "minimums", "spacings")}
     return sdf, {"manifest": records["collision_manifest"], "assets_in_stream_order": asset_records,
                  "resolution": config.tool_sdf_resolution, "mesh_scale": config.tool_mesh_scale,
-                 "padding_m": config.simulation.get("tool_contact_padding", 1 / 384), "derived_arrays": derived}
+                 "padding_m": padding, "derived_arrays": derived,
+                 "builder": builder_name, "construction": construction,
+                 "qualification": qualification_reports if build_sdf else None}
 
 
 @dataclass

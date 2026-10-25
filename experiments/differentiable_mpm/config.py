@@ -90,6 +90,8 @@ class ExperimentConfig:
     density_kg_m3: float = 283.071209393435
     replay_max_gap_s: float = 0.1
     tool_sdf_resolution: int = 64
+    tool_sdf_builder: str = "legacy-voxel-v1"
+    tool_sdf_qualification: str = "strict-v2"
     tool_mesh_scale: float = 0.001
     backend: str = "cpu"
     segment_length: int = 64
@@ -180,6 +182,12 @@ class ExperimentConfig:
         for name in ("mass_kg", "density_kg_m3", "replay_max_gap_s", "tool_mesh_scale"):
             if not np.isfinite(getattr(self, name)) or getattr(self, name) <= 0:
                 raise ValueError(f"{name} must be positive and finite")
+        if not isinstance(self.tool_sdf_builder, str) or self.tool_sdf_builder not in ("legacy-voxel-v1", "triangle-distance-v1"):
+            raise ValueError("tool_sdf_builder must be legacy-voxel-v1 or triangle-distance-v1")
+        if self.tool_sdf_qualification not in ("strict-v2", "grid-relative-v1"):
+            raise ValueError("tool_sdf_qualification must be strict-v2 or grid-relative-v1")
+        if self.tool_sdf_qualification != "strict-v2" and self.tool_sdf_builder != "triangle-distance-v1":
+            raise ValueError("tool_sdf_qualification applies only to the triangle-distance-v1 builder")
         if isinstance(self.tool_sdf_resolution, bool) or not isinstance(self.tool_sdf_resolution, int) or self.tool_sdf_resolution < 16:
             raise ValueError("tool_sdf_resolution must be an integer >= 16")
         return self

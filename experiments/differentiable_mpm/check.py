@@ -20,6 +20,8 @@ STANDARD_TESTS = (
     'test_table_alignment', 'test_table_frame', 'test_forward_video_v2',
     'test_point_set_loss', 'test_loss_targets', 'test_loss_options_integration',
     'test_paper_loss_trajectory', 'test_runtime_target_validation',
+    'test_triangle_sdf', 'test_sdf_qualification', 'test_sdf_builder_integration',
+    'test_prepare_blade_collision_meshes', 'test_mesh_validation', 'test_prepare_valid_blade_meshes',
 )
 QUICK_TESTS = STANDARD_TESTS[:7] + (
     'test_dataset_config', 'test_dataset_inventory', 'test_episode_worker',

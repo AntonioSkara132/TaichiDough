@@ -155,6 +155,8 @@ def _common_settings(config):
         if name in {"n_particles", "grid", "dt", "particle_mass", "particle_volume"} or name.startswith("floor_"):
             numerical.pop(name)
     return {"simulation": numerical, "backend": config.backend,
+            "tool_sdf_builder": config.tool_sdf_builder, "tool_sdf_qualification": config.tool_sdf_qualification,
+            "tool_sdf_resolution": config.tool_sdf_resolution, "tool_mesh_scale": config.tool_mesh_scale,
             "observation": asdict(config.observation), "loss": parse_loss_config(config.loss).as_dict(),
             "strict_loss": config.strict_loss, "optimizer": asdict(AdamOptions(**config.optimizer))}
 

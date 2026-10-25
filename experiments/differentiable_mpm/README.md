@@ -81,6 +81,44 @@ The frozen reference simulator rejects Dirichlet mode or unequal grid/particle p
 
 Parameters are differentiated through every replay step. Host checkpoints and a configurable device history bound memory. At segment boundaries, **all five state adjoints are carried backward**, rather than detached. Grid/material/contact intermediates are recomputed. By default, checkpoint endpoint and contact/yield-count disagreement rejects a backward evaluation.
 
+### Triangle-based tool SDFs
+
+The top-level `tool_sdf_builder` setting defaults to `"legacy-voxel-v1"`. Select `"triangle-distance-v1"` explicitly in a new configuration to use actual triangle distances with Open3D (tested implementation targets 0.17.0). Open3D is imported only for this mode. Original collision meshes, datasets and preserved builders are not rewritten.
+
+The new builder requires a valid, consistently oriented closed solid; edge closure alone is insufficient. Intersection validation enumerates overlapping triangle bounding boxes and uses exact predicates on the stored coordinates, allowing only the expected shared vertex or edge between adjacent faces. This avoids treating Open3D's near-coplanar false positives as real intersections, without accepting genuine overlaps. Intersecting triangles, ambiguous overlapping components and invalid geometry are rejected rather than repaired automatically. Blade-only collision assets may omit the disconnected OptiTrack mount while retaining blade coordinates and all tracking transforms. Such extraction is not itself a validity certificate.
+
+New field bounds cover the larger particle/grid contact padding plus an interpolation margin. Enlarging bounds does not dilate the mesh. Stored values are float32 signed distances and outward normals; the solver still interpolates distance and normals separately and normalizes the latter. Exact samples alone cannot represent an arbitrarily thin blade: interpolation may lose its negative interior or cancel opposite normals.
+
+Preparation first tests the candidate resolution by querying only the grid corners needed by deterministic mesh-normal profiles. A failed candidate is rejected before allocating its dense arrays. A passing candidate is built and the stored interpolated field is checked again before use. Qualification policy `triangle-interpolation-v2` uses 0.1 mm distance and geometric boundary-offset limits, a 10% physical-thickness limit, and a 10-degree limit for every evaluated normal. It compares all genuine mesh crossings, including concave re-entry, and refines field roots before measuring their distance to the mesh. Ray displacement remains a diagnostic, not a normal boundary-distance measurement. The thickness limit applies only where all incident exit-face normals are within 5 degrees of the opposite entry normal; other chord-length errors are reported separately. Normal reports distinguish regular interpolation support from support spanning strongly varying exact normals, but both remain subject to the 10-degree limit. Reports describe sampled coverage, not a proof at every position, and do not establish physical measurement accuracy. Failed fields are rejected, including on cache reads. A higher resolution is not accepted without these checks.
+
+The top-level `tool_sdf_qualification` setting selects the acceptance profile for `triangle-distance-v1`. `"strict-v2"` (default) is the policy above. `"grid-relative-v1"` sets the distance and boundary limits to 5% of the MPM grid spacing (1.04 mm at grid 48) and applies the 10-degree normal limit only where the exact normals at all eight interpolation corners agree within 1 degree; normals at stencils spanning an edge, corner or hole rim are still reported. It also accepts a missing interior or a crossing-count mismatch on a profile whose deepest material lies within the distance limit of the surface and, for a thickness profile, within 5% of its thickness. A line running just inside a wall passes; a plate that disappears does not, because its depth is half its thickness. The profile and its resolved limits are part of the cache and qualification identity, and the setting is serialized, so configuration fingerprints change. `prepare_bag0_dynamics.py` writes these settings from the optional `tool_sdf` block of a sources file (see `configs/bag0_dynamics_sources_v2.json`).
+
+Cache identity includes the new algorithm, implementation/dependency identity, geometry, transforms, bounds inputs and qualification policy. Legacy cache keys remain unchanged. Resolved configurations now serialize the builder setting, so their fingerprints change even when the legacy default is selected; do not resume earlier runs under a different fingerprint. Dataset loading requires consistent builder, SDF resolution and mesh scale across members.
+
+Extract the pinned shared blades without modifying their triangle records:
+
+```bash
+/usr/bin/python3 -m experiments.differentiable_mpm.prepare_blade_collision_meshes \
+  --output-dir experiments/differentiable_mpm/runs/blade_only_geometry_v1
+```
+
+The output directory must be new. The command writes a manifest, retained triangle indices, exact intersection diagnostics and before/after views. Exit status 2 means the extracted geometry is not qualified; do not use that manifest for the new builder. The current shared assets retain exact intersections after mount omission, including adjacent-face overlaps. The new mode rejects their `not-qualified` manifest; extraction alone does not produce usable SDFs.
+
+`prepare_valid_blade_meshes` derives separate corrected assets using pinned local edge flips: 16 face pairs for UR and 15 for Kinova. Every vertex and the raw bounds remain unchanged. Exact per-patch displacement bounds limit the resulting Hausdorff difference to 13.4055 nm and 14.3653 nm respectively. It checks the saved meshes and their production-transformed float32 geometry before marking the mesh qualified. Field qualification is still required:
+
+```bash
+/usr/bin/python3 -m experiments.differentiable_mpm.prepare_valid_blade_meshes \
+  --output-dir experiments/differentiable_mpm/runs/valid_blade_geometry_v1
+```
+
+Focused tests are registered as `test_triangle_sdf`, `test_mesh_validation`, `test_prepare_blade_collision_meshes`, `test_sdf_qualification` and `test_sdf_builder_integration` in the experiment test runner. They include exact adjacent-face overlap checks, independent analytic distances, rejected subvoxel slabs, cache separation, and actual f32/f64 sampler finite differences. Sampler diagnostic output is collected in a separate kernel: writing a non-gradient normal diagnostic inside the differentiated probe triggered incorrect f32 adjoints with the installed Taichi version.
+
+For a single valid mesh, `python3 -m experiments.differentiable_mpm.qualify_tool_sdf --help` lists standalone construction and qualification options. Its scale/rotation/translation must explicitly match the intended coordinate frame; raw-STL field output is not automatically a tool-frame field. Normal experiment preparation applies the existing tool-frame transforms through `data.py`.
+
+On the shared retriangulated blades with a 3.90625 mm contact band, v2 sparse preflight rejects every tested cubic resolution (128, 256, 384, 512, 768 and 1024). At 512, both tools pass crossing-count, geometric boundary-offset and eligible physical-thickness checks; worst boundary offsets are 0.08745 mm (UR) and 0.04948 mm (Kinova), and eligible thickness errors are 0.982% and 0.628%. Regular-support normal checks pass, but varying-support normal checks and several distance probes fail. At 768, sampled distance errors pass the 0.1 mm limit for both tools, but normal checks still fail and UR has one crossing-count failure. These results do not qualify a field for use. No actual-tool dense field was built or accepted; the validated meshes and construction code are separate deliverables from a qualified runtime field.
+
+This changes collision geometry construction, not the contact law, particle push-out or MPM transfer. No improvement in full-motion simulation is implied by passing geometry checks. Subsequent penetration measurements should use independent mesh-based checks, including swept crossings: an endpoint outside the tool does not rule out passage through it during the step.
+
 ### Partial-observation training loss
 
 The new, versioned objective combines calibrated local splats, front-biased depth, initial-referenced depth-change residuals, positive observed-foreground coverage, and directed distance to visible predicted coordinates. Its position gradients are explicitly injected into the simulation adjoint. Unknown pixels are not treated as known empty space; hidden volumetric particles are not symmetrically compared with the observed exterior. Missing/invalid support is an error, not a zero-loss frame.
