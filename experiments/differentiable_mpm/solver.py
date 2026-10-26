@@ -602,14 +602,20 @@ class Stepper:
             valid, distance, local_normal = self._sdf_at(tool, local_pos)
             if valid and distance < self.config.tool_contact_padding:
                 ti.atomic_add(self.counts[5 + tool], 1)
-                penetration = self.config.tool_contact_padding - distance + 1e-4
                 normal = rotation @ local_normal
-                result_x += normal * penetration
+                if ti.static(self.config.tool_particle_contact_mode == "projection"):
+                    penetration = self.config.tool_contact_padding - distance + 1e-4
+                    result_x += normal * penetration
                 collider_v = self.tool_velocity[tool] + self.tool_omega[tool].cross(result_x - center)
                 relative = result_v - collider_v
                 if relative.dot(normal) < 0:
                     ti.atomic_add(self.counts[7 + tool], 1)
                 result_v = self._tool_velocity_response(result_v, collider_v, normal)
+                if ti.static(self.config.tool_particle_contact_mode == "penalty-v1"):
+                    target = self.config.tool_penalty_rate * (self.config.tool_contact_padding - distance) / self.dt
+                    outward = (result_v - collider_v).dot(normal)
+                    if outward < target:
+                        result_v += normal * (target - outward)
         return result_x, result_v
 
     @ti.kernel

@@ -35,6 +35,10 @@ PHYSICS_VERSIONS = ("corrected-v1", "legacy-v1")
 BOUNDED_ADHESIVE_MODELS = ("coulomb-bounded-adhesive-v2", "coulomb-bounded-shear-adhesive-v3")
 TOOL_CONTACT_MODELS = ("retention-v1", "coulomb-v1", "coulomb-adhesive-v1", *BOUNDED_ADHESIVE_MODELS)
 TOOL_GRID_CONTACT_MODES = ("inherit", "dirichlet-v1")
+# Particle-level tool contact: "projection" moves particles inside the padding band back out; "penalty-v1" (default)
+# leaves positions alone and gives the particle an outward normal velocity (relative to the tool) of at least
+# tool_penalty_rate * depth / dt, so the correction reaches the grid at the next transfer.
+TOOL_PARTICLE_CONTACT_MODES = ("projection", "penalty-v1")
 FLOOR_CONTACT_MODELS = ("retention-v1", "coulomb-v1")
 # Relative tangential speed (m/s) added in quadrature before dividing by it, so the
 # Coulomb scale and its derivative stay finite when tool or floor and dough move together.
@@ -104,6 +108,8 @@ class SimulationConfig:
     tool_contact_padding: float = 1.0 / 384.0
     tool_contact_model: str = "retention-v1"
     tool_grid_contact_mode: str = "inherit"
+    tool_particle_contact_mode: str = "penalty-v1"
+    tool_penalty_rate: float = 0.2
     tool_grid_contact_padding: float | None = None
     tool_friction_coefficient: float = 0.5
     tool_contact_absorption: float = 0.0
@@ -149,6 +155,10 @@ class SimulationConfig:
                 raise ValueError("von-mises plasticity requires unit plastic damping")
         if self.tool_collision not in {"none", "sdf"}:
             raise ValueError("The experiment supports recorded SDF tools or no tools")
+        if self.tool_particle_contact_mode not in TOOL_PARTICLE_CONTACT_MODES:
+            raise ValueError(f"tool_particle_contact_mode must be one of {TOOL_PARTICLE_CONTACT_MODES}")
+        if not (0.0 < self.tool_penalty_rate <= 1.0):
+            raise ValueError("tool_penalty_rate must be in (0, 1]")
         if not isinstance(self.tool_contact_model, str) or self.tool_contact_model not in TOOL_CONTACT_MODELS:
             raise ValueError(f"tool_contact_model must be one of {TOOL_CONTACT_MODELS}")
         if not isinstance(self.tool_grid_contact_mode, str) or self.tool_grid_contact_mode not in TOOL_GRID_CONTACT_MODES:
