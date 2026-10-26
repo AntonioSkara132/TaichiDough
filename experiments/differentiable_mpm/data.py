@@ -175,6 +175,8 @@ def collision_inputs(config, records, sequence_names, simulator, build_sdf):
             from .qualify_tool_sdf import qualify_field, qualify_resolution, qualification_identity, qualification_settings
 
             grid_spacing = 1.0 / config.simulation.get("grid", SimulationConfig.grid)
+            if os.environ.get("TAICHIDOUGH_SDF_QUALIFICATION_GRID"):  # bag0 worktree diagnostic: tolerance tied to another grid
+                grid_spacing = 1.0 / float(os.environ["TAICHIDOUGH_SDF_QUALIFICATION_GRID"])
             settings = qualification_settings(config.tool_sdf_qualification, grid_spacing)
             construction = {"builder": builder_identity(),
                             "qualification": qualification_identity(config.tool_sdf_qualification, grid_spacing),

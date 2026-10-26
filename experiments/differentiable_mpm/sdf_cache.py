@@ -28,11 +28,29 @@ def _array_hash(value):
     return digest.hexdigest()
 
 
+def _pin_versions(value, numpy_version, open3d_version=None):
+    """bag0 worktree addition: report the numpy / Open3D versions the shipped cache was built with (version strings
+    only label the identity; the arrays themselves are checksum-verified on load)."""
+    if isinstance(value, dict):
+        out = {}
+        for k, v in value.items():
+            if k == "numpy_version": out[k] = numpy_version
+            elif k == "open3d_version" and open3d_version: out[k] = open3d_version
+            else: out[k] = _pin_versions(v, numpy_version, open3d_version)
+        return out
+    if isinstance(value, list):
+        return [_pin_versions(v, numpy_version, open3d_version) for v in value]
+    return value
+
+
 def cache_identity(vertices, resolution, padding, source):
     """Include actual transformed vertices, builder source and numerical settings."""
     description = {"schema": SCHEMA, "source": source, "numpy_version": np.__version__,
                    "vertices_sha256": _array_hash(vertices), "resolution": int(resolution),
                    "padding": float(padding)}
+    pinned = os.environ.get("TAICHIDOUGH_SDF_CACHE_NUMPY_VERSION")
+    if pinned:
+        description = _pin_versions(description, pinned, os.environ.get("TAICHIDOUGH_SDF_CACHE_OPEN3D_VERSION"))
     return hashlib.sha256(_json(description).encode()).hexdigest(), description
 
 

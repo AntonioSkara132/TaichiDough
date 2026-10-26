@@ -44,11 +44,17 @@ class LossConfig:
     min_predicted_pixels: int = 1
     max_observed_points: int = 1024
     missing_depth_residual: float = 4.0
+    # "initial": depth change since the first frame, on pixels covered by the initial render
+    # (fails once the dough leaves its initial footprint). "frame": current observed depth vs
+    # current rendered depth on every observed pixel; shape-sensitive on transported dough.
+    depth_reference: str = "initial"
     version: str = LOSS_VERSION
 
     def __post_init__(self):
         if self.version not in SUPPORTED_LOSS_VERSIONS:
             raise ValueError(f"Unsupported training loss version: {self.version}")
+        if self.depth_reference not in ("initial", "frame"):
+            raise ValueError("depth_reference must be 'initial' or 'frame'")
         positive = ("visibility_temperature_m", "opacity_gain", "visible_cutoff_temperatures",
                     "depth_scale_m", "distance_scale_m", "huber_delta", "missing_depth_residual")
         for name in positive:
@@ -149,9 +155,13 @@ class ObservationLoss:
             if self.depth_mask[row, column] == 1:
                 term = self._huber(ti.cast(self.config.missing_depth_residual, self.fp))
                 if self.renderer.valid[row, column] == 1:
-                    observed_change = self.observed_depth[row, column] - self.observed_initial_depth[row, column]
-                    simulation_change = self.renderer.depth[row, column] - self.initial_simulation_depth[row, column]
-                    term = self._huber((simulation_change - observed_change) / self.config.depth_scale_m)
+                    if ti.static(self.config.depth_reference == "frame"):
+                        residual = self.renderer.depth[row, column] - self.observed_depth[row, column]
+                        term = self._huber(residual / self.config.depth_scale_m)
+                    else:
+                        observed_change = self.observed_depth[row, column] - self.observed_initial_depth[row, column]
+                        simulation_change = self.renderer.depth[row, column] - self.initial_simulation_depth[row, column]
+                        term = self._huber((simulation_change - observed_change) / self.config.depth_scale_m)
                 if ti.static(self.config.version == "partial-visible-splats-v2"):
                     coverage = self.renderer.coverage[row, column]
                     missing = self._huber(ti.cast(self.config.missing_depth_residual, self.fp))
@@ -191,10 +201,13 @@ class ObservationLoss:
         observed_count = int(masks[0].sum())
         if observed_count < self.config.min_observed_pixels:
             raise InvalidStateError(f"Observed support {observed_count} is below {self.config.min_observed_pixels}")
-        depth_mask = masks[0] & masks[1] & self.initial_render.valid
+        if self.config.depth_reference == "frame":
+            depth_mask = masks[0].copy()
+        else:
+            depth_mask = masks[0] & masks[1] & self.initial_render.valid
         depth_count = int(depth_mask.sum())
         if self.config.depth_weight > 0 and depth_count < self.config.min_depth_pixels:
-            raise InvalidStateError(f"Fixed initial-referenced depth support {depth_count} is below {self.config.min_depth_pixels}")
+            raise InvalidStateError(f"{'Frame-referenced' if self.config.depth_reference == 'frame' else 'Fixed initial-referenced'} depth support {depth_count} is below {self.config.min_depth_pixels}")
         points = observation.observed_points
         if points is None:
             points = self.camera.optical_points(arrays[0], masks[0])

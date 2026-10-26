@@ -152,9 +152,13 @@ def parameter_source(args, dataset) -> tuple[dict[str, float], dict]:
         "tool_friction_coefficient": args.tool_friction_coefficient,
         "tool_stickiness": args.tool_stickiness,
     }
-    explicit_values = {name: explicit_values[name] for name in dataset_parameter_names(dataset)}
+    explicit_values = {name: explicit_values.get(name) for name in dataset_parameter_names(dataset)}
     has_explicit = any(value is not None for value in explicit_values.values())
     sources = int(args.run_dir is not None) + int(args.parameters is not None) + int(has_explicit)
+    if sources == 0:
+        # bag0 worktree addition: no source given -> replay at the dataset's shared initial parameters.
+        values = {name: dataset.shared_initial[name] for name in dataset_parameter_names(dataset)}
+        return shared_parameters(values, dataset_parameter_names(dataset)), {"kind": "dataset_initial"}
     if sources != 1:
         raise ValueError("Choose exactly one parameter source: --run-dir, --parameters, or every explicit dataset parameter")
     if has_explicit:
