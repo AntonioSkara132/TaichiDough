@@ -11,7 +11,7 @@ from experiments.differentiable_mpm.reference_adapter import reference_policy
 from experiments.differentiable_mpm.runtime import init_runtime
 from shape_loss import ShapeDescriptorLoss, descriptors
 grid = json.load(open(grid_path)); names = list(grid["axes"]); base = grid.get("base", {})
-sets = [dict(zip(names, c), **base) for c in itertools.product(*(grid["axes"][n] for n in names))]
+sets = [{**base, **dict(zip(names, c))} for c in itertools.product(*(grid["axes"][n] for n in names))]
 done = set()
 if os.path.exists(out):
     for l in open(out): r = json.loads(l); done.add(json.dumps(r["set"], sort_keys=True))
@@ -24,7 +24,7 @@ with reference_policy("frozen"):
     for i in range(len(clouds)):
         p = np.asarray(clouds[i])[:, :3].astype(np.float64); p = p[np.isfinite(p).all(1)] @ T[:3, :3].T + T[:3, 3]; rec[i] = descriptors(p, 0.004)[0]
     frames = sorted(o.frame_index for o in ro.observations); n = len(frames); fw = {f: 2.0 * (k + 1) / n for k, f in enumerate(frames)}
-    ro.loss = ShapeDescriptorLoss(ro.loss, rec, tau=0.004, scale=0.01, shape_weight=1.0, orig_weight=0.0, relative=True, frame_weights=fw,
+    ro.loss = ShapeDescriptorLoss(ro.loss, rec, tau=0.004, scale=0.01, shape_weight=1.0, orig_weight=float(os.environ.get("LANDSCAPE_ORIG_WEIGHT", "0.0")), relative=True, frame_weights=fw,
                                   initial_positions=np.asarray(ro.initial_state.x, dtype=np.float64))
     for s in sets:
         if json.dumps(s, sort_keys=True) in done: continue

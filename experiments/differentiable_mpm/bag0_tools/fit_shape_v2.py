@@ -26,6 +26,7 @@ with reference_policy("frozen"):
     bounds.setdefault("von_mises_yield_stress_pa", [100.0, 20000.0]); bounds.setdefault("youngs_modulus", [2000.0, 60000.0])
     if os.environ.get("FIT_POISSON_MAX"): bounds["poisson_ratio"] = [bounds["poisson_ratio"][0], float(os.environ["FIT_POISSON_MAX"])]
     lr_cur = a.lr
+    PART_BASE = {}
     fixed = set(a.fix.split(",")) if a.fix else set()
     fit_names = [n for n in ("youngs_modulus", "poisson_ratio", "viscosity", "tool_friction_coefficient", "tool_adhesion", "floor_friction_coefficient", "von_mises_yield_stress_pa") if n not in fixed]
     start = dict(ds.shared_initial); start.update(json.loads(a.start))
@@ -73,8 +74,11 @@ with reference_policy("frozen"):
             try: ev = ro.value_and_gradient(params, compute_grad=True)
             except Exception as exc:
                 per_part[pid] = {"error": str(exc)[:200]}; print(f"update {it}: {pid} FAILED {exc}", flush=True); continue
-            total += float(ev.value) / len(a.parts); per_part[pid] = {"value": float(ev.value), "shape": float(np.mean([f["components"].get("shape", 0.0) for f in ev.frames]))}
-            for n in fit_names: grad[n] += float(ev.gradient.get(n, 0.0)) / len(a.parts)
+            w = 1.0
+            if os.environ.get("FIT_PART_NORMALIZE"):  # opt-in: divide each part by its first-update loss so every part starts at 1
+                PART_BASE.setdefault(pid, max(float(ev.value), 1e-9)); w = 1.0 / PART_BASE[pid]
+            total += w * float(ev.value) / len(a.parts); per_part[pid] = {"value": float(ev.value), "weight": w, "shape": float(np.mean([f["components"].get("shape", 0.0) for f in ev.frames]))}
+            for n in fit_names: grad[n] += w * float(ev.gradient.get(n, 0.0)) / len(a.parts)
         if any("error" in x for x in per_part.values()):
             lr_cur *= 0.5; u = u_before
             row = {"iteration": it, "value": None, "failed": True, "lr_next": lr_cur, "parameters": {n: p[n] for n in fit_names}, "per_part": per_part, "seconds": round(time.perf_counter() - t0, 1)}
